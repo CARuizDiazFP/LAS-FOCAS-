@@ -9,3 +9,4 @@ notion-client>=1.0.0
 fuzzywuzzy>=0.18.0
 python-Levenshtein>=0.12.0
 pywin32>=300; sys_platform == 'win32'
+jsonschema>=4.0.0
