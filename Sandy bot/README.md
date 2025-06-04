@@ -48,6 +48,7 @@ DB_PORT=5432
 DB_NAME=sandybot
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
+PLANTILLA_PATH=C:\Metrotel\Sandy\plantilla_informe.docx
 ```
 
 ## Uso
