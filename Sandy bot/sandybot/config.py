@@ -43,7 +43,15 @@ class Config:
         self.ARCHIVO_CONTADOR = self.DATA_DIR / "contador_diario.json"
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
-        
+
+        # Plantilla de informes de repetitividad
+        # Permite definir la ruta mediante la variable de entorno "PLANTILLA_PATH"
+        # para adaptar la ubicación sin modificar el código fuente.
+        self.PLANTILLA_PATH = os.getenv(
+            "PLANTILLA_PATH",
+            r"C:\\Metrotel\\Sandy\\plantilla_informe.docx"
+        )
+
         # Configuración GPT
         self.GPT_MODEL = "gpt-4"  # o "gpt-3.5-turbo" según necesidad
         self.GPT_TIMEOUT = 30

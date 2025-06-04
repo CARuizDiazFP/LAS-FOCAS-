@@ -14,8 +14,11 @@ import locale
 from datetime import datetime
 import logging
 
-# Ruta fija a la plantilla Word
-RUTA_PLANTILLA = r"C:\Metrotel\Sandy\plantilla_informe.docx"
+from sandybot.config import config
+
+# Ruta a la plantilla Word definida en la configuración global
+# Permite modificar la ubicación mediante la variable de entorno "PLANTILLA_PATH"
+RUTA_PLANTILLA = config.PLANTILLA_PATH
 
 logger = logging.getLogger(__name__)
 
