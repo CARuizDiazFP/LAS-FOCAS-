@@ -1,0 +1,138 @@
+"""
+Manejador de interacciones con GPT con soporte para cache y manejo de errores.
+"""
+import json
+import logging
+import asyncio
+from typing import List, Dict, Any, Optional, Union
+from datetime import datetime
+import openai
+from .config import config
+
+logger = logging.getLogger(__name__)
+
+class GPTHandler:
+    """
+    Clase para manejar interacciones con la API de OpenAI GPT.
+    Implementa cache, reintentos, y manejo de rate limits.
+    """
+    def __init__(self):
+        self.cache: Dict[str, tuple] = {}
+        openai.api_key = config.OPENAI_API_KEY
+        
+    async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+        """
+        Consulta GPT con manejo de cache y errores
+
+        Args:
+            mensaje: El texto a enviar a GPT
+            cache: Si True, intenta usar respuesta cacheada
+
+        Returns:
+            str: La respuesta de GPT
+
+        Raises:
+            Exception: Si no se puede obtener respuesta después de los reintentos
+        """
+        if cache:
+            cache_key = mensaje.strip().lower()
+            if cache_key in self.cache:
+                timestamp, response = self.cache[cache_key]
+                if (datetime.now() - timestamp).seconds < config.GPT_CACHE_TIMEOUT:
+                    logger.info("Usando respuesta cacheada para: %s", mensaje[:50])
+                    return response
+
+        for intento in range(config.GPT_MAX_RETRIES):
+            try:
+                respuesta = await openai.ChatCompletion.acreate(
+                    model=config.GPT_MODEL,
+                    messages=[{"role": "user", "content": mensaje}],
+                    temperature=0.3,
+                    timeout=config.GPT_TIMEOUT
+                )
+                resultado = respuesta.choices[0].message.content.strip()
+                
+                if cache:
+                    self.cache[cache_key] = (datetime.now(), resultado)
+                return resultado
+                
+            except openai.error.RateLimitError:
+                logger.warning("Rate limit alcanzado, reintentando...")
+                # Exponential backoff with jitter
+                backoff_seconds = (2 ** intento) + (asyncio.get_running_loop().time() % 1)
+                await asyncio.sleep(backoff_seconds)
+            except openai.error.APIError as e:
+                logger.error("Error de API en consulta GPT: %s", str(e))
+                if intento == config.GPT_MAX_RETRIES - 1:
+                    raise
+                await asyncio.sleep(1)
+            except Exception as e:
+                logger.error("Error en consulta GPT: %s", str(e))
+                if intento == config.GPT_MAX_RETRIES - 1:
+                    raise
+
+        raise Exception("No se pudo obtener respuesta de GPT después de varios intentos")
+
+    async def detectar_intencion(self, mensaje: str) -> str:
+        """
+        Detecta la intención del usuario en el mensaje
+
+        Args:
+            mensaje: El texto del usuario
+
+        Returns:
+            str: La intención detectada ('acción', 'consulta', o 'neutro')
+        """
+        prompt = (
+            "Clasificá el siguiente mensaje en una sola palabra según la intención del usuario:\n\n"
+            "• acción → si está pidiendo que se ejecute algo\n"
+            "• consulta → si está pidiendo una explicación\n"
+            "• neutro → si es saludo o no se puede clasificar\n\n"
+            f"Mensaje: \"{mensaje}\"\n"
+            "Respuesta: "
+        )
+        
+        try:
+            respuesta = await self.consultar_gpt(prompt)
+            salida = respuesta.lower().strip()
+            return salida if salida in ["acción", "consulta", "neutro"] else "neutro"
+        except Exception as e:
+            logger.error("Error al detectar intención: %s", str(e))
+            return "neutro"
+
+    async def procesar_json_response(
+        self, 
+        contenido: str, 
+        schema: Dict[str, Any]
+    ) -> Optional[Union[Dict, List]]:
+        """
+        Procesa y valida una respuesta JSON de GPT
+
+        Args:
+            contenido: La respuesta de GPT en formato JSON
+            schema: El esquema esperado para validación
+
+        Returns:
+            Optional[Union[Dict, List]]: Datos JSON validados o None si hay error
+        """
+        try:
+            # Limpiar respuesta
+            contenido = contenido.strip()
+            if contenido.startswith("```"):
+                contenido = contenido.split("```")[1]
+                if contenido.startswith("json"):
+                    contenido = contenido[4:]
+                contenido = contenido.strip()
+            
+            # Parsear JSON
+            data = json.loads(contenido)
+            
+            # TODO: Implementar validación de schema
+            return data
+            
+        except Exception as e:
+            logger.error("Error al procesar respuesta JSON de GPT: %s", str(e))
+            return None
+
+# Instancia global
+gpt = GPTHandler()
