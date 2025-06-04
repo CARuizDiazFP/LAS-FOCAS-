@@ -7,6 +7,7 @@ import unicodedata
 from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
+from telegram import Update, Message
 
 logger = logging.getLogger(__name__)
 
@@ -72,3 +73,22 @@ def timestamp_log() -> str:
         str: Timestamp en formato YYYY-MM-DD HH:MM:SS
     """
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def obtener_mensaje(update: Update) -> Optional[Message]:
+    """Obtiene el objeto Message desde un Update.
+
+    Esta función permite unificar la extracción del mensaje ya sea
+    proveniente de actualizaciones directas o de callbacks.
+
+    Args:
+        update: Update recibido por el bot.
+
+    Returns:
+        Message o ``None`` si no existe.
+    """
+    if update.message:
+        return update.message
+    if update.callback_query and update.callback_query.message:
+        return update.callback_query.message
+    return None
