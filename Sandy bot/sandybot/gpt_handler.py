@@ -19,7 +19,10 @@ class GPTHandler:
     """
     def __init__(self):
         self.cache: Dict[str, tuple] = {}
-        openai.api_key = config.OPENAI_API_KEY
+        # Se crea un cliente asíncrono para la API de OpenAI.
+        # De esta forma se aprovecha la nueva interfaz de la
+        # biblioteca ``openai`` a partir de la versión 1.x.
+        self.client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
         
     async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
         """
@@ -45,7 +48,9 @@ class GPTHandler:
 
         for intento in range(config.GPT_MAX_RETRIES):
             try:
-                respuesta = await openai.ChatCompletion.acreate(
+                # Utiliza el cliente asíncrono creado en ``__init__`` para
+                # solicitar una nueva completitud de chat.
+                respuesta = await self.client.chat.completions.create(
                     model=config.GPT_MODEL,
                     messages=[{"role": "user", "content": mensaje}],
                     temperature=0.3,
