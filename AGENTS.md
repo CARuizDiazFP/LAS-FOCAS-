@@ -30,6 +30,10 @@ Interoperable: Puede integrarse con Google Sheets, Notion, Slack
 
 Archivo: gpt_handler.py
 
+Desde 2025 este archivo emplea ``openai.AsyncOpenAI`` para comunicarse con la
+nueva API 1.x de OpenAI, permitiendo consultas asincrónicas y un manejo de
+errores más robusto.
+
 Funciones clave:
 
 consultar_gpt_con_lineas(lineas, horas):
