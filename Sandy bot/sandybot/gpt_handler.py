@@ -7,6 +7,7 @@ import asyncio
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 import openai
+from jsonschema import validate, ValidationError
 from .config import config
 
 logger = logging.getLogger(__name__)
@@ -106,7 +107,7 @@ class GPTHandler:
         schema: Dict[str, Any]
     ) -> Optional[Union[Dict, List]]:
         """
-        Procesa y valida una respuesta JSON de GPT
+        Procesa y valida una respuesta JSON de GPT usando ``jsonschema``
 
         Args:
             contenido: La respuesta de GPT en formato JSON
@@ -126,10 +127,13 @@ class GPTHandler:
             
             # Parsear JSON
             data = json.loads(contenido)
-            
-            # TODO: Implementar validación de schema
+
+            # Validar contra el esquema proporcionado
+            validate(instance=data, schema=schema)
             return data
-            
+        except ValidationError as ve:
+            logger.error("JSON no cumple con el esquema: %s", str(ve))
+            return None
         except Exception as e:
             logger.error("Error al procesar respuesta JSON de GPT: %s", str(e))
             return None
