@@ -58,6 +58,9 @@ Para iniciar el bot:
 python main.py
 ```
 
+Al ejecutarse, `main.py` configura automáticamente el sistema de logging. Los
+mensajes se muestran en la consola utilizando el formato estándar de Python.
+
 ## Estructura
 
 ```

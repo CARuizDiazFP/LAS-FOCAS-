@@ -60,8 +60,8 @@ class Config:
         # Validación
         self.validate()
         
-        # Configurar logging
-        # self.setup_logging()  # La configuración de logging ahora está centralizada en `main.py`
+
+        # Configuración de logging gestionada desde `main.py`
         
         self._initialized = True
 
@@ -79,10 +79,6 @@ class Config:
         missing = [var for var, val in required_vars.items() if not val]
         if missing:
             raise ValueError(f"⚠️ Faltan variables de entorno: {', '.join(missing)}")
-
-    def setup_logging(self) -> None:
-        """Configurar sistema de logging"""
-        pass  # La configuración de logging ahora está centralizada en `main.py`
 
 # Instancia global
 config = Config()
