@@ -7,6 +7,7 @@ import unicodedata
 from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
+from telegram import Update, Message
 
 logger = logging.getLogger(__name__)
 
@@ -72,3 +73,18 @@ def timestamp_log() -> str:
         str: Timestamp en formato YYYY-MM-DD HH:MM:SS
     """
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+
+def obtener_mensaje(update: Update) -> Optional[Message]:
+    """Devuelve el objeto Message asociado a un Update.
+
+    La función revisa primero si el update contiene ``update.message`` y
+    lo retorna. En caso de ser una interacción proveniente de un botón,
+    utiliza ``update.callback_query.message``. Si ninguna de las dos
+    propiedades está presente, devuelve ``None``.
+    """
+    if update.message:
+        return update.message
+    if update.callback_query:
+        return update.callback_query.message
+    return None
