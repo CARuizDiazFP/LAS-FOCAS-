@@ -162,6 +162,6 @@ def modificar_informe_con_pythoncom(docx_path, mes_actual, año_actual):
         doc.Close()
         word_app.Quit()
     except Exception as e:
-        print(f"Error al modificar el documento con COM: {e}")
+        logger.error("Error al modificar el documento con COM: %s", e)
     finally:
         pythoncom.CoUninitialize()
