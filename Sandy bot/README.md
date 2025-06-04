@@ -16,6 +16,7 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 - Python 3.9+
 - PostgreSQL
 - Microsoft Word (para informes de repetitividad)
+- Paquete `openai` versión 1.0.0 o superior
 
 ## Instalación
 

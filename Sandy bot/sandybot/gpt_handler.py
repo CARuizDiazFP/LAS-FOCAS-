@@ -57,12 +57,12 @@ class GPTHandler:
                     self.cache[cache_key] = (datetime.now(), resultado)
                 return resultado
                 
-            except openai.error.RateLimitError:
+            except openai.RateLimitError:
                 logger.warning("Rate limit alcanzado, reintentando...")
                 # Exponential backoff with jitter
                 backoff_seconds = (2 ** intento) + (asyncio.get_running_loop().time() % 1)
                 await asyncio.sleep(backoff_seconds)
-            except openai.error.APIError as e:
+            except openai.APIError as e:
                 logger.error("Error de API en consulta GPT: %s", str(e))
                 if intento == config.GPT_MAX_RETRIES - 1:
                     raise
