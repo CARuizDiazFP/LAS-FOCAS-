@@ -123,6 +123,8 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             await mensaje.reply_text(
                 "¿Procesar qué? Necesito al menos dos archivos de tracking."
             )
+            UserState.set_mode(user_id, "")
+            context.user_data["trackings"] = []
             return
 
         await mensaje.reply_text("Procesando comparación, aguarde...")
