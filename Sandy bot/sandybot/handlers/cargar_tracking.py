@@ -76,7 +76,7 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
         parser.clear_data()
         parser.parse_file(str(ruta_destino))
         camaras = parser._data[0][1]["camara"].astype(str).tolist()
-        actualizar_tracking(servicio, str(ruta_destino), camaras)
+        actualizar_tracking(servicio, str(ruta_destino), camaras, [str(ruta_destino)])
         await mensaje.reply_text("✅ Tracking cargado y guardado correctamente.")
     except Exception as e:
         logger.error("Error al guardar tracking: %s", e)

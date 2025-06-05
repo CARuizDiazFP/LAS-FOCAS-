@@ -49,12 +49,14 @@ class Servicio(Base):
 
     id = Column(Integer, primary_key=True)
     nombre = Column(String, index=True)
+    cliente = Column(String, index=True)
     ruta_tracking = Column(String)
+    trackings = Column(String)
     camaras = Column(String)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
 
     def __repr__(self):
-        return f"<Servicio(id={self.id}, nombre={self.nombre})>"
+        return f"<Servicio(id={self.id}, nombre={self.nombre}, cliente={self.cliente})>"
 
 def init_db():
     """Inicializa la base de datos y crea todas las tablas definidas"""
@@ -79,6 +81,8 @@ def crear_servicio(**datos) -> Servicio:
     try:
         if "camaras" in datos and isinstance(datos["camaras"], list):
             datos["camaras"] = json.dumps(datos["camaras"])
+        if "trackings" in datos and isinstance(datos["trackings"], list):
+            datos["trackings"] = json.dumps(datos["trackings"])
         servicio = Servicio(**datos)
         session.add(servicio)
         session.commit()
@@ -88,15 +92,26 @@ def crear_servicio(**datos) -> Servicio:
         session.close()
 
 
-def actualizar_tracking(id_servicio: int, ruta: str, camaras: list[str]) -> None:
-    """Actualiza los datos de tracking y cámaras de un servicio."""
+def actualizar_tracking(
+    id_servicio: int,
+    ruta: str | None = None,
+    camaras: list[str] | None = None,
+    trackings_txt: list[str] | None = None,
+) -> None:
+    """Actualiza datos del servicio: tracking, cámaras y archivos asociados."""
     session = SessionLocal()
     try:
         servicio = session.get(Servicio, id_servicio)
         if not servicio:
             return
-        servicio.ruta_tracking = ruta
-        servicio.camaras = json.dumps(camaras)
+        if ruta is not None:
+            servicio.ruta_tracking = ruta
+        if camaras is not None:
+            servicio.camaras = json.dumps(camaras)
+        if trackings_txt:
+            existentes = json.loads(servicio.trackings) if servicio.trackings else []
+            existentes.extend(trackings_txt)
+            servicio.trackings = json.dumps(existentes)
         session.commit()
     finally:
         session.close()
