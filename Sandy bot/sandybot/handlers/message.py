@@ -10,6 +10,7 @@ import os
 from .estado import UserState
 from .notion import registrar_accion_pendiente
 from .cargar_tracking import guardar_tracking_servicio
+from .ingresos import verificar_camara
 from ..utils import normalizar_texto
 
 logger = logging.getLogger(__name__)
@@ -55,16 +56,8 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _manejar_comparador(update, context, mensaje_usuario)
             return
 
-        if mode == "ingresos" and "id_servicio" not in context.user_data:
-            if mensaje_usuario.isdigit():
-                context.user_data["id_servicio"] = int(mensaje_usuario)
-                await update.message.reply_text(
-                    "ID registrado. Ahora adjuntá el archivo de ingresos (.txt)."
-                )
-            else:
-                await update.message.reply_text(
-                    "Enviá un ID numérico de servicio antes del archivo."
-                )
+        if mode == "ingresos":
+            await verificar_camara(update, context)
             return
 
         # Activar modo Sandy si no está activo␊

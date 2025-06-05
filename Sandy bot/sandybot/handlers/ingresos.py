@@ -33,6 +33,30 @@ async def manejar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     except Exception as e:
         await mensaje.reply_text(f"Error al verificar ingresos: {e}")
 
+
+async def verificar_camara(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Busca servicios por nombre de cámara y responde con las coincidencias."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje or not mensaje.text:
+        logger.warning("No se recibió un nombre de cámara en verificar_camara.")
+        return
+
+    nombre_camara = mensaje.text.strip()
+    from ..database import buscar_servicios_por_camara
+
+    servicios = buscar_servicios_por_camara(nombre_camara)
+
+    if not servicios:
+        await mensaje.reply_text("No encontré servicios con esa cámara.")
+        return
+
+    if len(servicios) == 1:
+        s = servicios[0]
+        await mensaje.reply_text(f"La cámara pertenece al servicio {s.id}: {s.nombre or 'Sin nombre'}")
+    else:
+        listado = "\n".join(f"{s.id}: {s.nombre or 'Sin nombre'}" for s in servicios)
+        await mensaje.reply_text("La cámara figura en varios servicios:\n" + listado)
+
 async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Inicia el proceso de verificación de ingresos.
@@ -55,7 +79,7 @@ async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DE
 
         await mensaje.reply_text(
             "Iniciando verificación de ingresos. "
-            "Enviá primero el ID del servicio y luego adjuntá el archivo .txt."
+            "Enviá el nombre de la cámara que querés verificar."
         )
     except Exception as e:
         await mensaje.reply_text(f"Error al iniciar la verificación de ingresos: {e}")

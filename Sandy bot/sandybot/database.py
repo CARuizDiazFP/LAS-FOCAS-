@@ -142,3 +142,23 @@ def actualizar_tracking(
     finally:
         session.close()
 
+
+def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
+    """Devuelve los servicios que contienen la cámara indicada."""
+    session = SessionLocal()
+    resultados: list[Servicio] = []
+    try:
+        camara_lower = nombre_camara.lower()
+        for servicio in session.query(Servicio).all():
+            if not servicio.camaras:
+                continue
+            try:
+                camaras = json.loads(servicio.camaras)
+            except json.JSONDecodeError:
+                continue
+            if any(camara_lower == str(c).lower() for c in camaras):
+                resultados.append(servicio)
+        return resultados
+    finally:
+        session.close()
+
