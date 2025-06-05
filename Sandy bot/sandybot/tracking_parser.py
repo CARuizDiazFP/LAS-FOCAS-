@@ -16,32 +16,37 @@ class TrackingParser:
         self._data: List[Tuple[str, pd.DataFrame]] = []
 
     def _sanitize_sheet_name(self, name: str) -> str:
-        """Limpia el nombre de la hoja para que sea válido en Excel."""
+        """Limpia el nombre de la hoja para que sea válida en Excel."""
         cleaned = re.sub(r"[\\/*?\[\]]", "_", name)
         return cleaned[:31]
 
-    def parse_file(self, path: str) -> None:
+    def parse_file(self, path: str, sheet_name: str | None = None) -> None:
         """Lee un archivo de texto y guarda sus datos en memoria."""
+        registros: List[Tuple[str, str]] = []
+        distancia_prev = ""
+
         with open(path, "r", encoding="utf-8") as f:
-            registros: List[Tuple[str, str]] = []
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
-                # Dividir por punto y coma o tabulación si existen, de lo
-                # contrario usar el primer espacio como separador.
-                if ";" in line or "\t" in line:
-                    partes = re.split(r"[;\t]", line)
-                else:
-                    partes = re.split(r"\s+", line, maxsplit=2)
-                partes = [p.strip() for p in partes if p.strip()]
-                camara = partes[0] if partes else ""
-                distancia = partes[1] if len(partes) > 1 else ""
-                registros.append((camara, distancia))
+
+                # Capturar distancia previa
+                match_dist = re.search(r"\*\s*(\d+(?:\.\d+)?)\s*mts", line, re.I)
+                if match_dist:
+                    distancia_prev = match_dist.group(1)
+                    continue
+
+                # Capturar línea de empalme
+                match_emp = re.search(r"^Empalme\s+\d+\s*:\s*(.+)", line)
+                if match_emp:
+                    camara = match_emp.group(1).strip()
+                    registros.append((camara, distancia_prev))
 
         df = pd.DataFrame(registros, columns=["camara", "distancia"])
-        nombre_archivo = os.path.splitext(os.path.basename(path))[0]
-        sheet = self._sanitize_sheet_name(nombre_archivo)
+        if sheet_name is None:
+            sheet_name = os.path.splitext(os.path.basename(path))[0]
+        sheet = self._sanitize_sheet_name(sheet_name)
         self._data.append((sheet, df))
 
     def clear_data(self) -> None:
@@ -63,4 +68,3 @@ class TrackingParser:
             for sheet, df in self._data:
                 df.to_excel(writer, sheet_name=sheet, index=False)
             coincidencias.to_excel(writer, sheet_name="Coincidencias", index=False)
-
