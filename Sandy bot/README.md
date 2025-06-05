@@ -105,8 +105,8 @@ sandybot/
    - Detecta duplicados
 3. Carga de tracking
    - Seleccioná "Cargar tracking" en el menú principal
-   - Indicá el ID del servicio
-   - Adjuntá el archivo `.txt` con el tracking
+   - Enviá el archivo `.txt` cuyo nombre contenga el ID (ej.: `FO_1234_tramo.txt`)
+   - El bot detectará el ID y te pedirá confirmación. Respondé "sí" o escribí otro número.
 
 4. Informes de repetitividad
    - Procesa Excel de casos

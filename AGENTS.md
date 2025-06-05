@@ -71,6 +71,13 @@ Hoja 1: Todos los ingresos extraídos (hora, cámara)
 
 Hoja 2: Coincidencias con el tracking cargado
 
+🔹 Carga de tracking
+
+Al ejecutar `/cargar_tracking` se envía directamente el archivo `.txt` del
+tracking. El bot extrae el ID desde el nombre (por ejemplo `FO_1234_tramo.txt`)
+y consulta si se desea asociarlo a ese servicio. Se puede confirmar con "sí" o
+especificar otro ID.
+
 💼 Otros agentes o acciones especiales
 
 Si el bot no entiende un mensaje, pide más detalles y lo guarda en Notion con estado Nuevo
