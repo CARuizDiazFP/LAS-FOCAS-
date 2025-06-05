@@ -19,7 +19,8 @@ from .handlers import (
     start_handler,
     callback_handler,
     message_handler,
-    document_handler
+    document_handler,
+    procesar_comparacion
 )
 
 logger = logging.getLogger(__name__)
@@ -35,6 +36,7 @@ class SandyBot:
         """Configura los handlers del bot"""
         # Comandos básicos
         self.app.add_handler(CommandHandler("start", start_handler))
+        self.app.add_handler(CommandHandler("procesar", procesar_comparacion))
         
         # Callbacks de botones
         self.app.add_handler(CallbackQueryHandler(callback_handler))
