@@ -16,31 +16,28 @@ class TrackingParser:
         self._data: List[Tuple[str, pd.DataFrame]] = []
 
     def _sanitize_sheet_name(self, name: str) -> str:
-        """Limpia el nombre de la hoja para que sea válido en Excel."""
+        """Limpia el nombre de la hoja para que sea válida en Excel."""
         cleaned = re.sub(r"[\\/*?\[\]]", "_", name)
         return cleaned[:31]
 
     def parse_file(self, path: str, sheet_name: str | None = None) -> None:
-        """Lee un archivo de texto y guarda sus datos en memoria.
-
-        ``sheet_name`` permite asignar un nombre de hoja diferente al nombre
-        del archivo (útil cuando Telegram usa archivos temporales).
-        """
+        """Lee un archivo de texto y guarda sus datos en memoria."""
         registros: List[Tuple[str, str]] = []
         distancia_prev = ""
+
         with open(path, "r", encoding="utf-8") as f:
             for line in f:
                 line = line.strip()
                 if not line:
                     continue
 
-                # Capturar distancia de la línea anterior a "Empalme".
+                # Capturar distancia previa
                 match_dist = re.search(r"\*\s*(\d+(?:\.\d+)?)\s*mts", line, re.I)
                 if match_dist:
-                    distancia_prev = f"{match_dist.group(1)} mts"
+                    distancia_prev = match_dist.group(1)
                     continue
 
-                # Tomar la ubicación del empalme omitendo el prefijo y el número
+                # Capturar línea de empalme
                 match_emp = re.search(r"^Empalme\s+\d+\s*:\s*(.+)", line)
                 if match_emp:
                     camara = match_emp.group(1).strip()
@@ -71,4 +68,3 @@ class TrackingParser:
             for sheet, df in self._data:
                 df.to_excel(writer, sheet_name=sheet, index=False)
             coincidencias.to_excel(writer, sheet_name="Coincidencias", index=False)
-
