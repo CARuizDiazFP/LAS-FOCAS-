@@ -9,6 +9,8 @@ import tempfile
 from sandybot.tracking_parser import TrackingParser
 from sandybot.utils import obtener_mensaje
 from sandybot.database import actualizar_tracking
+from sandybot.config import config
+import shutil
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
@@ -115,8 +117,12 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
 
         try:
             parser.clear_data()
+            rutas_guardadas = []
             for ruta, nombre in trackings:
                 parser.parse_file(ruta, sheet_name=nombre)
+                destino = config.DATA_DIR / f"{context.user_data['id_servicio']}_{nombre}"
+                shutil.move(ruta, destino)
+                rutas_guardadas.append(str(destino))
 
             salida = os.path.join(
                 tempfile.gettempdir(), f"ComparacionFO_{user_id}.xlsx"
@@ -125,7 +131,7 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
 
             camaras = parser._find_common_chambers()
             actualizar_tracking(
-                context.user_data["id_servicio"], salida, camaras
+                context.user_data["id_servicio"], salida, camaras, rutas_guardadas
             )
             await mensaje.reply_text("✅ Tracking registrado en la base.")
 
@@ -136,11 +142,6 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             logger.error("Error generando Excel: %s", e)
             await mensaje.reply_text(f"💥 Algo falló al generar el Excel: {e}")
         finally:
-            for ruta, _ in trackings:
-                try:
-                    os.remove(ruta)
-                except OSError:
-                    pass
             parser.clear_data()
             if 'salida' in locals():
                 try:

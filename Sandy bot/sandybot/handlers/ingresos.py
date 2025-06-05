@@ -8,7 +8,9 @@ import os
 import tempfile
 import json
 from sandybot.utils import obtener_mensaje
-from ..database import obtener_servicio
+from ..database import obtener_servicio, actualizar_tracking
+from ..config import config
+import shutil
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
@@ -83,10 +85,11 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
             await archivo.download_to_drive(tmp.name)
 
-        with open(tmp.name, "r", encoding="utf-8") as f:
-            camaras_archivo = [line.strip() for line in f if line.strip()]
+        destino = config.DATA_DIR / f"ingresos_{id_servicio}_{documento.file_name}"
+        shutil.move(tmp.name, destino)
 
-        os.remove(tmp.name)
+        with open(destino, "r", encoding="utf-8") as f:
+            camaras_archivo = [line.strip() for line in f if line.strip()]
 
         servicio = obtener_servicio(int(id_servicio))
         if not servicio:
@@ -116,6 +119,8 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             respuesta.append("No se detectaron cámaras para comparar.")
 
         await mensaje.reply_text("\n".join(respuesta))
+
+        actualizar_tracking(int(id_servicio), trackings_txt=[str(destino)])
 
         UserState.set_mode(user_id, "")
         context.user_data.pop("id_servicio", None)

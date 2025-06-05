@@ -17,8 +17,9 @@ tal como se especifica en `config.py`.
 Se incluyen dos modelos principales:
 
 1. **Conversacion**: almacena el historial de mensajes del bot.
-2. **Servicio**: registra la ruta del tracking asociada y las cámaras
-   involucradas en cada servicio para facilitar su seguimiento.
+2. **Servicio**: registra nombre, cliente y los trackings asociados.
+   También guarda la ruta del informe de comparación y las cámaras
+   involucradas en cada servicio.
 
 ## Carga de tracking
 
