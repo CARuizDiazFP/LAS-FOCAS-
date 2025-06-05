@@ -20,6 +20,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await iniciar_verificacion_ingresos(update, context)
         
     elif query.data == "informe_repetitividad":
+        user_id = query.from_user.id
+        UserState.set_mode(user_id, "repetitividad")
         await iniciar_repetitividad(update, context)
         
     elif query.data == "informe_sla":

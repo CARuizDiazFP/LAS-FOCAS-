@@ -16,6 +16,7 @@ import logging
 
 from sandybot.config import config
 from ..utils import obtener_mensaje
+from .estado import UserState
 
 # Ruta a la plantilla Word definida en la configuración global
 # Permite modificar la ubicación mediante la variable de entorno "PLANTILLA_PATH"
@@ -66,7 +67,8 @@ async def iniciar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TY
             message.from_user.id,
         )
         await message.reply_text(
-            "Iniciando generación de informes de repetitividad. Por favor, espere."
+            "Iniciando generación de informes de repetitividad. "
+            "Enviá el archivo Excel para continuar."
         )
     except Exception as e:
         logger.error("Error en iniciar_repetitividad: %s", e)
@@ -84,6 +86,7 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
     if not message:
         logger.warning("No se obtuvo mensaje en procesar_repetitividad.")
         return
+    user_id = message.from_user.id
 
     try:
         if not message.document:
@@ -110,6 +113,7 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
 
         os.remove(tmp_excel.name)
         os.remove(ruta_salida)
+        UserState.set_mode(user_id, "")
 
     except Exception as e:
         if message:
