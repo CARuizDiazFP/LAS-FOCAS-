@@ -23,8 +23,8 @@ Se incluyen dos modelos principales:
 
 ## Carga de tracking
 
-Utilizá el comando `/cargar_tracking` y simplemente enviá el archivo `.txt`.
+Utilizá el comando `/cargar_tracking` y enviá el archivo `.txt`.
 El bot detectará el ID del servicio en el nombre (por ejemplo `FO_1234_tramo.txt`)
-y preguntará si deseás asociarlo. Podés confirmar respondiendo "sí" o
-escribir otro ID para reemplazarlo.
+y mostrará dos botones para **Procesar tracking** o **Modificar ID**.
+También se acepta la confirmación escribiendo "sí" o "si".
 
