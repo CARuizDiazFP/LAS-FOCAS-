@@ -86,17 +86,6 @@ def init_db():
     ensure_servicio_columns()
 
 
-def ensure_servicio_columns() -> None:
-    """Verifica la presencia de columnas opcionales en ``servicios``."""
-    insp = inspect(engine)
-    existing = {col["name"] for col in insp.get_columns("servicios")}
-    with engine.begin() as conn:
-        if "carrier" not in existing:
-            conn.execute(text("ALTER TABLE servicios ADD COLUMN carrier VARCHAR"))
-        if "id_carrier" not in existing:
-            conn.execute(text("ALTER TABLE servicios ADD COLUMN id_carrier VARCHAR"))
-
-
 # Crear las tablas al importar el módulo
 init_db()
 
