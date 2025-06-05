@@ -47,7 +47,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         # Manejo de estado de usuario
         if UserState.is_waiting_detail(user_id):
-            await _manejar_detalle_pendiente(update, user_id, mensaje_usuario)
+            await _manejar_detalle_pendiente(update, context, user_id, mensaje_usuario)
             return
 
         mode = UserState.get_mode(user_id)
@@ -75,6 +75,9 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         intencion = await gpt.detectar_intencion(mensaje_usuario)
         
         if intencion == "acción":
+            # Guardamos el mensaje que originó la solicitud para registrarlo
+            # junto al detalle posterior
+            context.user_data["mensaje_inicial"] = mensaje_usuario
             UserState.set_waiting_detail(user_id, True)
             await update.message.reply_text(
                 "¿Podrías enviarme más detalle de la solicitud LPMQMP? "
@@ -109,10 +112,19 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "¿Por qué no intentás más tarde? #NoMeMolestes"
         )
 
-async def _manejar_detalle_pendiente(update: Update, user_id: int, mensaje: str):
+async def _manejar_detalle_pendiente(update: Update, context: ContextTypes.DEFAULT_TYPE, user_id: int, mensaje: str):
     """Maneja el estado de espera de detalles"""
     try:
-        await registrar_accion_pendiente(mensaje, user_id)
+        # Si existe un mensaje inicial guardado, lo incluimos en el registro
+        mensajes = []
+        inicial = context.user_data.pop("mensaje_inicial", None)
+        if inicial:
+            mensajes.append(inicial)
+        mensajes.append(mensaje)
+        # Limpiar bandera de flujo manual si existe
+        context.user_data.pop("nueva_solicitud", None)
+
+        await registrar_accion_pendiente(mensajes, user_id)
         UserState.set_waiting_detail(user_id, False)
         await update.message.reply_text(
             "✅ Detalles recibidos. La solicitud fue registrada correctamente para revisión."

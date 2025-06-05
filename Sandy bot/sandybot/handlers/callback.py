@@ -55,6 +55,12 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         
     elif query.data == "nueva_solicitud":
+        user_id = query.from_user.id
+        # Se inicia el mismo flujo de solicitud manual que cuando la intención
+        # es detectada en un mensaje.
+        UserState.set_mode(user_id, "sandy")
+        UserState.set_waiting_detail(user_id, True)
+        context.user_data["nueva_solicitud"] = True
         await query.edit_message_text(
-            "📝 Función 'Nueva solicitud' aún no implementada."
+            "✍️ Escribí el detalle de la solicitud y la registraré para revisión."
         )
