@@ -17,12 +17,14 @@ tal como se especifica en `config.py`.
 Se incluyen dos modelos principales:
 
 1. **Conversacion**: almacena el historial de mensajes del bot.
-2. **Servicio**: registra nombre, cliente y los trackings asociados.
-   También guarda la ruta del informe de comparación y las cámaras
-   involucradas en cada servicio.
+2. **Servicio**: registra nombre, cliente, carrier e ID carrier.
+   También guarda la ruta del informe de comparación, los trackings
+   asociados y las cámaras involucradas en cada servicio.
 
-Al iniciar el bot, las tablas se crean de forma automática mediante
-`Base.metadata.create_all(bind=engine)`.
+Al iniciar el bot, `init_db()` crea las tablas de forma automática y
+ejecuta `ensure_servicio_columns()` para garantizar que la tabla
+`servicios` incluya las columnas `ruta_tracking`, `trackings`, `camaras`,
+`carrier` e `id_carrier`.
 
 ## Carga de tracking
 
