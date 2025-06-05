@@ -20,7 +20,8 @@ from .handlers import (
     callback_handler,
     message_handler,
     document_handler,
-    procesar_comparacion
+    procesar_comparacion,
+    iniciar_carga_tracking
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class SandyBot:
         # Comandos básicos
         self.app.add_handler(CommandHandler("start", start_handler))
         self.app.add_handler(CommandHandler("procesar", procesar_comparacion))
+        self.app.add_handler(CommandHandler("cargar_tracking", iniciar_carga_tracking))
         
         # Callbacks de botones
         self.app.add_handler(CallbackQueryHandler(callback_handler))

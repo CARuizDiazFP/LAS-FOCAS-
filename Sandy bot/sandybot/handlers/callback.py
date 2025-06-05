@@ -7,6 +7,7 @@ from .estado import UserState
 from .ingresos import iniciar_verificacion_ingresos
 from .repetitividad import iniciar_repetitividad
 from .comparador import iniciar_comparador
+from .cargar_tracking import iniciar_carga_tracking
 
 async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Maneja los callbacks de los botones del menú"""
@@ -21,12 +22,19 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
     elif query.data == "verificar_ingresos":
         await iniciar_verificacion_ingresos(update, context)
-        
+
     elif query.data == "informe_repetitividad":
         user_id = query.from_user.id
         UserState.set_mode(user_id, "repetitividad")
         await iniciar_repetitividad(update, context)
-        
+
+    elif query.data == "cargar_tracking":
+        # Registrar correctamente el estado antes de iniciar la carga de tracking
+        user_id = query.from_user.id
+        UserState.set_mode(user_id, "cargar_tracking")
+        context.user_data.clear()
+        await iniciar_carga_tracking(update, context)
+
     elif query.data == "informe_sla":
         await query.edit_message_text(
             "🔧 Función 'Informe de SLA' aún no implementada."

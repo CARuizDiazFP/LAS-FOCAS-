@@ -8,8 +8,11 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Maneja el comando /start mostrando el menú principal"""
     keyboard = [
         [
-            InlineKeyboardButton("📊 Comparar trazados FO", callback_data="comparar_fo"),
-            InlineKeyboardButton("📥 Verificar ingresos", callback_data="verificar_ingresos"),
+           InlineKeyboardButton("📊 Comparar trazados FO", callback_data="comparar_fo"),
+           InlineKeyboardButton("📥 Verificar ingresos", callback_data="verificar_ingresos"),
+        ],
+        [
+           InlineKeyboardButton("📂 Cargar tracking", callback_data="cargar_tracking"),
         ],
         [
            InlineKeyboardButton("🔁 Informe de repetitividad", callback_data="informe_repetitividad"),
