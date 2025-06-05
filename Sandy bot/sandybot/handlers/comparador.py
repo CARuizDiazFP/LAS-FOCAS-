@@ -8,6 +8,7 @@ import os
 import tempfile
 from sandybot.tracking_parser import TrackingParser
 from sandybot.utils import obtener_mensaje
+from sandybot.database import actualizar_tracking
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
@@ -68,6 +69,13 @@ async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await mensaje.reply_text(
             "📎 Archivo recibido. Podés adjuntar otro o enviar /procesar."
         )
+
+        # Solicitar ID de servicio si aún no se especificó
+        if "id_servicio" not in context.user_data:
+            context.user_data["esperando_id_servicio"] = True
+            await mensaje.reply_text(
+                "Ingresá el ID del servicio para asociar este tracking."
+            )
     except Exception as e:
         await mensaje.reply_text(f"Error al recibir el archivo de tracking: {e}")
 
@@ -94,6 +102,13 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             context.user_data["trackings"] = []
             return
 
+        if "id_servicio" not in context.user_data:
+            context.user_data["esperando_id_servicio"] = True
+            await mensaje.reply_text(
+                "Indicá el ID del servicio y luego ejecutá /procesar nuevamente."
+            )
+            return
+
         await mensaje.reply_text(
             "Procesando comparación, aguarde. Se generará un informe con cámaras comunes..."
         )
@@ -107,6 +122,12 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
                 tempfile.gettempdir(), f"ComparacionFO_{user_id}.xlsx"
             )
             parser.generate_excel(salida)
+
+            camaras = parser._find_common_chambers()
+            actualizar_tracking(
+                context.user_data["id_servicio"], salida, camaras
+            )
+            await mensaje.reply_text("✅ Tracking registrado en la base.")
 
             with open(salida, "rb") as doc:
                 await mensaje.reply_document(doc, filename=os.path.basename(salida))
