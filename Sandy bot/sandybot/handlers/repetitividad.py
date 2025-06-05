@@ -15,6 +15,7 @@ from datetime import datetime
 import logging
 
 from sandybot.config import config
+from ..utils import obtener_mensaje
 
 # Ruta a la plantilla Word definida en la configuración global
 # Permite modificar la ubicación mediante la variable de entorno "PLANTILLA_PATH"
@@ -29,17 +30,23 @@ async def manejar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TY
     :param update: Objeto de actualización de Telegram.
     :param context: Contexto del manejador.
     """
-    try:
-        if not update.message:
-            logger.warning("No se recibió un mensaje en manejar_repetitividad.")
-            return
+    message = obtener_mensaje(update)
+    if not message:
+        logger.warning("No se obtuvo mensaje en manejar_repetitividad.")
+        return
 
-        logger.info("Iniciando manejo de repetitividad para el usuario %s", update.message.from_user.id)
-        await update.message.reply_text("Generación de informes de repetitividad en desarrollo.")
+    try:
+        logger.info(
+            "Iniciando manejo de repetitividad para el usuario %s",
+            message.from_user.id,
+        )
+        await message.reply_text(
+            "Generación de informes de repetitividad en desarrollo."
+        )
     except Exception as e:
         logger.error("Error en manejar_repetitividad: %s", e)
-        if update.message:
-            await update.message.reply_text(f"Error al generar el informe: {e}")
+        if message:
+            await message.reply_text(f"Error al generar el informe: {e}")
 
 async def iniciar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -48,17 +55,23 @@ async def iniciar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TY
     :param update: Objeto de actualización de Telegram.
     :param context: Contexto del manejador.
     """
-    try:
-        if not update.message:
-            logger.warning("No se recibió un mensaje en iniciar_repetitividad.")
-            return
+    message = obtener_mensaje(update)
+    if not message:
+        logger.warning("No se obtuvo mensaje en iniciar_repetitividad.")
+        return
 
-        logger.info("Iniciando repetitividad para el usuario %s", update.message.from_user.id)
-        await update.message.reply_text("Iniciando generación de informes de repetitividad. Por favor, espere.")
+    try:
+        logger.info(
+            "Iniciando repetitividad para el usuario %s",
+            message.from_user.id,
+        )
+        await message.reply_text(
+            "Iniciando generación de informes de repetitividad. Por favor, espere."
+        )
     except Exception as e:
         logger.error("Error en iniciar_repetitividad: %s", e)
-        if update.message:
-            await update.message.reply_text(f"Error al iniciar la generación de informes: {e}")
+        if message:
+            await message.reply_text(f"Error al iniciar la generación de informes: {e}")
 
 async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -67,14 +80,23 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
     :param update: Objeto de actualización de Telegram.
     :param context: Contexto del manejador.
     """
+    message = obtener_mensaje(update)
+    if not message:
+        logger.warning("No se obtuvo mensaje en procesar_repetitividad.")
+        return
+
     try:
-        if not update.message or not update.message.document:
-            await update.message.reply_text("😠 ¿Y el archivo? Adjuntá el Excel, por favor. No soy adivino. #DaleCerebro")
+        if not message.document:
+            await message.reply_text(
+                "😠 ¿Y el archivo? Adjuntá el Excel, por favor. No soy adivino. #DaleCerebro"
+            )
             return
 
-        archivo = update.message.document
+        archivo = message.document
         if not archivo.file_name.endswith(".xlsx"):
-            await update.message.reply_text("🙄 Solo acepto archivos Excel (.xlsx). Mandá bien las cosas. #MeEstásCargando")
+            await message.reply_text(
+                "🙄 Solo acepto archivos Excel (.xlsx). Mandá bien las cosas. #MeEstásCargando"
+            )
             return
 
         file = await archivo.get_file()
@@ -84,14 +106,16 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
         ruta_salida = generar_informe_y_modificar(tmp_excel.name)
         nombre_final = os.path.basename(ruta_salida)
         with open(ruta_salida, "rb") as docx_file:
-            await update.message.reply_document(document=docx_file, filename=nombre_final)
+            await message.reply_document(document=docx_file, filename=nombre_final)
 
         os.remove(tmp_excel.name)
         os.remove(ruta_salida)
 
     except Exception as e:
-        if update.message:
-            await update.message.reply_text(f"💥 Algo falló generando el informe. No sé cómo hacés para romper hasta esto... #LoQueHayQueAguantar")
+        if message:
+            await message.reply_text(
+                "💥 Algo falló generando el informe. No sé cómo hacés para romper hasta esto... #LoQueHayQueAguantar"
+            )
 
 
 def generar_informe_y_modificar(ruta_excel):
