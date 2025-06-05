@@ -8,7 +8,7 @@ from datetime import datetime
 from ..utils import obtener_mensaje
 from ..tracking_parser import TrackingParser
 from ..config import config
-from ..database import actualizar_tracking
+from ..database import actualizar_tracking, obtener_servicio, crear_servicio
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
@@ -98,7 +98,10 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
         parser.parse_file(str(ruta_destino))
         camaras = parser._data[0][1]["camara"].astype(str).tolist()
         rutas_extra.append(str(ruta_destino))
-        actualizar_tracking(servicio, str(ruta_destino), camaras, rutas_extra)
+        id_servicio = int(servicio)
+        if not obtener_servicio(id_servicio):
+            crear_servicio(id=id_servicio)
+        actualizar_tracking(id_servicio, str(ruta_destino), camaras, rutas_extra)
         await mensaje.reply_text("✅ Tracking cargado y guardado correctamente.")
     except Exception as e:
         logger.error("Error al guardar tracking: %s", e)

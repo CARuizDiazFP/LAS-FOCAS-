@@ -123,6 +123,7 @@ e `id_carrier`.
    - El bot mostrará dos botones: **Procesar tracking** para usar el ID detectado
      o **Modificar ID** para ingresar otro número manualmente. También podés
      confirmar escribiendo "sí" o "si".
+   - Si el ID no existe en la base, Sandy lo registrará automáticamente.
 
 4. Informes de repetitividad
    - Procesa Excel de casos

@@ -32,4 +32,6 @@ Utilizá el comando `/cargar_tracking` y enviá el archivo `.txt`.
 El bot detectará el ID del servicio en el nombre (por ejemplo `FO_1234_tramo.txt`)
 y mostrará dos botones para **Procesar tracking** o **Modificar ID**.
 También se acepta la confirmación escribiendo "sí" o "si".
+Si el ID no existe en la base de datos, Sandy creará el servicio automáticamente
+al guardar el tracking.
 
