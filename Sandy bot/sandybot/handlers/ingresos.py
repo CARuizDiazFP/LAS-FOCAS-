@@ -4,7 +4,12 @@ Handler para la verificación de ingresos.
 from telegram import Update
 from telegram.ext import ContextTypes
 import logging
+import os
+import tempfile
+import json
 from sandybot.utils import obtener_mensaje
+from ..database import obtener_servicio
+from .estado import UserState
 
 logger = logging.getLogger(__name__)
 
@@ -39,8 +44,13 @@ async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DE
             logger.warning("No se recibió un mensaje en iniciar_verificacion_ingresos.")
             return
 
+        user_id = mensaje.from_user.id
+        UserState.set_mode(user_id, "ingresos")
+        context.user_data.clear()
+
         await mensaje.reply_text(
-            "Iniciando verificación de ingresos. Por favor, envíe el archivo correspondiente."
+            "Iniciando verificación de ingresos. "
+            "Enviá primero el ID del servicio y luego adjuntá el archivo .txt."
         )
     except Exception as e:
         await mensaje.reply_text(f"Error al iniciar la verificación de ingresos: {e}")
@@ -54,13 +64,61 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """
     try:
         mensaje = obtener_mensaje(update)
-        if not mensaje:
-            logger.warning("No se recibió un mensaje en procesar_ingresos.")
+        if not mensaje or not mensaje.document:
+            logger.warning("No se recibió un documento en procesar_ingresos.")
             return
 
-        await mensaje.reply_text(
-            "Procesando ingresos. Esta funcionalidad está en desarrollo."
-        )
+        user_id = mensaje.from_user.id
+        id_servicio = context.user_data.get("id_servicio")
+        if not id_servicio:
+            await mensaje.reply_text("Primero indicá el ID del servicio en un mensaje de texto.")
+            return
+
+        documento = mensaje.document
+        if not documento.file_name.endswith(".txt"):
+            await mensaje.reply_text("Solo acepto archivos .txt para verificar ingresos.")
+            return
+
+        archivo = await documento.get_file()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".txt") as tmp:
+            await archivo.download_to_drive(tmp.name)
+
+        with open(tmp.name, "r", encoding="utf-8") as f:
+            camaras_archivo = [line.strip() for line in f if line.strip()]
+
+        os.remove(tmp.name)
+
+        servicio = obtener_servicio(int(id_servicio))
+        if not servicio:
+            await mensaje.reply_text(f"No se encontró el servicio {id_servicio}.")
+            return
+
+        try:
+            camaras_servicio = json.loads(servicio.camaras) if servicio.camaras else []
+        except json.JSONDecodeError:
+            camaras_servicio = []
+
+        set_archivo = set(camaras_archivo)
+        set_servicio = set(camaras_servicio)
+
+        coinciden = sorted(set_archivo & set_servicio)
+        faltantes = sorted(set_servicio - set_archivo)
+        adicionales = sorted(set_archivo - set_servicio)
+
+        respuesta = ["📋 Resultado de la verificación:"]
+        if coinciden:
+            respuesta.append("✅ Coinciden: " + ", ".join(coinciden))
+        if faltantes:
+            respuesta.append("❌ Faltan en archivo: " + ", ".join(faltantes))
+        if adicionales:
+            respuesta.append("⚠️ No esperadas: " + ", ".join(adicionales))
+        if len(respuesta) == 1:
+            respuesta.append("No se detectaron cámaras para comparar.")
+
+        await mensaje.reply_text("\n".join(respuesta))
+
+        UserState.set_mode(user_id, "")
+        context.user_data.pop("id_servicio", None)
     except Exception as e:
         await mensaje.reply_text(f"Error al procesar ingresos: {e}")
 

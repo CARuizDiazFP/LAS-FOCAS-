@@ -6,6 +6,7 @@ from telegram.ext import ContextTypes
 from .estado import UserState
 from .repetitividad import procesar_repetitividad
 from .comparador import recibir_tracking
+from .ingresos import procesar_ingresos
 
 async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -25,6 +26,9 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return
         if mode == "comparador":
             await recibir_tracking(update, context)
+            return
+        if mode == "ingresos":
+            await procesar_ingresos(update, context)
             return
 
         # Lógica para el procesamiento de documentos
