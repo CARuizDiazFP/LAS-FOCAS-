@@ -3,7 +3,6 @@ Handler para la comparación de trazados de fibra óptica.
 """
 from telegram import Update
 from telegram.ext import ContextTypes
-from typing import List
 import logging
 import os
 import tempfile
@@ -37,39 +36,6 @@ async def iniciar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE)
     except Exception as e:
         await mensaje.reply_text(f"Error al iniciar la comparación: {e}")
 
-async def manejar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """
-    Maneja la comparación de trazados de fibra óptica.
-
-    :param update: Objeto de actualización de Telegram.
-    :param context: Contexto del manejador.
-    """
-    try:
-        mensaje = obtener_mensaje(update)
-        if not mensaje:
-            logger.warning("No se recibió un mensaje en manejar_comparacion.")
-            return
-
-        # Validar que el usuario haya enviado datos para comparar
-        if not mensaje.text:
-            await mensaje.reply_text("Por favor, envíe los datos de los trazados a comparar.")
-            return
-
-        # Normalizar y procesar los datos de entrada
-        datos_entrada: str = normalizar_texto(mensaje.text)
-        trazados: List[str] = datos_entrada.split("\n")
-
-        if len(trazados) < 2:
-            await mensaje.reply_text("Se necesitan al menos dos trazados para realizar la comparación.")
-            return
-
-        await mensaje.reply_text(
-            "Los datos enviados serán ignorados. "
-            "Adjuntá los archivos y usá /procesar para obtener el Excel."
-        )
-
-    except Exception as e:
-        await mensaje.reply_text(f"Error al procesar la comparación: {e}")
 
 async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
