@@ -18,8 +18,12 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return
 
         user_id = update.message.from_user.id
-        if UserState.get_mode(user_id) == "repetitividad":
+        mode = UserState.get_mode(user_id)
+        if mode == "repetitividad":
             await procesar_repetitividad(update, context)
+            return
+        if mode == "comparador":
+            await recibir_tracking(update, context)
             return
 
         # Lógica para el procesamiento de documentos

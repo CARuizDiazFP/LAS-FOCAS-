@@ -14,6 +14,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     if query.data == "comparar_fo":
+        user_id = query.from_user.id
+        UserState.set_mode(user_id, "comparador")
+        context.user_data.clear()
         await iniciar_comparador(update, context)
         
     elif query.data == "verificar_ingresos":

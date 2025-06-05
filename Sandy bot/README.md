@@ -94,9 +94,9 @@ sandybot/
 ## Funcionalidades
 
 1. Comparación de trazados FO
-   - Compara archivos de trazado
-   - Genera Excel con resultados
-   - Identifica cámaras comunes
+   - En el menú principal elegí "Comparar trazados FO"
+   - Adjuntá los trackings en formato `.txt`
+   - Ejecutá `/procesar` para recibir un Excel con coincidencias y el listado de cámaras
 
 2. Verificación de ingresos
    - Valida ingresos contra trazados
