@@ -44,7 +44,10 @@ async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DE
             logger.warning("No se recibió un mensaje en iniciar_verificacion_ingresos.")
             return
 
-        user_id = mensaje.from_user.id
+        # El mensaje proviene de un callback, por lo que ``from_user`` apunta
+        # al bot. Usamos ``update.effective_user`` para registrar el modo en el
+        # usuario correcto.
+        user_id = update.effective_user.id
         UserState.set_mode(user_id, "ingresos")
         context.user_data.clear()
 

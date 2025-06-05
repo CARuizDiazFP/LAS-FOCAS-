@@ -55,6 +55,11 @@ Hay planes para crear un "modo supervisor" para validar manualmente ingresos que
 
 🔧 Variables clave
 
+> **Tip de desarrollo:** cuando un handler se invoca mediante un callback,
+> `obtener_mensaje(update)` devuelve el mensaje del bot que contiene el botón.
+> Para asignar el modo correcto al usuario se debe usar
+> `update.effective_user.id`.
+
 ## ⚙️ Agente principal: `gpt_handler.py`
 
 Desde 2025 este módulo utiliza ``openai.AsyncOpenAI`` para acceder a la nueva API 1.x de OpenAI. Gracias a ello, las consultas se realizan de forma asincrónica y se cuenta con un manejo de errores más sólido.

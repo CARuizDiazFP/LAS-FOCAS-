@@ -19,7 +19,12 @@ async def iniciar_carga_tracking(update: Update, context: ContextTypes.DEFAULT_T
     if not mensaje:
         logger.warning("No se recibió mensaje en iniciar_carga_tracking.")
         return
-    user_id = mensaje.from_user.id
+
+    # ``mensaje`` proviene del botón con el menú, por lo que su ``from_user``
+    # es el propio bot. Utilizamos ``update.effective_user`` para obtener el
+    # ID real del usuario que hizo clic y así mantener su estado correctamente.
+    user_id = update.effective_user.id
+
     UserState.set_mode(user_id, "cargar_tracking")
     context.user_data.clear()
     await mensaje.reply_text("Enviá el archivo .txt del tracking para comenzar.")
