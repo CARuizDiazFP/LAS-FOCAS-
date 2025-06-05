@@ -23,9 +23,25 @@ class TrackingParser:
     def parse_file(self, path: str) -> None:
         """Lee un archivo de texto y guarda sus datos en memoria."""
         with open(path, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f if line.strip()]
-        df = pd.DataFrame(lines, columns=["camara"])
-        sheet = self._sanitize_sheet_name(os.path.basename(path))
+            registros: List[Tuple[str, str]] = []
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                # Dividir por punto y coma o tabulación si existen, de lo
+                # contrario usar el primer espacio como separador.
+                if ";" in line or "\t" in line:
+                    partes = re.split(r"[;\t]", line)
+                else:
+                    partes = re.split(r"\s+", line, maxsplit=2)
+                partes = [p.strip() for p in partes if p.strip()]
+                camara = partes[0] if partes else ""
+                distancia = partes[1] if len(partes) > 1 else ""
+                registros.append((camara, distancia))
+
+        df = pd.DataFrame(registros, columns=["camara", "distancia"])
+        nombre_archivo = os.path.splitext(os.path.basename(path))[0]
+        sheet = self._sanitize_sheet_name(nombre_archivo)
         self._data.append((sheet, df))
 
     def clear_data(self) -> None:
