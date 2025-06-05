@@ -90,6 +90,7 @@ sandybot/
 
 - `/start`: Muestra el menú principal
 - `/procesar`: Procesa archivos en modo comparador
+- `/cargar_tracking`: Asocia un tracking a un servicio existente
 
 ## Funcionalidades
 
@@ -102,8 +103,12 @@ sandybot/
    - Valida ingresos contra trazados
    - Genera informe de coincidencias
    - Detecta duplicados
+3. Carga de tracking
+   - Seleccioná "Cargar tracking" en el menú principal
+   - Indicá el ID del servicio
+   - Adjuntá el archivo `.txt` con el tracking
 
-3. Informes de repetitividad
+4. Informes de repetitividad
    - Procesa Excel de casos
    - Genera informe Word
    - Identifica líneas con reclamos múltiples
@@ -111,7 +116,7 @@ sandybot/
      funciona en Windows. En otros sistemas puede generarse el archivo .docx
      sin esta modificación o realizar los cambios de forma manual.
 
-4. Consultas generales
+5. Consultas generales
    - Respuestas técnicas con GPT
    - Tono malhumorado característico
    - Registro de conversaciones

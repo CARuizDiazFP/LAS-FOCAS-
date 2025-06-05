@@ -8,6 +8,7 @@ from .document import document_handler
 from .ingresos import iniciar_verificacion_ingresos, procesar_ingresos
 from .repetitividad import procesar_repetitividad
 from .comparador import iniciar_comparador, recibir_tracking, procesar_comparacion
+from .cargar_tracking import iniciar_carga_tracking, guardar_tracking_servicio
 
 __all__ = [
     'start_handler',
@@ -19,5 +20,7 @@ __all__ = [
     'procesar_repetitividad',
     'iniciar_comparador',
     'recibir_tracking',
-    'procesar_comparacion'
+    'procesar_comparacion',
+    'iniciar_carga_tracking',
+    'guardar_tracking_servicio'
 ]
