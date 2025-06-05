@@ -1,6 +1,7 @@
 """
 Configuración y modelos de la base de datos
 """
+
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 import json
@@ -60,6 +61,22 @@ class Servicio(Base):
     def __repr__(self):
         return f"<Servicio(id={self.id}, nombre={self.nombre}, cliente={self.cliente})>"
 
+
+def ensure_servicio_columns() -> None:
+    """Comprueba que la tabla ``servicios`` posea todas las columnas del modelo.
+
+    Si falta alguna, la agrega mediante ``ALTER TABLE`` para mantener la base
+    sincronizada con la definición de :class:`Servicio`.
+    """
+    inspector = inspect(engine)
+    actuales = {col["name"] for col in inspector.get_columns("servicios")}
+    definidas = {c.name for c in Servicio.__table__.columns}
+
+    faltantes = definidas - actuales
+    for columna in faltantes:
+        with engine.begin() as conn:
+            conn.execute(text(f"ALTER TABLE servicios ADD COLUMN {columna} VARCHAR"))
+
 def init_db():
     """Inicializa la base de datos y crea las tablas si no existen."""
     # ``bind=engine`` deja explícito que las tablas se crearán usando
@@ -67,6 +84,7 @@ def init_db():
     # genere la estructura necesaria de forma automática la primera vez.
     Base.metadata.create_all(bind=engine)
     ensure_servicio_columns()
+
 
 def ensure_servicio_columns() -> None:
     """Verifica la presencia de columnas opcionales en ``servicios``."""
@@ -77,6 +95,7 @@ def ensure_servicio_columns() -> None:
             conn.execute(text("ALTER TABLE servicios ADD COLUMN carrier VARCHAR"))
         if "id_carrier" not in existing:
             conn.execute(text("ALTER TABLE servicios ADD COLUMN id_carrier VARCHAR"))
+
 
 # Crear las tablas al importar el módulo
 init_db()
