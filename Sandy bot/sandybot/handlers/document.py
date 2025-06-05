@@ -5,6 +5,7 @@ from telegram import Update
 from telegram.ext import ContextTypes
 from .estado import UserState
 from .repetitividad import procesar_repetitividad
+from .comparador import recibir_tracking
 
 async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
