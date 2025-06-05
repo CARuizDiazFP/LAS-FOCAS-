@@ -118,6 +118,8 @@ e `id_carrier`.
    - Genera informe de coincidencias
    - Detecta duplicados
    - También podés buscar un servicio escribiendo el nombre de la cámara
+   - La verificación no distingue entre mayúsculas y minúsculas
+   - Informa si se accedió a otra "botella" (Bot 2, Bot 3, ... ) de la misma cámara
 3. Carga de tracking
    - Seleccioná "Cargar tracking" en el menú principal
    - Enviá el archivo `.txt` cuyo nombre contenga el ID (ej.: `FO_1234_tramo.txt`)
