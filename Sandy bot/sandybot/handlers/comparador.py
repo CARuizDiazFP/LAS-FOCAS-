@@ -27,7 +27,10 @@ async def iniciar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE)
             logger.warning("No se recibió un mensaje en iniciar_comparador.")
             return
 
-        user_id = mensaje.from_user.id
+        # Si esta función se llama desde un callback, ``mensaje.from_user`` será
+        # el bot. Empleamos ``update.effective_user`` para asignar el modo al
+        # usuario que inició la acción.
+        user_id = update.effective_user.id
         UserState.set_mode(user_id, "comparador")
         context.user_data["trackings"] = []
         await mensaje.reply_text(

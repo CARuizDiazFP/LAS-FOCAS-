@@ -39,7 +39,7 @@ async def manejar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         logger.info(
             "Iniciando manejo de repetitividad para el usuario %s",
-            message.from_user.id,
+            update.effective_user.id,
         )
         await message.reply_text(
             "Generación de informes de repetitividad en desarrollo."
@@ -64,7 +64,7 @@ async def iniciar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TY
     try:
         logger.info(
             "Iniciando repetitividad para el usuario %s",
-            message.from_user.id,
+            update.effective_user.id,
         )
         await message.reply_text(
             "Iniciando generación de informes de repetitividad. "
