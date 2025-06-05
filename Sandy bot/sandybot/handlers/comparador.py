@@ -8,7 +8,11 @@ import os
 import tempfile
 from sandybot.tracking_parser import TrackingParser
 from sandybot.utils import obtener_mensaje
-from sandybot.database import actualizar_tracking
+from sandybot.database import (
+    actualizar_tracking,
+    obtener_servicio,
+    crear_servicio,
+)
 from sandybot.config import config
 import shutil
 from .estado import UserState
@@ -133,9 +137,10 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             parser.generate_excel(salida)
 
             camaras = parser._find_common_chambers()
-            actualizar_tracking(
-                context.user_data["id_servicio"], salida, camaras, rutas_guardadas
-            )
+            id_servicio = int(context.user_data["id_servicio"])
+            if not obtener_servicio(id_servicio):
+                crear_servicio(id=id_servicio)
+            actualizar_tracking(id_servicio, salida, camaras, rutas_guardadas)
             await mensaje.reply_text("✅ Tracking registrado en la base.")
 
             with open(salida, "rb") as doc:

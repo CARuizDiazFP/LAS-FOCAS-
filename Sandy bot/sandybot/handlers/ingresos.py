@@ -8,7 +8,7 @@ import os
 import tempfile
 import json
 from sandybot.utils import obtener_mensaje
-from ..database import obtener_servicio, actualizar_tracking
+from ..database import obtener_servicio, actualizar_tracking, crear_servicio
 from ..config import config
 import shutil
 from .estado import UserState
@@ -96,8 +96,10 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
         servicio = obtener_servicio(int(id_servicio))
         if not servicio:
-            await mensaje.reply_text(f"No se encontró el servicio {id_servicio}.")
-            return
+            servicio = crear_servicio(id=int(id_servicio))
+            await mensaje.reply_text(
+                f"Servicio {id_servicio} creado en la base de datos."
+            )
 
         try:
             camaras_servicio = json.loads(servicio.camaras) if servicio.camaras else []
