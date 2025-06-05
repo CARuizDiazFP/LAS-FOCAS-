@@ -21,6 +21,9 @@ Se incluyen dos modelos principales:
    También guarda la ruta del informe de comparación y las cámaras
    involucradas en cada servicio.
 
+Al iniciar el bot, las tablas se crean de forma automática mediante
+`Base.metadata.create_all(bind=engine)`.
+
 ## Carga de tracking
 
 Utilizá el comando `/cargar_tracking` y enviá el archivo `.txt`.

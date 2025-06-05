@@ -7,6 +7,7 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 - Integración con Telegram usando python-telegram-bot
 - Procesamiento de lenguaje natural con GPT-4
 - Base de datos PostgreSQL para historial de conversaciones
+- Las tablas se crean automáticamente con `Base.metadata.create_all(bind=engine)`
 - Procesamiento de archivos Excel para informes
 - Generación de documentos Word
 - Integración con Notion para seguimiento de solicitudes
