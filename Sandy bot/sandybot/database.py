@@ -3,6 +3,7 @@ Configuración y modelos de la base de datos
 """
 from sqlalchemy import create_engine, Column, Integer, String, DateTime
 from sqlalchemy.orm import declarative_base, sessionmaker
+import json
 from datetime import datetime
 from .config import config
 
@@ -41,9 +42,62 @@ class Conversacion(Base):
     def __repr__(self):
         return f"<Conversacion(id={self.id}, user_id={self.user_id}, fecha={self.fecha})>"
 
+
+class Servicio(Base):
+    """Modelo que almacena datos de un servicio y su seguimiento"""
+    __tablename__ = 'servicios'
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, index=True)
+    ruta_tracking = Column(String)
+    camaras = Column(String)
+    fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
+
+    def __repr__(self):
+        return f"<Servicio(id={self.id}, nombre={self.nombre})>"
+
 def init_db():
-    """Inicializar la base de datos y crear tablas"""
+    """Inicializa la base de datos y crea todas las tablas definidas"""
     Base.metadata.create_all(engine)
 
 # Crear las tablas al importar el módulo
 init_db()
+
+
+def obtener_servicio(id_servicio: int) -> Servicio | None:
+    """Devuelve un servicio por su ID o ``None`` si no existe."""
+    session = SessionLocal()
+    try:
+        return session.get(Servicio, id_servicio)
+    finally:
+        session.close()
+
+
+def crear_servicio(**datos) -> Servicio:
+    """Crea un nuevo servicio con los datos recibidos."""
+    session = SessionLocal()
+    try:
+        if "camaras" in datos and isinstance(datos["camaras"], list):
+            datos["camaras"] = json.dumps(datos["camaras"])
+        servicio = Servicio(**datos)
+        session.add(servicio)
+        session.commit()
+        session.refresh(servicio)
+        return servicio
+    finally:
+        session.close()
+
+
+def actualizar_tracking(id_servicio: int, ruta: str, camaras: list[str]) -> None:
+    """Actualiza los datos de tracking y cámaras de un servicio."""
+    session = SessionLocal()
+    try:
+        servicio = session.get(Servicio, id_servicio)
+        if not servicio:
+            return
+        servicio.ruta_tracking = ruta
+        servicio.camaras = json.dumps(camaras)
+        session.commit()
+    finally:
+        session.close()
+
