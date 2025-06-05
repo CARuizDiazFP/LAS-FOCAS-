@@ -107,6 +107,9 @@ sandybot/
    - Procesa Excel de casos
    - Genera informe Word
    - Identifica líneas con reclamos múltiples
+   - Nota: la modificación automática del documento usa `win32com` y solo
+     funciona en Windows. En otros sistemas puede generarse el archivo .docx
+     sin esta modificación o realizar los cambios de forma manual.
 
 4. Consultas generales
    - Respuestas técnicas con GPT
