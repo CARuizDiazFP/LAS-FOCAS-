@@ -9,6 +9,7 @@ from ..database import SessionLocal, Conversacion
 from .estado import UserState
 from .notion import registrar_accion_pendiente
 from .cargar_tracking import guardar_tracking_servicio
+from ..utils import normalizar_texto
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +22,15 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         # Manejo de carga de tracking
         if UserState.get_mode(user_id) == "cargar_tracking":
             if context.user_data.get("confirmar_id"):
-                respuesta = mensaje_usuario.strip().lower()
-                if respuesta == "sí" and "id_servicio_detected" in context.user_data:
-                    context.user_data["id_servicio"] = context.user_data["id_servicio_detected"]
+                respuesta = mensaje_usuario.strip()
+                respuesta_normalizada = normalizar_texto(respuesta)
+                if (
+                    respuesta_normalizada == "si"
+                    and "id_servicio_detected" in context.user_data
+                ):
+                    context.user_data["id_servicio"] = context.user_data[
+                        "id_servicio_detected"
+                    ]
                 elif respuesta.isdigit():
                     context.user_data["id_servicio"] = int(respuesta)
                 else:

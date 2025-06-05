@@ -59,8 +59,11 @@ class Servicio(Base):
         return f"<Servicio(id={self.id}, nombre={self.nombre}, cliente={self.cliente})>"
 
 def init_db():
-    """Inicializa la base de datos y crea todas las tablas definidas"""
-    Base.metadata.create_all(engine)
+    """Inicializa la base de datos y crea las tablas si no existen."""
+    # ``bind=engine`` deja explícito que las tablas se crearán usando
+    # la conexión configurada en ``engine``. Esto permite que el bot
+    # genere la estructura necesaria de forma automática la primera vez.
+    Base.metadata.create_all(bind=engine)
 
 # Crear las tablas al importar el módulo
 init_db()

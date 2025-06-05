@@ -1,5 +1,5 @@
 """Handler para la carga de trackings en la base de datos."""
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import logging
 import re
@@ -53,8 +53,21 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
             match = re.search(r"_(\d+)", documento.file_name)
             if match:
                 context.user_data["id_servicio_detected"] = int(match.group(1))
+                keyboard = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "Procesar tracking", callback_data="confirmar_tracking"
+                            ),
+                            InlineKeyboardButton(
+                                "Modificar ID", callback_data="cambiar_id_tracking"
+                            ),
+                        ]
+                    ]
+                )
                 await mensaje.reply_text(
-                    f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio? Responde 'sí' o escribe el ID correcto."
+                    f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio?",
+                    reply_markup=keyboard,
                 )
             else:
                 await mensaje.reply_text(

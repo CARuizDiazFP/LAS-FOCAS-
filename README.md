@@ -21,10 +21,13 @@ Se incluyen dos modelos principales:
    También guarda la ruta del informe de comparación y las cámaras
    involucradas en cada servicio.
 
+Al iniciar el bot, las tablas se crean de forma automática mediante
+`Base.metadata.create_all(bind=engine)`.
+
 ## Carga de tracking
 
-Utilizá el comando `/cargar_tracking` y simplemente enviá el archivo `.txt`.
+Utilizá el comando `/cargar_tracking` y enviá el archivo `.txt`.
 El bot detectará el ID del servicio en el nombre (por ejemplo `FO_1234_tramo.txt`)
-y preguntará si deseás asociarlo. Podés confirmar respondiendo "sí" o
-escribir otro ID para reemplazarlo.
+y mostrará dos botones para **Procesar tracking** o **Modificar ID**.
+También se acepta la confirmación escribiendo "sí" o "si".
 
