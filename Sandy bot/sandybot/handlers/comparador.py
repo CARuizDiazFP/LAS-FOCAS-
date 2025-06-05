@@ -128,10 +128,14 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
         await mensaje.reply_text("Procesando comparación, aguarde...")
 
         try:
-            dataframes = [
-                pd.read_csv(ruta, header=None, names=["camara"], sep="\n", engine="python")
-                for ruta in trackings[:2]
-            ]
+            # Creamos los dataframes manualmente para evitar problemas con pandas
+            # al leer líneas vacías o caracteres especiales. Cada archivo se
+            # procesa línea por línea y solo se guardan aquellas no vacías.
+            dataframes = []
+            for ruta in trackings[:2]:
+                with open(ruta, "r", encoding="utf-8") as f:
+                    lineas = [line.strip() for line in f if line.strip()]
+                dataframes.append(pd.DataFrame(lineas, columns=["camara"]))
 
             cam1 = dataframes[0]["camara"].astype(str).tolist()
             cam2 = dataframes[1]["camara"].astype(str).tolist()
