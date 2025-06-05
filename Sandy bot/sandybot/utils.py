@@ -1,10 +1,12 @@
 """
 Funciones de utilidad comunes para el bot
 """
+
 import json
 import logging
 import unicodedata
 from datetime import datetime
+
 from typing import Dict, Any, Optional
 from pathlib import Path
 from telegram import Update, Message
@@ -75,16 +77,23 @@ def timestamp_log() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
 
-def obtener_mensaje(update: Update) -> Optional[Message]:
-    """Devuelve el objeto Message asociado a un Update.
+from telegram import Update, Message
+from typing import Optional
 
-    La función revisa primero si el update contiene ``update.message`` y
-    lo retorna. En caso de ser una interacción proveniente de un botón,
-    utiliza ``update.callback_query.message``. Si ninguna de las dos
-    propiedades está presente, devuelve ``None``.
+def obtener_mensaje(update: Update) -> Optional[Message]:
+    """Obtiene el objeto Message desde un Update.
+
+    Esta función permite unificar la extracción del mensaje ya sea
+    proveniente de actualizaciones directas o de callbacks.
+
+    Args:
+        update: Update recibido por el bot.
+
+    Returns:
+        Message o ``None`` si no existe.
     """
     if update.message:
         return update.message
-    if update.callback_query:
+    if update.callback_query and update.callback_query.message:
         return update.callback_query.message
     return None
