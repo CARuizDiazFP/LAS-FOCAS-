@@ -1,7 +1,8 @@
 """
 Configuración y modelos de la base de datos
 """
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, inspect, text
+
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 import json
 from datetime import datetime
@@ -53,6 +54,8 @@ class Servicio(Base):
     ruta_tracking = Column(String)
     trackings = Column(String)
     camaras = Column(String)
+    carrier = Column(String)
+    id_carrier = Column(String)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
 
     def __repr__(self):
@@ -82,6 +85,18 @@ def init_db():
     Base.metadata.create_all(bind=engine)
     ensure_servicio_columns()
 
+
+def ensure_servicio_columns() -> None:
+    """Verifica la presencia de columnas opcionales en ``servicios``."""
+    insp = inspect(engine)
+    existing = {col["name"] for col in insp.get_columns("servicios")}
+    with engine.begin() as conn:
+        if "carrier" not in existing:
+            conn.execute(text("ALTER TABLE servicios ADD COLUMN carrier VARCHAR"))
+        if "id_carrier" not in existing:
+            conn.execute(text("ALTER TABLE servicios ADD COLUMN id_carrier VARCHAR"))
+
+
 # Crear las tablas al importar el módulo
 init_db()
 
@@ -99,11 +114,13 @@ def crear_servicio(**datos) -> Servicio:
     """Crea un nuevo servicio con los datos recibidos."""
     session = SessionLocal()
     try:
-        if "camaras" in datos and isinstance(datos["camaras"], list):
-            datos["camaras"] = json.dumps(datos["camaras"])
-        if "trackings" in datos and isinstance(datos["trackings"], list):
-            datos["trackings"] = json.dumps(datos["trackings"])
-        servicio = Servicio(**datos)
+        permitidas = {c.name for c in Servicio.__table__.columns}
+        datos_validos = {k: v for k, v in datos.items() if k in permitidas}
+        if "camaras" in datos_validos and isinstance(datos_validos["camaras"], list):
+            datos_validos["camaras"] = json.dumps(datos_validos["camaras"])
+        if "trackings" in datos_validos and isinstance(datos_validos["trackings"], list):
+            datos_validos["trackings"] = json.dumps(datos_validos["trackings"])
+        servicio = Servicio(**datos_validos)
         session.add(servicio)
         session.commit()
         session.refresh(servicio)
