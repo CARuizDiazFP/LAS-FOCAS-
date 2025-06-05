@@ -1,10 +1,12 @@
 """
 Funciones de utilidad comunes para el bot
 """
+
 import json
 import logging
 import unicodedata
 from datetime import datetime
+
 from typing import Dict, Any, Optional
 from pathlib import Path
 from telegram import Update, Message
@@ -74,6 +76,9 @@ def timestamp_log() -> str:
     """
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
+from telegram import Update, Message
+from typing import Optional
 
 def obtener_mensaje(update: Update) -> Optional[Message]:
     """Obtiene el objeto Message desde un Update.
