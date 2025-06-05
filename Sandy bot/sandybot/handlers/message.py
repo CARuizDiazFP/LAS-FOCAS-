@@ -8,6 +8,7 @@ from ..gpt_handler import gpt
 from ..database import SessionLocal, Conversacion
 from .estado import UserState
 from .notion import registrar_accion_pendiente
+from .cargar_tracking import guardar_tracking_servicio
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +20,21 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         # Manejo de carga de tracking
         if UserState.get_mode(user_id) == "cargar_tracking":
-            if "id_servicio" not in context.user_data:
-                try:
-                    context.user_data["id_servicio"] = int(mensaje_usuario)
+            if context.user_data.get("confirmar_id"):
+                respuesta = mensaje_usuario.strip().lower()
+                if respuesta == "sí" and "id_servicio_detected" in context.user_data:
+                    context.user_data["id_servicio"] = context.user_data["id_servicio_detected"]
+                elif respuesta.isdigit():
+                    context.user_data["id_servicio"] = int(respuesta)
+                else:
                     await update.message.reply_text(
-                        "ID recibido. Enviá ahora el archivo .txt del tracking."
+                        "Respuesta no válida. Escribí 'sí' o el ID correcto."
                     )
-                except ValueError:
-                    await update.message.reply_text(
-                        "El ID debe ser un número válido, probá de nuevo."
-                    )
+                    return
+                context.user_data.pop("confirmar_id", None)
+                await guardar_tracking_servicio(update, context)
             else:
-                await update.message.reply_text(
-                    "Ya tengo el ID. Envía el archivo .txt por favor."
-                )
+                await update.message.reply_text("Enviá el archivo .txt del tracking.")
             return
 
         # Manejo de estado de usuario

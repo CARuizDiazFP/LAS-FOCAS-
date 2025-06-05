@@ -20,3 +20,10 @@ Se incluyen dos modelos principales:
 2. **Servicio**: registra la ruta del tracking asociada y las cámaras
    involucradas en cada servicio para facilitar su seguimiento.
 
+## Carga de tracking
+
+Utilizá el comando `/cargar_tracking` y simplemente enviá el archivo `.txt`.
+El bot detectará el ID del servicio en el nombre (por ejemplo `FO_1234_tramo.txt`)
+y preguntará si deseás asociarlo. Podés confirmar respondiendo "sí" o
+escribir otro ID para reemplazarlo.
+

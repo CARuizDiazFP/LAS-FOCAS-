@@ -2,6 +2,8 @@
 from telegram import Update
 from telegram.ext import ContextTypes
 import logging
+import re
+from pathlib import Path
 from ..utils import obtener_mensaje
 from ..tracking_parser import TrackingParser
 from ..config import config
@@ -12,7 +14,7 @@ logger = logging.getLogger(__name__)
 parser = TrackingParser()
 
 async def iniciar_carga_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Inicia el proceso solicitando el id del servicio."""
+    """Inicia el proceso solicitando el archivo de tracking."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en iniciar_carga_tracking.")
@@ -20,30 +22,50 @@ async def iniciar_carga_tracking(update: Update, context: ContextTypes.DEFAULT_T
     user_id = mensaje.from_user.id
     UserState.set_mode(user_id, "cargar_tracking")
     context.user_data.clear()
-    await mensaje.reply_text(
-        "Ingresá el ID del servicio al que pertenece este tracking."
-    )
+    await mensaje.reply_text("Enviá el archivo .txt del tracking para comenzar.")
 
 async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Guarda el tracking en la base de datos."""
     mensaje = obtener_mensaje(update)
-    if not mensaje or not mensaje.document:
+    if not mensaje and "tracking_temp" not in context.user_data:
         return
 
-    user_id = mensaje.from_user.id
+    user_id = mensaje.from_user.id if mensaje else update.effective_user.id
+    documento = mensaje.document if mensaje else None
+
+    # Si llegó un documento, guardarlo temporalmente
+    if documento:
+        if not documento.file_name.endswith(".txt"):
+            await mensaje.reply_text("Solo acepto archivos .txt para el tracking.")
+            return
+
+        archivo = await documento.get_file()
+        ruta_temp = config.DATA_DIR / f"tmp_{documento.file_unique_id}.txt"
+        await archivo.download_to_drive(str(ruta_temp))
+        context.user_data["tracking_temp"] = str(ruta_temp)
+
+        if "id_servicio" not in context.user_data:
+            match = re.search(r"_(\d+)", documento.file_name)
+            if match:
+                context.user_data["id_servicio_detected"] = int(match.group(1))
+                await mensaje.reply_text(
+                    f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio? Responde 'sí' o escribe el ID correcto."
+                )
+            else:
+                await mensaje.reply_text(
+                    "No pude detectar el ID. Escribí el número del servicio."
+                )
+            context.user_data["confirmar_id"] = True
+            return
+
     servicio = context.user_data.get("id_servicio")
-    if servicio is None:
-        await mensaje.reply_text("Primero indicá el ID del servicio.")
+    ruta_temp = context.user_data.get("tracking_temp")
+    if servicio is None or ruta_temp is None:
+        await mensaje.reply_text("Falta el ID o el archivo de tracking.")
         return
 
-    documento = mensaje.document
-    if not documento.file_name.endswith(".txt"):
-        await mensaje.reply_text("Solo acepto archivos .txt para el tracking.")
-        return
-
-    archivo = await documento.get_file()
     ruta_destino = config.DATA_DIR / f"tracking_{servicio}.txt"
-    await archivo.download_to_drive(str(ruta_destino))
+    Path(ruta_temp).rename(ruta_destino)
 
     try:
         parser.clear_data()

@@ -19,6 +19,42 @@ Sandy está pensado para ser:
 - **Asistente híbrido:** combina procesamiento tradicional y GPT.
 - **Interoperable:** puede integrarse con Google Sheets, Notion y Slack.
 
+
+Envía un archivo .txt con mensajes de Slack (ingresos)
+
+El bot:
+
+Extrae bloques relevantes
+
+Los filtra con expresiones regulares
+
+Si no los puede interpretar, los envía a GPT-4
+
+El resultado se guarda en un Excel:
+
+Hoja 1: Todos los ingresos extraídos (hora, cámara)
+
+Hoja 2: Coincidencias con el tracking cargado
+
+🔹 Carga de tracking
+
+Al ejecutar `/cargar_tracking` se envía directamente el archivo `.txt` del
+tracking. El bot extrae el ID desde el nombre (por ejemplo `FO_1234_tramo.txt`)
+y consulta si se desea asociarlo a ese servicio. Se puede confirmar con "sí" o
+especificar otro ID.
+
+💼 Otros agentes o acciones especiales
+
+Si el bot no entiende un mensaje, pide más detalles y lo guarda en Notion con estado Nuevo
+
+Hay planes para crear un "modo supervisor" para validar manualmente ingresos que el bot no puede interpretar
+
+🧰 Roadmap de inteligencia artificial
+
+
+
+🔧 Variables clave
+
 ## ⚙️ Agente principal: `gpt_handler.py`
 
 Desde 2025 este módulo utiliza ``openai.AsyncOpenAI`` para acceder a la nueva API 1.x de OpenAI. Gracias a ello, las consultas se realizan de forma asincrónica y se cuenta con un manejo de errores más sólido.
@@ -30,6 +66,7 @@ Desde 2025 este módulo utiliza ``openai.AsyncOpenAI`` para acceder a la nueva A
 - Usa la API de OpenAI (GPT-4) para analizar mensajes de texto plano.
 - Extrae la hora y el nombre de la cámara en los pedidos de ingreso.
 - Filtra mensajes irrelevantes (egresos, mantenimiento o cancelaciones).
+
 
 **Prompt base**
 
