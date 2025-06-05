@@ -3,6 +3,8 @@ Handler para el procesamiento de documentos.
 """
 from telegram import Update
 from telegram.ext import ContextTypes
+from .estado import UserState
+from .repetitividad import procesar_repetitividad
 
 async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -13,6 +15,11 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     """
     try:
         if not update.message:
+            return
+
+        user_id = update.message.from_user.id
+        if UserState.get_mode(user_id) == "repetitividad":
+            await procesar_repetitividad(update, context)
             return
 
         # Lógica para el procesamiento de documentos
