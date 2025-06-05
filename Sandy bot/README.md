@@ -106,7 +106,9 @@ sandybot/
 3. Carga de tracking
    - Seleccioná "Cargar tracking" en el menú principal
    - Enviá el archivo `.txt` cuyo nombre contenga el ID (ej.: `FO_1234_tramo.txt`)
-   - El bot detectará el ID y te pedirá confirmación. Respondé "sí" o escribí otro número.
+   - El bot mostrará dos botones: **Procesar tracking** para usar el ID detectado
+     o **Modificar ID** para ingresar otro número manualmente. También podés
+     confirmar escribiendo "sí" o "si".
 
 4. Informes de repetitividad
    - Procesa Excel de casos
