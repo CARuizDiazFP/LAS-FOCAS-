@@ -6,12 +6,12 @@ from telegram.ext import ContextTypes
 import logging
 import os
 import tempfile
-import pandas as pd
-from fuzzywuzzy import fuzz
-from sandybot.utils import normalizar_texto, obtener_mensaje
+from sandybot.tracking_parser import TrackingParser
+from sandybot.utils import obtener_mensaje
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
+parser = TrackingParser()
 
 async def iniciar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -93,39 +93,19 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             context.user_data["trackings"] = []
             return
 
-        await mensaje.reply_text("Procesando comparación, aguarde...")
+        await mensaje.reply_text(
+            "Procesando comparación, aguarde. Se generará un informe con cámaras comunes..."
+        )
 
         try:
-            # Creamos los dataframes manualmente para evitar problemas con pandas
-            # al leer líneas vacías o caracteres especiales. Cada archivo se
-            # procesa línea por línea y solo se guardan aquellas no vacías.
-            dataframes = []
-            for ruta in trackings[:2]:
-                with open(ruta, "r", encoding="utf-8") as f:
-                    lineas = [line.strip() for line in f if line.strip()]
-                dataframes.append(pd.DataFrame(lineas, columns=["camara"]))
+            parser.clear_data()
+            for ruta in trackings:
+                parser.parse_file(ruta)
 
-            cam1 = dataframes[0]["camara"].astype(str).tolist()
-            cam2 = dataframes[1]["camara"].astype(str).tolist()
-
-            resultados = []
-            for c1 in cam1:
-                mejor_score = 0
-                mejor_c2 = ""
-                for c2 in cam2:
-                    score = fuzz.token_set_ratio(normalizar_texto(c1), normalizar_texto(c2))
-                    if score > mejor_score:
-                        mejor_score = score
-                        mejor_c2 = c2
-                resultados.append({
-                    "Camara Archivo 1": c1,
-                    "Coincidencia Archivo 2": mejor_c2,
-                    "Puntaje": mejor_score,
-                })
-
-            df_result = pd.DataFrame(resultados)
-            salida = os.path.join(tempfile.gettempdir(), f"ComparacionFO_{user_id}.xlsx")
-            df_result.to_excel(salida, index=False)
+            salida = os.path.join(
+                tempfile.gettempdir(), f"ComparacionFO_{user_id}.xlsx"
+            )
+            parser.generate_excel(salida)
 
             with open(salida, "rb") as doc:
                 await mensaje.reply_document(doc, filename=os.path.basename(salida))
@@ -139,6 +119,7 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
                     os.remove(ruta)
                 except OSError:
                     pass
+            parser.clear_data()
             if 'salida' in locals():
                 try:
                     os.remove(salida)
