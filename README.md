@@ -35,3 +35,9 @@ También se acepta la confirmación escribiendo "sí" o "si".
 Si el ID no existe en la base de datos, Sandy creará el servicio automáticamente
 al guardar el tracking.
 
+## Identificador de servicio Carrier
+
+Desde el menú principal es posible seleccionar **Identificador de servicio Carrier**.
+Esta opción recibe un Excel con las columnas "ID Servicio" e "ID Carrier".
+El bot completa los valores faltantes consultando la base de datos y devuelve el archivo actualizado.
+

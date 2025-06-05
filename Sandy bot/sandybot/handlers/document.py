@@ -8,6 +8,7 @@ from .repetitividad import procesar_repetitividad
 from .comparador import recibir_tracking
 from .cargar_tracking import guardar_tracking_servicio
 from .ingresos import procesar_ingresos
+from .id_carrier import procesar_identificador_carrier
 
 async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -33,6 +34,9 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return
         if mode == "ingresos":
             await procesar_ingresos(update, context)
+            return
+        if mode == "id_carrier":
+            await procesar_identificador_carrier(update, context)
             return
 
         # Lógica para el procesamiento de documentos

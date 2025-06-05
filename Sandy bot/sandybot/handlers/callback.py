@@ -31,6 +31,10 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "cargar_tracking":
         await iniciar_carga_tracking(update, context)
 
+    elif query.data == "id_carrier":
+        from .id_carrier import iniciar_identificador_carrier
+        await iniciar_identificador_carrier(update, context)
+
     elif query.data == "confirmar_tracking":
         user_id = query.from_user.id
         context.user_data["id_servicio"] = context.user_data.get("id_servicio_detected")
