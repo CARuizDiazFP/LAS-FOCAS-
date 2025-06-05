@@ -2,7 +2,7 @@
 Manejo del estado de usuarios del bot
 """
 from typing import Dict, Any, Optional
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
 @dataclass
@@ -12,7 +12,7 @@ class UserData:
     tracking_file: Optional[str] = None
     ingresos_file: Optional[str] = None
     waiting_for_detail: bool = False
-    last_interaction: datetime = datetime.now()
+    last_interaction: datetime = field(default_factory=datetime.now)
 
 class UserState:
     """Gestiona el estado de los usuarios del bot"""
