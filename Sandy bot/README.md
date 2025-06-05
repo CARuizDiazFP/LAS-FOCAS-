@@ -7,7 +7,9 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 - Integración con Telegram usando python-telegram-bot
 - Procesamiento de lenguaje natural con GPT-4
 - Base de datos PostgreSQL para historial de conversaciones
-- Las tablas se crean automáticamente con `Base.metadata.create_all(bind=engine)`
+- `init_db()` crea las tablas y ejecuta `ensure_servicio_columns()`
+  para verificar que la tabla `servicios` incluya las columnas
+  `ruta_tracking`, `trackings`, `camaras`, `carrier` e `id_carrier`
 - Procesamiento de archivos Excel para informes
 - Generación de documentos Word
 - Integración con Notion para seguimiento de solicitudes
@@ -86,6 +88,17 @@ sandybot/
 │   └── start.py        # Start command
 └── utils.py            # Utility functions
 ```
+
+## Modelos de base de datos
+
+La función `init_db()` crea las tablas automáticamente y ejecuta
+`ensure_servicio_columns()` para asegurar que la tabla `servicios`
+contenga las columnas `ruta_tracking`, `trackings`, `camaras`, `carrier`
+e `id_carrier`.
+
+- **Conversacion**: guarda los mensajes del bot y las respuestas.
+- **Servicio**: almacena nombre, cliente, carrier e ID carrier, además
+  de las cámaras, los trackings y la ruta al informe de comparación.
 
 ## Comandos
 
