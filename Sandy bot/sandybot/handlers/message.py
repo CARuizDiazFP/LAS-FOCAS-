@@ -5,7 +5,8 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from ..gpt_handler import gpt
-from ..database import SessionLocal, Conversacion
+from ..database import SessionLocal, Conversacion, obtener_servicio, crear_servicio
+import os
 from .estado import UserState
 from .notion import registrar_accion_pendiente
 from .cargar_tracking import guardar_tracking_servicio
@@ -50,6 +51,10 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         mode = UserState.get_mode(user_id)
+        if mode == "comparador":
+            await _manejar_comparador(update, context, mensaje_usuario)
+            return
+
         if mode == "ingresos" and "id_servicio" not in context.user_data:
             if mensaje_usuario.isdigit():
                 context.user_data["id_servicio"] = int(mensaje_usuario)
@@ -117,6 +122,60 @@ async def _manejar_detalle_pendiente(update: Update, user_id: int, mensaje: str)
         await update.message.reply_text(
             "❌ Hubo un error al registrar tu solicitud. Intentalo de nuevo más tarde."
         )
+
+
+async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE, mensaje: str) -> None:
+    """Gestiona la carga de servicios y trackings para el comparador"""
+    user_id = update.effective_user.id
+    if context.user_data.get("esperando_servicio"):
+        if mensaje.isdigit():
+            servicio = int(mensaje)
+            context.user_data["servicio_actual"] = servicio
+            existente = obtener_servicio(servicio)
+            if existente and existente.ruta_tracking:
+                context.user_data["esperando_respuesta_actualizacion"] = True
+                context.user_data["esperando_servicio"] = False
+                await update.message.reply_text(
+                    f"El servicio {servicio} ya tiene tracking. Enviá 'siguiente' para mantenerlo o adjuntá un .txt para actualizar."
+                )
+            else:
+                if not existente:
+                    crear_servicio(id=servicio)
+                context.user_data["esperando_archivo"] = True
+                context.user_data["esperando_servicio"] = False
+                await update.message.reply_text(
+                    f"El servicio {servicio} no posee tracking. Adjuntá el archivo .txt."
+                )
+        else:
+            await update.message.reply_text("Ingresá un número de servicio válido.")
+        return
+
+    if context.user_data.get("esperando_respuesta_actualizacion"):
+        if mensaje.lower() == "siguiente":
+            servicio = context.user_data.get("servicio_actual")
+            existente = obtener_servicio(servicio)
+            if existente and existente.ruta_tracking:
+                context.user_data.setdefault("servicios", []).append(servicio)
+                context.user_data.setdefault("trackings", []).append(
+                    (existente.ruta_tracking, os.path.basename(existente.ruta_tracking))
+                )
+                context.user_data["esperando_servicio"] = True
+                context.user_data.pop("esperando_respuesta_actualizacion", None)
+                context.user_data.pop("servicio_actual", None)
+                await update.message.reply_text(
+                    "Servicio agregado. Indicá otro número o ejecutá /procesar."
+                )
+            else:
+                await update.message.reply_text(
+                    "Ese servicio no posee tracking. Debés enviar el archivo .txt."
+                )
+                context.user_data["esperando_archivo"] = True
+                context.user_data.pop("esperando_respuesta_actualizacion", None)
+        else:
+            await update.message.reply_text(
+                "Opción inválida. Escribí 'siguiente' o adjuntá el archivo .txt."
+            )
+        return
 
 def _generar_prompt_malhumorado(mensaje: str) -> str:
     """Genera el prompt con tono malhumorado para GPT"""
