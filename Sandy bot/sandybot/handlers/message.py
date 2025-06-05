@@ -17,6 +17,18 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje_usuario = update.message.text
 
     try:
+        # Registrar ID de servicio si se solicitó anteriormente
+        if context.user_data.get("esperando_id_servicio"):
+            try:
+                context.user_data["id_servicio"] = int(mensaje_usuario.strip())
+                context.user_data["esperando_id_servicio"] = False
+                await update.message.reply_text("ID de servicio almacenado.")
+            except ValueError:
+                await update.message.reply_text(
+                    "ID inválido, ingresá solo números."
+                )
+            return
+
         # Manejo de estado de usuario
         if UserState.is_waiting_detail(user_id):
             await _manejar_detalle_pendiente(update, user_id, mensaje_usuario)
