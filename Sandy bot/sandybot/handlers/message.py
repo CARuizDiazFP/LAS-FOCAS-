@@ -17,6 +17,24 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje_usuario = update.message.text
 
     try:
+        # Manejo de carga de tracking
+        if UserState.get_mode(user_id) == "cargar_tracking":
+            if "id_servicio" not in context.user_data:
+                try:
+                    context.user_data["id_servicio"] = int(mensaje_usuario)
+                    await update.message.reply_text(
+                        "ID recibido. Enviá ahora el archivo .txt del tracking."
+                    )
+                except ValueError:
+                    await update.message.reply_text(
+                        "El ID debe ser un número válido, probá de nuevo."
+                    )
+            else:
+                await update.message.reply_text(
+                    "Ya tengo el ID. Envía el archivo .txt por favor."
+                )
+            return
+
         # Manejo de estado de usuario
         if UserState.is_waiting_detail(user_id):
             await _manejar_detalle_pendiente(update, user_id, mensaje_usuario)
