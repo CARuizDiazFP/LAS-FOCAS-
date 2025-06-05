@@ -11,3 +11,12 @@ El documento base para generar los reportes de repetitividad se indica
 mediante la variable de entorno `PLANTILLA_PATH`. Si no se define, el
 código toma la ruta por defecto `C:\Metrotel\Sandy\plantilla_informe.docx`
 tal como se especifica en `config.py`.
+
+## Base de datos
+
+Se incluyen dos modelos principales:
+
+1. **Conversacion**: almacena el historial de mensajes del bot.
+2. **Servicio**: registra la ruta del tracking asociada y las cámaras
+   involucradas en cada servicio para facilitar su seguimiento.
+
