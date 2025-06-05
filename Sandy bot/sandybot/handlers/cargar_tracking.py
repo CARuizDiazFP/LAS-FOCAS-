@@ -4,6 +4,7 @@ from telegram.ext import ContextTypes
 import logging
 import re
 from pathlib import Path
+from datetime import datetime
 from ..utils import obtener_mensaje
 from ..tracking_parser import TrackingParser
 from ..config import config
@@ -83,13 +84,21 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
         return
 
     ruta_destino = config.DATA_DIR / f"tracking_{servicio}.txt"
+    rutas_extra = []
+    if ruta_destino.exists():
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        historico = config.HISTORICO_DIR / f"tracking_{servicio}_{timestamp}.txt"
+        ruta_destino.rename(historico)
+        rutas_extra.append(str(historico))
+
     Path(ruta_temp).rename(ruta_destino)
 
     try:
         parser.clear_data()
         parser.parse_file(str(ruta_destino))
         camaras = parser._data[0][1]["camara"].astype(str).tolist()
-        actualizar_tracking(servicio, str(ruta_destino), camaras, [str(ruta_destino)])
+        rutas_extra.append(str(ruta_destino))
+        actualizar_tracking(servicio, str(ruta_destino), camaras, rutas_extra)
         await mensaje.reply_text("✅ Tracking cargado y guardado correctamente.")
     except Exception as e:
         logger.error("Error al guardar tracking: %s", e)

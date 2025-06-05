@@ -28,10 +28,13 @@ class Config:
         self.BASE_DIR = Path(__file__).parent.parent
         self.DATA_DIR = self.BASE_DIR / "data"
         self.LOG_DIR = self.BASE_DIR / "logs"
+        # Carpeta para conservar trackings anteriores
+        self.HISTORICO_DIR = self.DATA_DIR / "historico"
         
         # Crear directorios necesarios
         self.DATA_DIR.mkdir(exist_ok=True)
         self.LOG_DIR.mkdir(exist_ok=True)
+        self.HISTORICO_DIR.mkdir(exist_ok=True)
         
         # API Keys
         self.TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
