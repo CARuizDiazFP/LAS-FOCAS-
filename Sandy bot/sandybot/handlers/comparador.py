@@ -63,7 +63,8 @@ async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         user_id = mensaje.from_user.id
         UserState.set_tracking(user_id, tmp.name)
-        context.user_data.setdefault("trackings", []).append(tmp.name)
+        # Guardar ruta temporal y nombre original para usarlo como nombre de hoja
+        context.user_data.setdefault("trackings", []).append((tmp.name, documento.file_name))
         await mensaje.reply_text(
             "📎 Archivo recibido. Podés adjuntar otro o enviar /procesar."
         )
@@ -99,8 +100,8 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
 
         try:
             parser.clear_data()
-            for ruta in trackings:
-                parser.parse_file(ruta)
+            for ruta, nombre in trackings:
+                parser.parse_file(ruta, sheet_name=nombre)
 
             salida = os.path.join(
                 tempfile.gettempdir(), f"ComparacionFO_{user_id}.xlsx"
@@ -114,7 +115,7 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             logger.error("Error generando Excel: %s", e)
             await mensaje.reply_text(f"💥 Algo falló al generar el Excel: {e}")
         finally:
-            for ruta in trackings:
+            for ruta, _ in trackings:
                 try:
                     os.remove(ruta)
                 except OSError:

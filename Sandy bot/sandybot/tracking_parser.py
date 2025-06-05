@@ -20,12 +20,36 @@ class TrackingParser:
         cleaned = re.sub(r"[\\/*?\[\]]", "_", name)
         return cleaned[:31]
 
-    def parse_file(self, path: str) -> None:
-        """Lee un archivo de texto y guarda sus datos en memoria."""
+    def parse_file(self, path: str, sheet_name: str | None = None) -> None:
+        """Lee un archivo de texto y guarda sus datos en memoria.
+
+        ``sheet_name`` permite asignar un nombre de hoja diferente al nombre
+        del archivo (útil cuando Telegram usa archivos temporales).
+        """
+        registros: List[Tuple[str, str]] = []
+        distancia_prev = ""
         with open(path, "r", encoding="utf-8") as f:
-            lines = [line.strip() for line in f if line.strip()]
-        df = pd.DataFrame(lines, columns=["camara"])
-        sheet = self._sanitize_sheet_name(os.path.basename(path))
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+
+                # Capturar distancia de la línea anterior a "Empalme".
+                match_dist = re.search(r"\*\s*(\d+(?:\.\d+)?)\s*mts", line, re.I)
+                if match_dist:
+                    distancia_prev = f"{match_dist.group(1)} mts"
+                    continue
+
+                # Tomar la ubicación del empalme omitendo el prefijo y el número
+                match_emp = re.search(r"^Empalme\s+\d+\s*:\s*(.+)", line)
+                if match_emp:
+                    camara = match_emp.group(1).strip()
+                    registros.append((camara, distancia_prev))
+
+        df = pd.DataFrame(registros, columns=["camara", "distancia"])
+        if sheet_name is None:
+            sheet_name = os.path.splitext(os.path.basename(path))[0]
+        sheet = self._sanitize_sheet_name(sheet_name)
         self._data.append((sheet, df))
 
     def clear_data(self) -> None:
