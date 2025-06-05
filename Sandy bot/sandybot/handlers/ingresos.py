@@ -7,6 +7,7 @@ import logging
 import os
 import tempfile
 import json
+import re
 from sandybot.utils import obtener_mensaje
 from ..database import obtener_servicio, actualizar_tracking, crear_servicio
 from ..config import config
@@ -130,12 +131,34 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         except json.JSONDecodeError:
             camaras_servicio = []
 
-        set_archivo = set(camaras_archivo)
-        set_servicio = set(camaras_servicio)
+        # Mapas en minúsculas para comparar sin distinguir mayúsculas o minúsculas
+        map_archivo = {c.lower(): c for c in camaras_archivo}
+        map_servicio = {c.lower(): c for c in camaras_servicio}
 
-        coinciden = sorted(set_archivo & set_servicio)
-        faltantes = sorted(set_servicio - set_archivo)
-        adicionales = sorted(set_archivo - set_servicio)
+        set_archivo = set(map_archivo.keys())
+        set_servicio = set(map_servicio.keys())
+
+        # Cálculo de coincidencias y diferencias ignorando mayúsculas
+        coinciden_keys = set_archivo & set_servicio
+        faltan_keys = set_servicio - set_archivo
+        adicionales_keys = set_archivo - set_servicio
+
+        coinciden = sorted(map_servicio[k] for k in coinciden_keys)
+        faltantes = sorted(map_servicio[k] for k in faltan_keys)
+        adicionales = sorted(map_archivo[k] for k in adicionales_keys)
+
+        # Detección de accesos a otras botellas de la misma cámara
+        otras_botellas = []
+        for key in adicionales_keys:
+            for serv_key in set_servicio:
+                if key.startswith(serv_key) and re.search(r"bot\s*\d+", key, re.I):
+                    match = re.search(r"bot\s*\d+", map_archivo[key], re.I)
+                    if match:
+                        otras_botellas.append(f"{map_servicio[serv_key]} {match.group(0).title()}")
+                        break
+
+        # Remover de adicionales los elementos identificados como otras botellas
+        adicionales = [a for a in adicionales if a not in otras_botellas]
 
         respuesta = ["📋 Resultado de la verificación:"]
         if coinciden:
@@ -144,6 +167,11 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             respuesta.append("❌ Faltan en archivo: " + ", ".join(faltantes))
         if adicionales:
             respuesta.append("⚠️ No esperadas: " + ", ".join(adicionales))
+        if otras_botellas:
+            respuesta.append(
+                "ℹ️ También se detectaron accesos a otras botellas: "
+                + ", ".join(otras_botellas)
+            )
         if len(respuesta) == 1:
             respuesta.append("No se detectaron cámaras para comparar.")
 
