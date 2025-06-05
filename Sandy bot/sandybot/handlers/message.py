@@ -17,25 +17,26 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje_usuario = update.message.text
 
     try:
-        # Registrar ID de servicio si se solicitó anteriormente
-        if context.user_data.get("esperando_id_servicio"):
-            try:
-                context.user_data["id_servicio"] = int(mensaje_usuario.strip())
-                context.user_data["esperando_id_servicio"] = False
-                await update.message.reply_text("ID de servicio almacenado.")
-            except ValueError:
-                await update.message.reply_text(
-                    "ID inválido, ingresá solo números."
-                )
-            return
-
         # Manejo de estado de usuario
         if UserState.is_waiting_detail(user_id):
             await _manejar_detalle_pendiente(update, user_id, mensaje_usuario)
             return
 
-        # Activar modo Sandy si no está activo
-        if not UserState.get_mode(user_id):
+        mode = UserState.get_mode(user_id)
+        if mode == "ingresos" and "id_servicio" not in context.user_data:
+            if mensaje_usuario.isdigit():
+                context.user_data["id_servicio"] = int(mensaje_usuario)
+                await update.message.reply_text(
+                    "ID registrado. Ahora adjuntá el archivo de ingresos (.txt)."
+                )
+            else:
+                await update.message.reply_text(
+                    "Enviá un ID numérico de servicio antes del archivo."
+                )
+            return
+
+        # Activar modo Sandy si no está activo␊
+        if not mode:
             UserState.set_mode(user_id, "sandy")
 
         # Detectar intención antes de procesar
