@@ -5,6 +5,7 @@ Configuración y modelos de la base de datos
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 import json
+import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
 from .config import config
@@ -166,6 +167,32 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
                     resultados.append(servicio)
                     break
         return resultados
+
+
+def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
+    """Guarda en un Excel las cámaras asociadas al servicio indicado.
+
+    :param id_servicio: Identificador del servicio en la base.
+    :param ruta_excel: Ruta del archivo Excel a generar.
+    :return: ``True`` si el archivo se creó correctamente.
+    """
+    servicio = obtener_servicio(id_servicio)
+    if not servicio or not servicio.camaras:
+        return False
+
+    try:
+        camaras = json.loads(servicio.camaras)
+    except json.JSONDecodeError:
+        return False
+
+    # Se crea el DataFrame con una única columna
+    df = pd.DataFrame(camaras, columns=["camara"])
+
+    try:
+        df.to_excel(ruta_excel, index=False)
+        return True
+    except Exception:
+        return False
 
 
 def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:

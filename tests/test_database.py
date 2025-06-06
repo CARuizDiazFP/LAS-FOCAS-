@@ -3,6 +3,7 @@ import sys
 import importlib
 from pathlib import Path
 import pytest
+import openpyxl
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 from sqlalchemy import create_engine
@@ -20,27 +21,47 @@ required_vars = {
     "NOTION_DATABASE_ID": "x",
     "DB_USER": "user",
     "DB_PASSWORD": "pass",
-    "DB_HOST": "",
-    "DB_PORT": "",
-    "DB_NAME": ""
+    "DB_HOST": "localhost",
+    "DB_PORT": "5432",
+    "DB_NAME": "sandy"
 }
 os.environ.update(required_vars)
 
-# Importar módulo de base de datos y ajustar engine a SQLite
+# Forzar que ``sandybot.database`` utilice SQLite en memoria
+import sqlalchemy
+orig_create_engine = sqlalchemy.create_engine
+sqlalchemy.create_engine = lambda *a, **k: orig_create_engine("sqlite:///:memory:")
+
 bd = importlib.import_module("sandybot.database")
-engine = create_engine("sqlite:///:memory:")
-bd.engine = engine
-bd.SessionLocal = sessionmaker(bind=engine)
-bd.Base.metadata.create_all(bind=engine)
+
+sqlalchemy.create_engine = orig_create_engine
+bd.SessionLocal = sessionmaker(bind=bd.engine)
+bd.Base.metadata.create_all(bind=bd.engine)
 
 
 def test_buscar_servicios_por_camara():
-    bd.crear_servicio(nombre="S1", cliente="A", camaras=["C\u00e1mara Central"])
+    bd.crear_servicio(nombre="S1", cliente="A", camaras=["Camara Central"])
     bd.crear_servicio(nombre="S2", cliente="B", camaras=["Nodo Secundario"])
-    bd.crear_servicio(nombre="S3", cliente="C", camaras=["Av. Gral. San Mart\u00edn"])
+    bd.crear_servicio(nombre="S3", cliente="C", camaras=["Avenida General San Martin"])
 
     res1 = bd.buscar_servicios_por_camara("camara central")
     assert {s.nombre for s in res1} == {"S1"}
 
-    res2 = bd.buscar_servicios_por_camara("gral san martin")
+    res2 = bd.buscar_servicios_por_camara("gral. san martin")
     assert {s.nombre for s in res2} == {"S3"}
+
+
+def test_exportar_camaras_servicio(tmp_path):
+    servicio = bd.crear_servicio(
+        nombre="S4", cliente="D", camaras=["Camara 1", "Camara 2"]
+    )
+
+    ruta = tmp_path / "camaras.xlsx"
+    ok = bd.exportar_camaras_servicio(servicio.id, str(ruta))
+    assert ok is True
+    assert ruta.exists()
+
+    wb = openpyxl.load_workbook(ruta)
+    ws = wb.active
+    filas = [c[0].value for c in ws.iter_rows(values_only=False)]
+    assert filas == ["camara", "Camara 1", "Camara 2"]
