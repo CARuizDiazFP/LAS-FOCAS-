@@ -13,6 +13,7 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 - Procesamiento de archivos Excel para informes
 - Generación de documentos Word
 - Integración con Notion para seguimiento de solicitudes
+- Registro de interacciones para ajustar el tono de las respuestas
 
 ## Requisitos
 
@@ -138,7 +139,7 @@ e `id_carrier`.
 
 5. Consultas generales
    - Respuestas técnicas con GPT
-   - Tono malhumorado característico
+   - Tono adaptado según interacciones (de cordial a muy malhumorado)
    - Registro de conversaciones
 
 ## Contribuir

@@ -4,6 +4,8 @@ Manejo del estado de usuarios del bot
 from typing import Dict, Any, Optional
 from dataclasses import dataclass, field
 from datetime import datetime
+from sandybot.config import config
+from ..utils import cargar_json, guardar_json
 
 @dataclass
 class UserData:
@@ -13,16 +15,19 @@ class UserData:
     ingresos_file: Optional[str] = None
     waiting_for_detail: bool = False
     last_interaction: datetime = field(default_factory=datetime.now)
+    interactions: int = 0
 
 class UserState:
     """Gestiona el estado de los usuarios del bot"""
     _users: Dict[int, UserData] = {}
+    _contador: Dict[str, int] = cargar_json(config.ARCHIVO_INTERACCIONES)
 
     @classmethod
     def get_user(cls, user_id: int) -> UserData:
         """Obtiene o crea datos de usuario"""
         if user_id not in cls._users:
-            cls._users[user_id] = UserData()
+            count = cls._contador.get(str(user_id), 0)
+            cls._users[user_id] = UserData(interactions=count)
         return cls._users[user_id]
 
     @classmethod
@@ -62,6 +67,25 @@ class UserState:
     def is_waiting_detail(cls, user_id: int) -> bool:
         """Verifica si el usuario está esperando detalles"""
         return cls.get_user(user_id).waiting_for_detail
+
+    @classmethod
+    def increment_interaction(cls, user_id: int) -> int:
+        """Aumenta el contador de interacciones y lo persiste"""
+        count = cls._contador.get(str(user_id), 0)
+        if count < 100:
+            count += 1
+        cls._contador[str(user_id)] = count
+        guardar_json(cls._contador, config.ARCHIVO_INTERACCIONES)
+        user = cls.get_user(user_id)
+        user.interactions = count
+        user.last_interaction = datetime.now()
+        return count
+
+    @classmethod
+    def get_interaction(cls, user_id: int) -> int:
+        """Devuelve el contador actual de interacciones"""
+        user = cls.get_user(user_id)
+        return user.interactions
 
     @classmethod
     def clear_user(cls, user_id: int) -> None:

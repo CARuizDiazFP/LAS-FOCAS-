@@ -78,8 +78,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             )
             return
 
-        # Procesar respuesta con GPT
-        prompt_con_tono = _generar_prompt_malhumorado(mensaje_usuario)
+        # Actualizar contador de interacciones
+        puntaje = UserState.increment_interaction(user_id)
+
+        # Procesar respuesta con GPT ajustando el tono según el puntaje
+        prompt_con_tono = _generar_prompt_por_animo(mensaje_usuario, puntaje)
         respuesta = await gpt.consultar_gpt(prompt_con_tono)
 
         # Registrar conversación
@@ -200,3 +203,25 @@ def _generar_prompt_malhumorado(mensaje: str) -> str:
         "NO inventes nada. NO cambies el tono.\n\n"
         f"Usuario: {mensaje}"
     )
+
+
+def _generar_prompt_por_animo(mensaje: str, puntaje: int) -> str:
+    """Devuelve un prompt según el contador de interacciones"""
+    if puntaje <= 15:
+        return (
+            "Respondé de forma muy amable y cordial. Mantené un tono positivo y "
+            f"amigable.\n\nUsuario: {mensaje}"
+        )
+    if puntaje <= 30:
+        return (
+            "Respondé de manera cordial, educada y simple sin extenderte demasiado."
+            f"\n\nUsuario: {mensaje}"
+        )
+    if puntaje <= 60:
+        return (
+            "Respondé con todo el detalle posible y con intención de enseñar y ayudar."
+            f"\n\nUsuario: {mensaje}"
+        )
+    if puntaje <= 80:
+        return _generar_prompt_malhumorado(mensaje) + " Explicá con mucho detalle."
+    return _generar_prompt_malhumorado(mensaje) + " Sé muy directo y fastidioso." 

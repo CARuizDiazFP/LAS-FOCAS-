@@ -10,6 +10,7 @@ Sandy es un agente inteligente que opera en Telegram y automatiza tareas repetit
 - Identificación de servicio Carrier a partir de archivos Excel
 - Clasificación de mensajes ambiguos
 - Enrutamiento de tareas a Notion cuando no pueden resolverse
+- Ajuste de tono según interacciones de cada usuario
 
 ## 🎓 Filosofía de diseño
 
@@ -104,6 +105,7 @@ Tu tarea es identificar los pedidos de ingreso válidos a cámaras, nodos, poste
 
 - `usuarios_en_modo_ingresos`: mantiene el estado por usuario.
 - `archivos_ingresos`: guarda temporalmente los paths de archivos por usuario.
+- `interacciones_usuario`: contador de interacciones para modular el tono.
 
 ### 📊 KPIs deseados
 
