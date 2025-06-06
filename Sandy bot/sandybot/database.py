@@ -93,17 +93,13 @@ init_db()
 
 def obtener_servicio(id_servicio: int) -> Servicio | None:
     """Devuelve un servicio por su ID o ``None`` si no existe."""
-    session = SessionLocal()
-    try:
+    with SessionLocal() as session:
         return session.get(Servicio, id_servicio)
-    finally:
-        session.close()
 
 
 def crear_servicio(**datos) -> Servicio:
     """Crea un nuevo servicio con los datos recibidos."""
-    session = SessionLocal()
-    try:
+    with SessionLocal() as session:
         permitidas = {c.name for c in Servicio.__table__.columns}
         datos_validos = {k: v for k, v in datos.items() if k in permitidas}
         if "camaras" in datos_validos and isinstance(datos_validos["camaras"], list):
@@ -115,8 +111,6 @@ def crear_servicio(**datos) -> Servicio:
         session.commit()
         session.refresh(servicio)
         return servicio
-    finally:
-        session.close()
 
 
 def actualizar_tracking(
@@ -126,8 +120,7 @@ def actualizar_tracking(
     trackings_txt: list[str] | None = None,
 ) -> None:
     """Actualiza datos del servicio: tracking, cámaras y archivos asociados."""
-    session = SessionLocal()
-    try:
+    with SessionLocal() as session:
         servicio = session.get(Servicio, id_servicio)
         if not servicio:
             return
@@ -140,12 +133,11 @@ def actualizar_tracking(
             existentes.extend(trackings_txt)
             servicio.trackings = json.dumps(existentes)
         session.commit()
-    finally:
-        session.close()
 
 
 def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada."""
+
     session = SessionLocal()
     try:
         fragmento = normalizar_camara(nombre_camara)
@@ -159,6 +151,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
 
         resultados: list[Servicio] = []
         for servicio in candidatos:
+
             if not servicio.camaras:
                 continue
             try:
@@ -171,8 +164,6 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
                     resultados.append(servicio)
                     break
         return resultados
-    finally:
-        session.close()
 
 
 def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:
@@ -182,8 +173,7 @@ def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servi
     proporcionado. En caso contrario se genera un nuevo registro con los datos
     recibidos.
     """
-    session = SessionLocal()
-    try:
+    with SessionLocal() as session:
         servicio = session.get(Servicio, id_servicio)
         if servicio:
             if id_carrier is not None:
@@ -198,6 +188,4 @@ def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servi
         session.commit()
         session.refresh(nuevo)
         return nuevo
-    finally:
-        session.close()
 

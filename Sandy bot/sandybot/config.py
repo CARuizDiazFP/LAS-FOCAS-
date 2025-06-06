@@ -48,6 +48,8 @@ class Config:
         self.ARCHIVO_INTERACCIONES = self.DATA_DIR / "interacciones.json"
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
+        # Cache de consultas a GPT para reducir costos y latencia
+        self.GPT_CACHE_FILE = self.DATA_DIR / "gpt_cache.json"
 
         # Plantilla de informes de repetitividad
         # Permite definir la ruta mediante la variable de entorno "PLANTILLA_PATH"
@@ -58,7 +60,9 @@ class Config:
         )
 
         # Configuración GPT
-        self.GPT_MODEL = "gpt-4"  # o "gpt-3.5-turbo" según necesidad
+        # Permite elegir el modelo vía la variable de entorno "GPT_MODEL".
+        # Si no se define, utiliza "gpt-4" por defecto.
+        self.GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4")
         self.GPT_TIMEOUT = 30
         self.GPT_MAX_RETRIES = 3
         self.GPT_CACHE_TIMEOUT = 3600  # 1 hora
