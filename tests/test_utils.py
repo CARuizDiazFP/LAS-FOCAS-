@@ -35,6 +35,10 @@ def test_normalizar_texto():
 def test_normalizar_camara():
     assert utils.normalizar_camara("Cam. Central") == "camara central"
 
+def test_normalizar_camara_abreviaturas():
+    esperado = "avenida general san martin"
+    assert utils.normalizar_camara("Av. Gral. San Martín") == esperado
+
 def test_guardar_y_cargar_json(tmp_path):
     datos = {"a": 1}
     archivo = tmp_path / "data.json"

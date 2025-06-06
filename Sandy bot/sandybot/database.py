@@ -157,8 +157,11 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
                 camaras = json.loads(servicio.camaras)
             except json.JSONDecodeError:
                 continue
-            if any(normalizar_camara(str(c)) == camara_norm for c in camaras):
-                resultados.append(servicio)
+            for c in camaras:
+                c_norm = normalizar_camara(str(c))
+                if camara_norm in c_norm or c_norm in camara_norm:
+                    resultados.append(servicio)
+                    break
         return resultados
     finally:
         session.close()
