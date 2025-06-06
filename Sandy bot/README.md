@@ -110,13 +110,16 @@ e `id_carrier`.
 - `/procesar`: Procesa archivos en modo comparador
 - `/cargar_tracking`: Asocia un tracking a un servicio existente
 - `/descargar_tracking`: Descarga el tracking asociado a un servicio
+- `/comparar_fo`: Inicia la comparación de trazados
 
 ## Funcionalidades
 
 1. Comparación de trazados FO
    - En el menú principal elegí "Comparar trazados FO"
+   - Podés iniciarlo también con `/comparar_fo` o escribiendo "Comparar FO"
    - Adjuntá los trackings en formato `.txt`
-   - Ejecutá `/procesar` para recibir un Excel con coincidencias y el listado de cámaras
+   - Al detectar un servicio con tracking existente aparecerá el botón **Siguiente ➡️** para mantenerlo
+   - Ejecutá `/procesar` o presioná el botón **Procesar 🚀** para recibir un Excel con coincidencias y el listado de cámaras
 
 2. Verificación de ingresos
    - Valida ingresos contra trazados

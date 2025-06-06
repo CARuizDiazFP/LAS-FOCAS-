@@ -1,7 +1,7 @@
 """
 Handler para la comparación de trazados de fibra óptica.
 """
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import logging
 import os
