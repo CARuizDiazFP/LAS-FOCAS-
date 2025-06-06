@@ -5,6 +5,7 @@ from types import ModuleType
 from pathlib import Path
 import pandas as pd
 import tempfile
+import openpyxl
 
 # Crear un stub de pandas para evitar dependencias externas
 pandas_stub = ModuleType("pandas")
@@ -80,8 +81,7 @@ def test_parse_and_generate_excel(tmp_path):
         parser.generate_excel(tmp_excel.name)
         ruta_excel = tmp_excel.name
 
-    with open(ruta_excel, "r", encoding="utf-8") as f:
-        contenido_excel = f.read().splitlines()
-    assert "Coincidencias" in contenido_excel
+    wb = openpyxl.load_workbook(ruta_excel)
+    assert "Coincidencias" in wb.sheetnames
 
     os.remove(ruta_excel)

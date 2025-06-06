@@ -17,7 +17,7 @@ from sandybot.database import (
 from sandybot.config import config
 import shutil
 from .estado import UserState
-from ..registrador import responder_registrando
+from ..registrador import responder_registrando, registrar_conversacion
 
 logger = logging.getLogger(__name__)
 
