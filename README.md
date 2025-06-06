@@ -46,3 +46,17 @@ Luego de enviar el Excel, cada fila se registra en la tabla `servicios`,
 actualizando el `id_carrier` si el servicio existe o creando una entrada nueva
 en caso contrario.
 
+## Errores por variables de entorno faltantes
+
+Al iniciar el bot, `config.py` valida que todas las variables de entorno
+necesarias estén definidas. Si alguna falta, se genera un mensaje como:
+
+```
+⚠️ No se encontraron las siguientes variables de entorno requeridas: VAR1, VAR2.
+Verificá tu archivo .env o las variables del sistema.
+```
+
+Este texto se registra con `logging.error` y luego se lanza una excepción
+`ValueError` con el mismo contenido. Revisá el archivo `.env` o la configuración
+del sistema para corregir el problema.
+

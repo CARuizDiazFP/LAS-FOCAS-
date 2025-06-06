@@ -91,7 +91,13 @@ class Config:
         
         missing = [var for var, val in required_vars.items() if not val]
         if missing:
-            raise ValueError(f"⚠️ Faltan variables de entorno: {', '.join(missing)}")
+            mensaje = (
+                "⚠️ No se encontraron las siguientes variables de entorno "
+                f"requeridas: {', '.join(missing)}. "
+                "Verificá tu archivo .env o las variables del sistema."
+            )
+            logging.error(mensaje)
+            raise ValueError(mensaje)
 
 # Instancia global
 config = Config()
