@@ -20,10 +20,24 @@ def normalizar_texto(texto: str) -> str:
     return unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii').lower()
 
 def normalizar_camara(texto: str) -> str:
-    """Normaliza nombres de cámara eliminando acentos y equivalencias."""
+    """Normaliza nombres de cámara eliminando acentos y abreviaturas."""
     t = normalizar_texto(texto)
-    t = t.replace('cam.', 'camara')
-    t = re.sub(r'\bcam\b', 'camara', t)
+
+    # Equivalencias comunes en direcciones
+    reemplazos = {
+        r"\bcam\.\b": "camara",
+        r"\bcam\b": "camara",
+        r"\bav\.\b": "avenida",
+        r"\bav\b": "avenida",
+        r"\bgral\.\b": "general",
+        r"\bgral\b": "general",
+    }
+    for patron, reemplazo in reemplazos.items():
+        t = re.sub(patron, reemplazo, t)
+
+    # Eliminar puntuación que pueda afectar la comparación
+    t = re.sub(r"[.,;:]", "", t)
+    t = re.sub(r"\s+", " ", t)
     return t.strip()
 
 def cargar_json(ruta: Path) -> Dict:
