@@ -130,6 +130,7 @@ class GPTHandler:
             "id_carrier",
             "informe_repetitividad",
             "informe_sla",
+            "start",
             "otro",
         ]
 
