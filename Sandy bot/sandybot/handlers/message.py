@@ -2,7 +2,7 @@
 Handler para mensajes de texto
 """
 import logging
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from ..gpt_handler import gpt
 from ..database import obtener_servicio, crear_servicio
@@ -201,12 +201,16 @@ async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE
             if existente and existente.ruta_tracking:
                 context.user_data["esperando_respuesta_actualizacion"] = True
                 context.user_data["esperando_servicio"] = False
+                keyboard = InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Siguiente ➡️", callback_data="comparador_siguiente")]]
+                )
                 await responder_registrando(
                     update.message,
                     user_id,
                     mensaje,
                     f"El servicio {servicio} ya tiene tracking. Enviá 'siguiente' para mantenerlo o adjuntá un .txt para actualizar.",
                     "comparador",
+                    reply_markup=keyboard,
                 )
             else:
                 if not existente:
@@ -242,12 +246,16 @@ async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE
                 context.user_data["esperando_servicio"] = True
                 context.user_data.pop("esperando_respuesta_actualizacion", None)
                 context.user_data.pop("servicio_actual", None)
+                keyboard = InlineKeyboardMarkup(
+                    [[InlineKeyboardButton("Procesar 🚀", callback_data="comparador_procesar")]]
+                )
                 await responder_registrando(
                     update.message,
                     user_id,
                     mensaje,
                     "Servicio agregado. Indicá otro número o ejecutá /procesar.",
                     "comparador",
+                    reply_markup=keyboard,
                 )
             else:
                 await responder_registrando(
