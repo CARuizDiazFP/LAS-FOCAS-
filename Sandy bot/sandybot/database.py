@@ -138,8 +138,9 @@ def actualizar_tracking(
 def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada."""
 
-    session = SessionLocal()
-    try:
+    # Se utiliza un contexto ``with`` para asegurar el cierre de la sesión
+    # sin necesidad de manejar excepciones de forma explícita.
+    with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
         # Consulta preliminar para evitar recorrer todos los registros
@@ -151,12 +152,13 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
 
         resultados: list[Servicio] = []
         for servicio in candidatos:
-
+            # Si el servicio no posee cámaras registradas se ignora
             if not servicio.camaras:
                 continue
             try:
                 camaras = json.loads(servicio.camaras)
             except json.JSONDecodeError:
+                # Se descarta la fila si el JSON está malformado
                 continue
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
