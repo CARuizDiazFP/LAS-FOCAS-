@@ -85,6 +85,9 @@ Desde 2025 este módulo utiliza ``openai.AsyncOpenAI`` para acceder a la nueva A
 - Extrae la hora y el nombre de la cámara en los pedidos de ingreso.
 - Filtra mensajes irrelevantes (egresos, mantenimiento o cancelaciones).
 
+`analizar_incidencias(texto)`:
+- Resume los eventos enumerando fecha, tarea y responsable en formato JSON.
+
 
 **Prompt base**
 
