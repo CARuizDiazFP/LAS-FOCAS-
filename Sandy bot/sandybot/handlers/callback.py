@@ -1,12 +1,14 @@
 """
 Handler para callbacks de botones
 """
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+import os
 from .estado import UserState
 from .ingresos import iniciar_verificacion_ingresos
 from .repetitividad import iniciar_repetitividad
-from .comparador import iniciar_comparador
+from .comparador import iniciar_comparador, procesar_comparacion
+from ..database import obtener_servicio
 from .cargar_tracking import iniciar_carga_tracking, guardar_tracking_servicio
 from ..registrador import registrar_conversacion
 
@@ -99,3 +101,35 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(
             "✍️ Escribí el detalle de la solicitud y la registraré para revisión."
         )
+
+    elif query.data == "comparador_siguiente":
+        user_id = query.from_user.id
+        servicio = context.user_data.get("servicio_actual")
+        existente = obtener_servicio(servicio)
+        if existente and existente.ruta_tracking:
+            context.user_data.setdefault("servicios", []).append(servicio)
+            context.user_data.setdefault("trackings", []).append(
+                (existente.ruta_tracking, os.path.basename(existente.ruta_tracking))
+            )
+            context.user_data["esperando_servicio"] = True
+            context.user_data.pop("esperando_respuesta_actualizacion", None)
+            context.user_data.pop("servicio_actual", None)
+            keyboard = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Procesar 🚀", callback_data="comparador_procesar")]]
+            )
+            registrar_conversacion(user_id, "siguiente", "Servicio agregado", "comparador")
+            await query.edit_message_text(
+                "Servicio agregado. Indicá otro número o ejecutá /procesar.",
+                reply_markup=keyboard,
+            )
+        else:
+            context.user_data["esperando_archivo"] = True
+            context.user_data.pop("esperando_respuesta_actualizacion", None)
+            registrar_conversacion(user_id, "siguiente", "Tracking faltante", "comparador")
+            await query.edit_message_text(
+                "Ese servicio no posee tracking. Debés enviar el archivo .txt.",
+            )
+
+    elif query.data == "comparador_procesar":
+        registrar_conversacion(query.from_user.id, "comparador_procesar", "Procesar", "callback")
+        await procesar_comparacion(update, context)

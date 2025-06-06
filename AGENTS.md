@@ -85,6 +85,9 @@ Desde 2025 este módulo utiliza ``openai.AsyncOpenAI`` para acceder a la nueva A
 - Extrae la hora y el nombre de la cámara en los pedidos de ingreso.
 - Filtra mensajes irrelevantes (egresos, mantenimiento o cancelaciones).
 
+`analizar_incidencias(texto)`:
+- Resume los eventos enumerando fecha, tarea y responsable en formato JSON.
+
 
 **Prompt base**
 
@@ -109,6 +112,15 @@ Tu tarea es identificar los pedidos de ingreso válidos a cámaras, nodos, poste
 
 - Si el bot no entiende un mensaje, pide más detalles y lo guarda en Notion con estado **Nuevo**.
 - Se planea un "modo supervisor" para validar manualmente los ingresos que el bot no pueda interpretar.
+
+## Analizador de incidencias
+
+Este módulo procesa reportes de fallas de campo y resume los eventos detectados. Por ahora se reciben archivos `.docx`, pero en el futuro se consultará una API para obtener los datos automáticamente.
+
+Flujo básico:
+1. Seleccionar **Analizador de incidencias** en el menú principal.
+2. Adjuntar el documento `.docx` con el detalle de la incidencia.
+3. El bot analiza el archivo y entrega un resumen con los hallazgos.
 
 ## 🧰 Roadmap de inteligencia artificial
 

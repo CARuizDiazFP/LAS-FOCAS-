@@ -21,6 +21,7 @@ from .handlers import (
     message_handler,
     document_handler,
     voice_handler,
+    iniciar_comparador,
     procesar_comparacion,
     iniciar_carga_tracking,
     iniciar_descarga_tracking
@@ -39,6 +40,7 @@ class SandyBot:
         """Configura los handlers del bot"""
         # Comandos básicos
         self.app.add_handler(CommandHandler("start", start_handler))
+        self.app.add_handler(CommandHandler("comparar_fo", iniciar_comparador))
         self.app.add_handler(CommandHandler("procesar", procesar_comparacion))
         self.app.add_handler(CommandHandler("cargar_tracking", iniciar_carga_tracking))
         self.app.add_handler(CommandHandler("descargar_tracking", iniciar_descarga_tracking))
