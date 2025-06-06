@@ -227,9 +227,8 @@ class GPTHandler:
 
         try:
             respuesta = await self.consultar_gpt(prompt)
-s
             return await self.procesar_json_response(respuesta, esquema)
-        except Exception as e:
+        except Exception:
             return None
 
 # Instancia global
