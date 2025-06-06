@@ -13,7 +13,6 @@ from .estado import UserState
 from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
-parser = TrackingParser()
 
 async def iniciar_carga_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Inicia el proceso solicitando el archivo de tracking."""
@@ -123,6 +122,7 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
 
     Path(ruta_temp).rename(ruta_destino)
 
+    parser = TrackingParser()
     try:
         parser.clear_data()
         parser.parse_file(str(ruta_destino))

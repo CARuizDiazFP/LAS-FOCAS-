@@ -20,7 +20,6 @@ from .estado import UserState
 from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
-parser = TrackingParser()
 
 async def iniciar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -109,6 +108,8 @@ async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             rutas_extra.append(str(historico))
 
         shutil.move(tmp.name, ruta_destino)
+
+        parser = TrackingParser()
         try:
             parser.clear_data()
             parser.parse_file(str(ruta_destino))
@@ -186,6 +187,7 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             "comparador",
         )
 
+        parser = TrackingParser()
         try:
             parser.clear_data()
             for ruta, nombre in trackings:
