@@ -5,7 +5,8 @@ import logging
 from telegram import Update
 from telegram.ext import ContextTypes
 from ..gpt_handler import gpt
-from ..database import SessionLocal, Conversacion, obtener_servicio, crear_servicio
+from ..database import obtener_servicio, crear_servicio
+from ..registrador import responder_registrando
 import os
 from .estado import UserState
 from .notion import registrar_accion_pendiente
@@ -42,14 +43,24 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 elif respuesta.isdigit():
                     context.user_data["id_servicio"] = int(respuesta)
                 else:
-                    await update.message.reply_text(
-                        "Respuesta no válida. Escribí 'sí' o el ID correcto."
+                    await responder_registrando(
+                        update.message,
+                        user_id,
+                        mensaje_usuario,
+                        "Respuesta no válida. Escribí 'sí' o el ID correcto.",
+                        "cargar_tracking",
                     )
                     return
                 context.user_data.pop("confirmar_id", None)
                 await guardar_tracking_servicio(update, context)
             else:
-                await update.message.reply_text("Enviá el archivo .txt del tracking.")
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Enviá el archivo .txt del tracking.",
+                    "cargar_tracking",
+                )
             return
 
         # Descarga de tracking
@@ -71,7 +82,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 accion = await gpt.clasificar_flujo(mensaje_usuario)
                 if accion == "desconocido":
                     pregunta = await gpt.generar_pregunta_intencion(mensaje_usuario)
-                    await update.message.reply_text(pregunta)
+                    await responder_registrando(
+                        update.message,
+                        user_id,
+                        mensaje_usuario,
+                        pregunta,
+                        "sandy",
+                    )
                     return
             if accion:
                 await _ejecutar_accion_natural(accion, update, context)
@@ -110,21 +127,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         prompt_con_tono = _generar_prompt_por_animo(mensaje_usuario, puntaje)
         respuesta = await gpt.consultar_gpt(prompt_con_tono)
 
-        # Registrar conversación
-        session = SessionLocal()
-        try:
-            nueva_conv = Conversacion(
-                user_id=str(user_id),
-                mensaje=mensaje_usuario,
-                respuesta=respuesta,
-                modo=intencion
-            )
-            session.add(nueva_conv)
-            session.commit()
-        finally:
-            session.close()
-
-        await update.message.reply_text(respuesta)
+        await responder_registrando(
+            update.message,
+            user_id,
+            mensaje_usuario,
+            respuesta,
+            intencion,
+        )
 
     except Exception as e:
         logger.error("Error en responder: %s", str(e))
@@ -147,13 +156,21 @@ async def _manejar_detalle_pendiente(update: Update, context: ContextTypes.DEFAU
 
         await registrar_accion_pendiente(mensajes, user_id)
         UserState.set_waiting_detail(user_id, False)
-        await update.message.reply_text(
-            "✅ Detalles recibidos. La solicitud fue registrada correctamente para revisión."
+        await responder_registrando(
+            update.message,
+            user_id,
+            mensaje,
+            "✅ Detalles recibidos. La solicitud fue registrada correctamente para revisión.",
+            "nueva_solicitud",
         )
     except Exception as e:
         logger.error("Error al manejar detalle pendiente: %s", str(e))
-        await update.message.reply_text(
-            "❌ Hubo un error al registrar tu solicitud. Intentalo de nuevo más tarde."
+        await responder_registrando(
+            update.message,
+            user_id,
+            mensaje,
+            "❌ Hubo un error al registrar tu solicitud. Intentalo de nuevo más tarde.",
+            "nueva_solicitud",
         )
 
 
@@ -168,19 +185,33 @@ async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE
             if existente and existente.ruta_tracking:
                 context.user_data["esperando_respuesta_actualizacion"] = True
                 context.user_data["esperando_servicio"] = False
-                await update.message.reply_text(
-                    f"El servicio {servicio} ya tiene tracking. Enviá 'siguiente' para mantenerlo o adjuntá un .txt para actualizar."
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje,
+                    f"El servicio {servicio} ya tiene tracking. Enviá 'siguiente' para mantenerlo o adjuntá un .txt para actualizar.",
+                    "comparador",
                 )
             else:
                 if not existente:
                     crear_servicio(id=servicio)
                 context.user_data["esperando_archivo"] = True
                 context.user_data["esperando_servicio"] = False
-                await update.message.reply_text(
-                    f"El servicio {servicio} no posee tracking. Adjuntá el archivo .txt."
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje,
+                    f"El servicio {servicio} no posee tracking. Adjuntá el archivo .txt.",
+                    "comparador",
                 )
         else:
-            await update.message.reply_text("Ingresá un número de servicio válido.")
+            await responder_registrando(
+                update.message,
+                user_id,
+                mensaje,
+                "Ingresá un número de servicio válido.",
+                "comparador",
+            )
         return
 
     if context.user_data.get("esperando_respuesta_actualizacion"):
@@ -195,18 +226,30 @@ async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE
                 context.user_data["esperando_servicio"] = True
                 context.user_data.pop("esperando_respuesta_actualizacion", None)
                 context.user_data.pop("servicio_actual", None)
-                await update.message.reply_text(
-                    "Servicio agregado. Indicá otro número o ejecutá /procesar."
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje,
+                    "Servicio agregado. Indicá otro número o ejecutá /procesar.",
+                    "comparador",
                 )
             else:
-                await update.message.reply_text(
-                    "Ese servicio no posee tracking. Debés enviar el archivo .txt."
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje,
+                    "Ese servicio no posee tracking. Debés enviar el archivo .txt.",
+                    "comparador",
                 )
                 context.user_data["esperando_archivo"] = True
                 context.user_data.pop("esperando_respuesta_actualizacion", None)
         else:
-            await update.message.reply_text(
-                "Opción inválida. Escribí 'siguiente' o adjuntá el archivo .txt."
+            await responder_registrando(
+                update.message,
+                user_id,
+                mensaje,
+                "Opción inválida. Escribí 'siguiente' o adjuntá el archivo .txt.",
+                "comparador",
             )
         return
 
@@ -305,21 +348,32 @@ async def _ejecutar_accion_natural(
     elif accion == "informe_repetitividad":
         await iniciar_repetitividad(update, context)
     elif accion == "informe_sla":
-        await update.message.reply_text(
-            "🔧 Función 'Informe de SLA' aún no implementada."
+        await responder_registrando(
+            update.message,
+            update.effective_user.id,
+            accion,
+            "🔧 Función 'Informe de SLA' aún no implementada.",
+            "informe_sla",
         )
     elif accion == "otro":
         UserState.set_mode(update.effective_user.id, "sandy")
-        await update.message.reply_text(
-            "¿Para qué me jodés? Indique su pregunta o solicitud. "
-            "Si no puedo hacerla, se enviará como solicitud de implementación."
+        await responder_registrando(
+            update.message,
+            update.effective_user.id,
+            accion,
+            "¿Para qué me jodés? Indique su pregunta o solicitud. Si no puedo hacerla, se enviará como solicitud de implementación.",
+            "otro",
         )
     elif accion == "nueva_solicitud":
         UserState.set_mode(update.effective_user.id, "sandy")
         UserState.set_waiting_detail(update.effective_user.id, True)
         context.user_data["nueva_solicitud"] = True
-        await update.message.reply_text(
-            "✍️ Escribí el detalle de la solicitud y la registraré para revisión."
+        await responder_registrando(
+            update.message,
+            update.effective_user.id,
+            accion,
+            "✍️ Escribí el detalle de la solicitud y la registraré para revisión.",
+            "nueva_solicitud",
         )
 
 def _generar_prompt_malhumorado(mensaje: str) -> str:

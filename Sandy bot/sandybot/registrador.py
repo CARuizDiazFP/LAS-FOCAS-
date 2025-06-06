@@ -2,6 +2,7 @@
 from datetime import datetime
 from .database import SessionLocal, Conversacion
 import logging
+from telegram import Message
 
 logger = logging.getLogger(__name__)
 
@@ -34,3 +35,16 @@ def registrar_conversacion(user_id: int, mensaje: str, respuesta: str, modo: str
     finally:
         if session:
             session.close()
+
+
+async def responder_registrando(
+    mensaje_obj: Message,
+    user_id: int,
+    texto_usuario: str,
+    texto_respuesta: str,
+    modo: str,
+    **kwargs,
+) -> None:
+    """Envía una respuesta y registra la interacción."""
+    await mensaje_obj.reply_text(texto_respuesta, **kwargs)
+    registrar_conversacion(user_id, texto_usuario, texto_respuesta, modo)

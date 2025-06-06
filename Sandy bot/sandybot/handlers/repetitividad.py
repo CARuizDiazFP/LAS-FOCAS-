@@ -17,6 +17,7 @@ import logging
 from sandybot.config import config
 from ..utils import obtener_mensaje
 from .estado import UserState
+from ..registrador import responder_registrando, registrar_conversacion
 
 # Ruta a la plantilla Word definida en la configuración global
 # Permite modificar la ubicación mediante la variable de entorno "PLANTILLA_PATH"
@@ -41,13 +42,23 @@ async def manejar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TY
             "Iniciando manejo de repetitividad para el usuario %s",
             update.effective_user.id,
         )
-        await message.reply_text(
-            "Generación de informes de repetitividad en desarrollo."
+        await responder_registrando(
+            message,
+            update.effective_user.id,
+            "informe_repetitividad",
+            "Generación de informes de repetitividad en desarrollo.",
+            "repetitividad",
         )
     except Exception as e:
         logger.error("Error en manejar_repetitividad: %s", e)
         if message:
-            await message.reply_text(f"Error al generar el informe: {e}")
+            await responder_registrando(
+                message,
+                update.effective_user.id,
+                "informe_repetitividad",
+                f"Error al generar el informe: {e}",
+                "repetitividad",
+            )
 
 async def iniciar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -66,14 +77,23 @@ async def iniciar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TY
             "Iniciando repetitividad para el usuario %s",
             update.effective_user.id,
         )
-        await message.reply_text(
-            "Iniciando generación de informes de repetitividad. "
-            "Enviá el archivo Excel para continuar."
+        await responder_registrando(
+            message,
+            update.effective_user.id,
+            "informe_repetitividad",
+            "Iniciando generación de informes de repetitividad. Enviá el archivo Excel para continuar.",
+            "repetitividad",
         )
     except Exception as e:
         logger.error("Error en iniciar_repetitividad: %s", e)
         if message:
-            await message.reply_text(f"Error al iniciar la generación de informes: {e}")
+            await responder_registrando(
+                message,
+                update.effective_user.id,
+                "informe_repetitividad",
+                f"Error al iniciar la generación de informes: {e}",
+                "repetitividad",
+            )
 
 async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -90,15 +110,23 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
 
     try:
         if not message.document:
-            await message.reply_text(
-                "😠 ¿Y el archivo? Adjuntá el Excel, por favor. No soy adivino. #DaleCerebro"
+            await responder_registrando(
+                message,
+                user_id,
+                "procesar_repetitividad",
+                "😠 ¿Y el archivo? Adjuntá el Excel, por favor. No soy adivino. #DaleCerebro",
+                "repetitividad",
             )
             return
 
         archivo = message.document
         if not archivo.file_name.endswith(".xlsx"):
-            await message.reply_text(
-                "🙄 Solo acepto archivos Excel (.xlsx). Mandá bien las cosas. #MeEstásCargando"
+            await responder_registrando(
+                message,
+                user_id,
+                archivo.file_name,
+                "🙄 Solo acepto archivos Excel (.xlsx). Mandá bien las cosas. #MeEstásCargando",
+                "repetitividad",
             )
             return
 
@@ -110,6 +138,12 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
         nombre_final = os.path.basename(ruta_salida)
         with open(ruta_salida, "rb") as docx_file:
             await message.reply_document(document=docx_file, filename=nombre_final)
+        registrar_conversacion(
+            user_id,
+            archivo.file_name,
+            f"Documento {nombre_final} enviado",
+            "repetitividad",
+        )
 
         os.remove(tmp_excel.name)
         os.remove(ruta_salida)
@@ -117,8 +151,12 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
 
     except Exception as e:
         if message:
-            await message.reply_text(
-                "💥 Algo falló generando el informe. No sé cómo hacés para romper hasta esto... #LoQueHayQueAguantar"
+            await responder_registrando(
+                message,
+                user_id,
+                archivo.file_name if 'archivo' in locals() else 'procesar_repetitividad',
+                "💥 Algo falló generando el informe. No sé cómo hacés para romper hasta esto... #LoQueHayQueAguantar",
+                "repetitividad",
             )
 
 

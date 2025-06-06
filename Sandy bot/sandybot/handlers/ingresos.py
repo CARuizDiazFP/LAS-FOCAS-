@@ -13,6 +13,7 @@ from ..database import obtener_servicio, actualizar_tracking, crear_servicio
 from ..config import config
 import shutil
 from .estado import UserState
+from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +31,21 @@ async def manejar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             return
 
         # Lógica para la verificación de ingresos
-        await mensaje.reply_text("Verificación de ingresos en desarrollo.")
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            mensaje.text or "manejar_ingresos",
+            "Verificación de ingresos en desarrollo.",
+            "ingresos",
+        )
     except Exception as e:
-        await mensaje.reply_text(f"Error al verificar ingresos: {e}")
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id if mensaje else update.effective_user.id,
+            mensaje.text if mensaje else "manejar_ingresos",
+            f"Error al verificar ingresos: {e}",
+            "ingresos",
+        )
 
 
 async def verificar_camara(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -48,15 +61,33 @@ async def verificar_camara(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     servicios = buscar_servicios_por_camara(nombre_camara)
 
     if not servicios:
-        await mensaje.reply_text("No encontré servicios con esa cámara.")
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            nombre_camara,
+            "No encontré servicios con esa cámara.",
+            "ingresos",
+        )
         return
 
     if len(servicios) == 1:
         s = servicios[0]
-        await mensaje.reply_text(f"La cámara pertenece al servicio {s.id}: {s.nombre or 'Sin nombre'}")
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            nombre_camara,
+            f"La cámara pertenece al servicio {s.id}: {s.nombre or 'Sin nombre'}",
+            "ingresos",
+        )
     else:
         listado = "\n".join(f"{s.id}: {s.nombre or 'Sin nombre'}" for s in servicios)
-        await mensaje.reply_text("La cámara figura en varios servicios:\n" + listado)
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            nombre_camara,
+            "La cámara figura en varios servicios:\n" + listado,
+            "ingresos",
+        )
 
 async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -78,12 +109,21 @@ async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DE
         UserState.set_mode(user_id, "ingresos")
         context.user_data.clear()
 
-        await mensaje.reply_text(
-            "Iniciando verificación de ingresos. "
-            "Enviá el nombre de la cámara que querés verificar."
+        await responder_registrando(
+            mensaje,
+            user_id,
+            "verificar_ingresos",
+            "Iniciando verificación de ingresos. Enviá el nombre de la cámara que querés verificar.",
+            "ingresos",
         )
     except Exception as e:
-        await mensaje.reply_text(f"Error al iniciar la verificación de ingresos: {e}")
+        await responder_registrando(
+            mensaje,
+            user_id,
+            "verificar_ingresos",
+            f"Error al iniciar la verificación de ingresos: {e}",
+            "ingresos",
+        )
 
 async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -101,12 +141,24 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         user_id = mensaje.from_user.id
         id_servicio = context.user_data.get("id_servicio")
         if not id_servicio:
-            await mensaje.reply_text("Primero indicá el ID del servicio en un mensaje de texto.")
+            await responder_registrando(
+                mensaje,
+                user_id,
+                mensaje.caption or mensaje.document.file_name,
+                "Primero indicá el ID del servicio en un mensaje de texto.",
+                "ingresos",
+            )
             return
 
         documento = mensaje.document
         if not documento.file_name.endswith(".txt"):
-            await mensaje.reply_text("Solo acepto archivos .txt para verificar ingresos.")
+            await responder_registrando(
+                mensaje,
+                user_id,
+                documento.file_name,
+                "Solo acepto archivos .txt para verificar ingresos.",
+                "ingresos",
+            )
             return
 
         archivo = await documento.get_file()
@@ -122,8 +174,12 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         servicio = obtener_servicio(int(id_servicio))
         if not servicio:
             servicio = crear_servicio(id=int(id_servicio))
-            await mensaje.reply_text(
-                f"Servicio {id_servicio} creado en la base de datos."
+            await responder_registrando(
+                mensaje,
+                user_id,
+                documento.file_name,
+                f"Servicio {id_servicio} creado en la base de datos.",
+                "ingresos",
             )
 
         try:
@@ -175,12 +231,24 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if len(respuesta) == 1:
             respuesta.append("No se detectaron cámaras para comparar.")
 
-        await mensaje.reply_text("\n".join(respuesta))
+        await responder_registrando(
+            mensaje,
+            user_id,
+            documento.file_name,
+            "\n".join(respuesta),
+            "ingresos",
+        )
 
         actualizar_tracking(int(id_servicio), trackings_txt=[str(destino)])
 
         UserState.set_mode(user_id, "")
         context.user_data.pop("id_servicio", None)
     except Exception as e:
-        await mensaje.reply_text(f"Error al procesar ingresos: {e}")
+        await responder_registrando(
+            mensaje,
+            user_id if 'user_id' in locals() else update.effective_user.id,
+            "procesar_ingresos",
+            f"Error al procesar ingresos: {e}",
+            "ingresos",
+        )
 

@@ -10,6 +10,7 @@ from ..tracking_parser import TrackingParser
 from ..config import config
 from ..database import actualizar_tracking, obtener_servicio, crear_servicio
 from .estado import UserState
+from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
 parser = TrackingParser()
@@ -28,7 +29,13 @@ async def iniciar_carga_tracking(update: Update, context: ContextTypes.DEFAULT_T
 
     UserState.set_mode(user_id, "cargar_tracking")
     context.user_data.clear()
-    await mensaje.reply_text("Enviá el archivo .txt del tracking para comenzar.")
+    await responder_registrando(
+        mensaje,
+        user_id,
+        "cargar_tracking",
+        "Enviá el archivo .txt del tracking para comenzar.",
+        "cargar_tracking",
+    )
 
 async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Guarda el tracking en la base de datos."""
@@ -42,7 +49,13 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
     # Si llegó un documento, guardarlo temporalmente
     if documento:
         if not documento.file_name.endswith(".txt"):
-            await mensaje.reply_text("Solo acepto archivos .txt para el tracking.")
+            await responder_registrando(
+                mensaje,
+                user_id,
+                documento.file_name,
+                "Solo acepto archivos .txt para el tracking.",
+                "cargar_tracking",
+            )
             return
 
         archivo = await documento.get_file()
@@ -66,13 +79,24 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
                         ]
                     ]
                 )
+                await responder_registrando(
+                    mensaje,
+                    user_id,
+                    documento.file_name,
+                    f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio?",
+                    "cargar_tracking",
+                )
                 await mensaje.reply_text(
                     f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio?",
                     reply_markup=keyboard,
                 )
             else:
-                await mensaje.reply_text(
-                    "No pude detectar el ID. Escribí el número del servicio."
+                await responder_registrando(
+                    mensaje,
+                    user_id,
+                    documento.file_name,
+                    "No pude detectar el ID. Escribí el número del servicio.",
+                    "cargar_tracking",
                 )
             context.user_data["confirmar_id"] = True
             return
@@ -80,7 +104,13 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
     servicio = context.user_data.get("id_servicio")
     ruta_temp = context.user_data.get("tracking_temp")
     if servicio is None or ruta_temp is None:
-        await mensaje.reply_text("Falta el ID o el archivo de tracking.")
+        await responder_registrando(
+            mensaje,
+            user_id,
+            "guardar_tracking",
+            "Falta el ID o el archivo de tracking.",
+            "cargar_tracking",
+        )
         return
 
     ruta_destino = config.DATA_DIR / f"tracking_{servicio}.txt"
@@ -102,10 +132,22 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
         if not obtener_servicio(id_servicio):
             crear_servicio(id=id_servicio)
         actualizar_tracking(id_servicio, str(ruta_destino), camaras, rutas_extra)
-        await mensaje.reply_text("✅ Tracking cargado y guardado correctamente.")
+        await responder_registrando(
+            mensaje,
+            user_id,
+            f"tracking_{servicio}.txt",
+            "✅ Tracking cargado y guardado correctamente.",
+            "cargar_tracking",
+        )
     except Exception as e:
         logger.error("Error al guardar tracking: %s", e)
-        await mensaje.reply_text(f"Error al procesar el tracking: {e}")
+        await responder_registrando(
+            mensaje,
+            user_id,
+            documento.file_name if documento else "guardar_tracking",
+            f"Error al procesar el tracking: {e}",
+            "cargar_tracking",
+        )
     finally:
         UserState.set_mode(user_id, "")
         context.user_data.clear()

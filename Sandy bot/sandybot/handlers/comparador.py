@@ -17,6 +17,7 @@ from sandybot.database import (
 from sandybot.config import config
 import shutil
 from .estado import UserState
+from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
 parser = TrackingParser()
@@ -43,12 +44,21 @@ async def iniciar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE)
         context.user_data["trackings"] = []
         context.user_data["servicios"] = []
         context.user_data["esperando_servicio"] = True
-        await mensaje.reply_text(
-            "Iniciando comparación de trazados de fibra óptica. "
-            "Indicá el número de servicio a comparar."
+        await responder_registrando(
+            mensaje,
+            user_id,
+            "comparar_fo",
+            "Iniciando comparación de trazados de fibra óptica. Indicá el número de servicio a comparar.",
+            "comparador",
         )
     except Exception as e:
-        await mensaje.reply_text(f"Error al iniciar la comparación: {e}")
+        await responder_registrando(
+            mensaje,
+            user_id,
+            "comparar_fo",
+            f"Error al iniciar la comparación: {e}",
+            "comparador",
+        )
 
 
 async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -66,14 +76,24 @@ async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
         documento = mensaje.document
         if not documento.file_name.endswith(".txt"):
-            await mensaje.reply_text(
-                "🙄 Solo acepto archivos .txt para comparar trazados."
+            await responder_registrando(
+                mensaje,
+                mensaje.from_user.id,
+                documento.file_name,
+                "🙄 Solo acepto archivos .txt para comparar trazados.",
+                "comparador",
             )
             return
 
         servicio = context.user_data.get("servicio_actual")
         if not servicio:
-            await mensaje.reply_text("Indicá primero el número de servicio.")
+            await responder_registrando(
+                mensaje,
+                mensaje.from_user.id,
+                documento.file_name,
+                "Indicá primero el número de servicio.",
+                "comparador",
+            )
             return
 
         archivo = await documento.get_file()
@@ -101,19 +121,35 @@ async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             context.user_data.setdefault("trackings", []).append(
                 (str(ruta_destino), documento.file_name)
             )
-            await mensaje.reply_text(
-                "📎 Tracking registrado. Indicá otro servicio o ejecutá /procesar."
+            await responder_registrando(
+                mensaje,
+                mensaje.from_user.id,
+                documento.file_name,
+                "📎 Tracking registrado. Indicá otro servicio o ejecutá /procesar.",
+                "comparador",
             )
         except Exception as e:
             logger.error("Error procesando tracking: %s", e)
-            await mensaje.reply_text(f"Error al procesar el tracking: {e}")
+            await responder_registrando(
+                mensaje,
+                mensaje.from_user.id,
+                documento.file_name,
+                f"Error al procesar el tracking: {e}",
+                "comparador",
+            )
         finally:
             parser.clear_data()
             context.user_data.pop("esperando_archivo", None)
             context.user_data.pop("servicio_actual", None)
             context.user_data["esperando_servicio"] = True
     except Exception as e:
-        await mensaje.reply_text(f"Error al recibir el archivo de tracking: {e}")
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id if mensaje else update.effective_user.id,
+            "recibir_tracking",
+            f"Error al recibir el archivo de tracking: {e}",
+            "comparador",
+        )
 
 async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -131,15 +167,23 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
         user_id = mensaje.from_user.id
         trackings = context.user_data.get("trackings", [])
         if len(trackings) < 2:
-            await mensaje.reply_text(
-                "¿Procesar qué? Necesito al menos dos servicios con tracking."
+            await responder_registrando(
+                mensaje,
+                user_id,
+                "procesar_comparacion",
+                "¿Procesar qué? Necesito al menos dos servicios con tracking.",
+                "comparador",
             )
             UserState.set_mode(user_id, "")
             context.user_data.clear()
             return
 
-        await mensaje.reply_text(
-            "Procesando comparación, aguarde. Se generará un informe con cámaras comunes..."
+        await responder_registrando(
+            mensaje,
+            user_id,
+            "procesar_comparacion",
+            "Procesando comparación, aguarde. Se generará un informe con cámaras comunes...",
+            "comparador",
         )
 
         try:
@@ -154,10 +198,22 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
 
             with open(salida, "rb") as doc:
                 await mensaje.reply_document(doc, filename=os.path.basename(salida))
+            registrar_conversacion(
+                user_id,
+                "procesar_comparacion",
+                f"Documento {os.path.basename(salida)} enviado",
+                "comparador",
+            )
 
         except Exception as e:
             logger.error("Error generando Excel: %s", e)
-            await mensaje.reply_text(f"💥 Algo falló al generar el Excel: {e}")
+            await responder_registrando(
+                mensaje,
+                user_id,
+                "procesar_comparacion",
+                f"💥 Algo falló al generar el Excel: {e}",
+                "comparador",
+            )
         finally:
             parser.clear_data()
             if 'salida' in locals():
@@ -168,5 +224,11 @@ async def procesar_comparacion(update: Update, context: ContextTypes.DEFAULT_TYP
             context.user_data.clear()
             UserState.set_mode(user_id, "")
     except Exception as e:
-        await mensaje.reply_text(f"Error al procesar la comparación: {e}")
+        await responder_registrando(
+            mensaje,
+            user_id if 'user_id' in locals() else update.effective_user.id,
+            "procesar_comparacion",
+            f"Error al procesar la comparación: {e}",
+            "comparador",
+        )
 
