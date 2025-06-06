@@ -9,6 +9,7 @@ from .comparador import recibir_tracking
 from .cargar_tracking import guardar_tracking_servicio
 from .ingresos import procesar_ingresos
 from .id_carrier import procesar_identificador_carrier
+from .incidencias import procesar_incidencias
 
 async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -41,6 +42,9 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             return
         if mode == "id_carrier":
             await procesar_identificador_carrier(update, context)
+            return
+        if mode == "incidencias":
+            await procesar_incidencias(update, context)
             return
 
         # Lógica para el procesamiento de documentos
