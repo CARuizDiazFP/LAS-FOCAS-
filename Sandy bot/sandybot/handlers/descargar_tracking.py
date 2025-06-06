@@ -9,7 +9,6 @@ from ..utils import obtener_mensaje
 from ..database import obtener_servicio
 from ..registrador import responder_registrando, registrar_conversacion
 from .estado import UserState
-from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
 
