@@ -26,6 +26,16 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         registrar_conversacion(query.from_user.id, "boton_verificar_ingresos", "Inicio ingresos", "callback")
         await iniciar_verificacion_ingresos(update, context)
 
+    elif query.data == "ingresos_nombre":
+        registrar_conversacion(query.from_user.id, "ingresos_nombre", "Elegir por nombre", "callback")
+        from .ingresos import opcion_por_nombre
+        await opcion_por_nombre(update, context)
+
+    elif query.data == "ingresos_excel":
+        registrar_conversacion(query.from_user.id, "ingresos_excel", "Elegir por excel", "callback")
+        from .ingresos import opcion_por_excel
+        await opcion_por_excel(update, context)
+
     elif query.data == "informe_repetitividad":
         user_id = query.from_user.id
         UserState.set_mode(user_id, "repetitividad")

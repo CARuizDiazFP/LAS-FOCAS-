@@ -121,6 +121,7 @@ e `id_carrier`.
    - Detecta duplicados
    - También podés buscar un servicio escribiendo el nombre de la cámara
    - La verificación no distingue entre mayúsculas y minúsculas
+   - También podés cargar un Excel con un lote de cámaras en la columna A
    - Informa si se accedió a otra "botella" (Bot 2, Bot 3, ... ) de la misma cámara
 3. Carga de tracking
    - Seleccioná "Cargar tracking" en el menú principal

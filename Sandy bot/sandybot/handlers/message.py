@@ -99,8 +99,21 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if mode == "ingresos":
-            await verificar_camara(update, context)
-            return
+            if context.user_data.get("esperando_opcion"):
+                await _manejar_opcion_ingresos(update, context, mensaje_usuario)
+                return
+            if context.user_data.get("opcion_ingresos") == "nombre":
+                await verificar_camara(update, context)
+                return
+            if context.user_data.get("opcion_ingresos") == "excel":
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Adjuntá el Excel con las cámaras en la columna A.",
+                    "ingresos",
+                )
+                return
 
         # Activar modo Sandy si no está activo␊
         if not mode:
@@ -252,6 +265,27 @@ async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "comparador",
             )
         return
+
+
+async def _manejar_opcion_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE, mensaje: str) -> None:
+    """Interpreta la elección de validación de ingresos."""
+    user_id = update.effective_user.id
+    texto = normalizar_texto(mensaje)
+    if "nombre" in texto:
+        from .ingresos import opcion_por_nombre
+        await opcion_por_nombre(update, context)
+    elif "excel" in texto:
+        from .ingresos import opcion_por_excel
+        await opcion_por_excel(update, context)
+    else:
+        await responder_registrando(
+            update.message,
+            user_id,
+            mensaje,
+            "Opción no válida. Escribí 'nombre' o 'excel'.",
+            "ingresos",
+        )
+    return
 
 
 def _detectar_accion_natural(mensaje: str) -> str | None:

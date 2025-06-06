@@ -96,10 +96,12 @@ Tu tarea es identificar los pedidos de ingreso válidos a cámaras, nodos, poste
 ## 🔹 Flujo de procesamiento de ingresos
 
 1. El usuario activa el bot y selecciona **Verificar ingresos**.
-2. Envía un archivo `.txt` con mensajes de Slack.
-3. El bot extrae los bloques relevantes y los filtra con expresiones regulares.
-4. Si no puede interpretarlos, los envía a GPT-4.
-5. El resultado se guarda en un Excel con dos hojas:
+2. El bot pregunta si validará por **nombre de cámara** o con **Excel**.
+3. Si elige nombre, envía la cámara para ver los servicios asociados.
+4. Si elige Excel, adjunta un `.xlsx` con las cámaras en la columna A.
+5. El bot extrae los bloques relevantes y los filtra con expresiones regulares.
+6. Si no puede interpretarlos, los envía a GPT-4.
+7. El resultado se guarda en un Excel con dos hojas:
    - Hoja 1: todos los ingresos extraídos (hora y cámara).
    - Hoja 2: coincidencias con el tracking cargado.
 
