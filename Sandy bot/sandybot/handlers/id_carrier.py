@@ -10,6 +10,7 @@ import tempfile
 from ..utils import obtener_mensaje
 from ..database import SessionLocal, Servicio, registrar_servicio
 from .estado import UserState
+from ..registrador import responder_registrando, registrar_conversacion
 
 logger = logging.getLogger(__name__)
 
@@ -23,8 +24,12 @@ async def iniciar_identificador_carrier(update: Update, context: ContextTypes.DE
     user_id = update.effective_user.id
     UserState.set_mode(user_id, "id_carrier")
     context.user_data.clear()
-    await mensaje.reply_text(
-        "Enviá el Excel con las columnas 'ID Servicio' e 'ID Carrier' y lo completaré."
+    await responder_registrando(
+        mensaje,
+        user_id,
+        "id_carrier",
+        "Enviá el Excel con las columnas 'ID Servicio' e 'ID Carrier' y lo completaré.",
+        "id_carrier",
     )
 
 async def procesar_identificador_carrier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -36,7 +41,13 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
 
     documento = mensaje.document
     if not documento.file_name.endswith(".xlsx"):
-        await mensaje.reply_text("Solo acepto archivos Excel (.xlsx).")
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            documento.file_name,
+            "Solo acepto archivos Excel (.xlsx).",
+            "id_carrier",
+        )
         return
 
     file = await documento.get_file()
@@ -47,7 +58,13 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
         df = pd.read_excel(tmp.name)
     except Exception as e:
         logger.error("Error leyendo Excel: %s", e)
-        await mensaje.reply_text("No pude leer el Excel. Verificá el formato.")
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            documento.file_name,
+            "No pude leer el Excel. Verificá el formato.",
+            "id_carrier",
+        )
         os.remove(tmp.name)
         return
 
@@ -61,8 +78,12 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
             col_carrier = col
 
     if col_servicio is None or col_carrier is None:
-        await mensaje.reply_text(
-            "El Excel debe tener las columnas 'ID Servicio' e 'ID Carrier'."
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            documento.file_name,
+            "El Excel debe tener las columnas 'ID Servicio' e 'ID Carrier'.",
+            "id_carrier",
         )
         os.remove(tmp.name)
         return
@@ -99,6 +120,12 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
 
     with open(salida, "rb") as f:
         await mensaje.reply_document(f, filename=os.path.basename(salida))
+    registrar_conversacion(
+        mensaje.from_user.id,
+        documento.file_name,
+        f"Documento {os.path.basename(salida)} enviado",
+        "id_carrier",
+    )
 
     # Registrar cada fila procesada en la base de datos luego de enviar el Excel
     try:
@@ -114,6 +141,12 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
             registrar_servicio(id_servicio, str(id_carrier))
     except Exception as e:
         logger.error("Error al registrar servicios: %s", e)
+        registrar_conversacion(
+            mensaje.from_user.id,
+            documento.file_name,
+            f"Error al registrar servicios: {e}",
+            "id_carrier",
+        )
 
     os.remove(tmp.name)
     os.remove(salida)

@@ -3,6 +3,7 @@ Handler principal para el comando /start
 """
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from ..registrador import responder_registrando
 
 async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Maneja el comando /start mostrando el menú principal"""
@@ -30,7 +31,11 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-    await update.message.reply_text(
+    await responder_registrando(
+        update.message,
+        update.effective_user.id,
+        "/start",
         "Bienvenido al menú principal. ¿Qué acción deseas realizar?",
-        reply_markup=reply_markup
+        "start",
+        reply_markup=reply_markup,
     )
