@@ -61,6 +61,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         if mode in ("", "sandy"):
             accion = _detectar_accion_natural(mensaje_usuario)
+            if not accion:
+                accion = await gpt.clasificar_flujo(mensaje_usuario)
+                if accion == "desconocido":
+                    pregunta = await gpt.generar_pregunta_intencion(mensaje_usuario)
+                    await update.message.reply_text(pregunta)
+                    return
             if accion:
                 await _ejecutar_accion_natural(accion, update, context)
                 return

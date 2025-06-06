@@ -106,6 +106,48 @@ class GPTHandler:
             logger.error("Error al detectar intención: %s", str(e))
             return "neutro"
 
+    async def clasificar_flujo(self, mensaje: str) -> str:
+        """Clasifica un mensaje en uno de los flujos disponibles."""
+        flujos = [
+            "comparar_fo",
+            "verificar_ingresos",
+            "cargar_tracking",
+            "id_carrier",
+            "informe_repetitividad",
+            "informe_sla",
+            "otro",
+        ]
+
+        opciones = ", ".join(flujos)
+        prompt = (
+            "Indicá solo el nombre interno del flujo que coincide con el texto.\n"
+            f"Opciones: {opciones}.\n"
+            f"Texto: '{mensaje}'\n"
+            "Respuesta: "
+        )
+
+        try:
+            respuesta = await self.consultar_gpt(prompt)
+            resultado = respuesta.lower().strip()
+            return resultado if resultado in flujos else "desconocido"
+        except Exception as e:
+            logger.error("Error al clasificar flujo: %s", str(e))
+            return "desconocido"
+
+    async def generar_pregunta_intencion(self, mensaje: str) -> str:
+        """Genera una pregunta de aclaración cuando no se detecta la intención."""
+        prompt = (
+            "El siguiente mensaje no se entiende del todo: "
+            f"'{mensaje}'.\n"
+            "Formulá una pregunta breve y amable para pedir más detalles."
+        )
+
+        try:
+            return await self.consultar_gpt(prompt)
+        except Exception as e:
+            logger.error("Error al generar pregunta de intención: %s", str(e))
+            return "¿Podrías aclarar tu solicitud?"
+
     async def procesar_json_response(
         self, 
         contenido: str, 
