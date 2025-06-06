@@ -65,7 +65,9 @@ python main.py
 ```
 
 Al ejecutarse, `main.py` configura automáticamente el sistema de logging. Los
-mensajes se muestran en la consola utilizando el formato estándar de Python.
+mensajes se muestran en la consola y además se guardan en `logs/sandy.log` con
+rotación automática. Los errores a partir de nivel `ERROR` también se registran
+en `logs/errores_ingresos.log` para facilitar el diagnóstico.
 
 ## Estructura
 
