@@ -44,6 +44,8 @@ class Config:
         
         # Archivos y rutas
         self.ARCHIVO_CONTADOR = self.DATA_DIR / "contador_diario.json"
+        # Registro histórico de interacciones por usuario
+        self.ARCHIVO_INTERACCIONES = self.DATA_DIR / "interacciones.json"
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
 
