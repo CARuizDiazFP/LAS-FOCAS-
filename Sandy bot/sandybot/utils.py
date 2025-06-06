@@ -31,6 +31,7 @@ def normalizar_camara(texto: str) -> str:
         r"\bav\b": "avenida",
         r"\bgral\.\b": "general",
         r"\bgral\b": "general",
+        r"\bcra\.?\b": "carrera",
     }
     for patron, reemplazo in reemplazos.items():
         t = re.sub(patron, reemplazo, t)
