@@ -58,7 +58,9 @@ class Config:
         )
 
         # Configuración GPT
-        self.GPT_MODEL = "gpt-4"  # o "gpt-3.5-turbo" según necesidad
+        # Permite elegir el modelo vía la variable de entorno "GPT_MODEL".
+        # Si no se define, utiliza "gpt-4" por defecto.
+        self.GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4")
         self.GPT_TIMEOUT = 30
         self.GPT_MAX_RETRIES = 3
         self.GPT_CACHE_TIMEOUT = 3600  # 1 hora

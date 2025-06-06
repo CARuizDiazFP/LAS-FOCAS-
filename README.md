@@ -5,6 +5,14 @@ instalar las dependencias listadas en `requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
 API utilizada en `sandybot`.
 
+## Variables de entorno
+
+El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
+
+- `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
+  no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
+- `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
+
 ## Plantilla de informes de repetitividad
 
 El documento base para generar los reportes de repetitividad se indica
