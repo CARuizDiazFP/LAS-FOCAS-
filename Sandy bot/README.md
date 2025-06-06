@@ -148,7 +148,7 @@ e `id_carrier`.
      funciona en Windows. En otros sistemas puede generarse el archivo .docx
      sin esta modificación o realizar los cambios de forma manual.
 
-5. Consultas generales
+6. Consultas generales
    - Respuestas técnicas con GPT
    - Tono adaptado según interacciones (de cordial a muy malhumorado)
    - Registro de conversaciones
