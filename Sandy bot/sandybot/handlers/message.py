@@ -202,21 +202,31 @@ async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE
 def _detectar_accion_natural(mensaje: str) -> str | None:
     """Intenta mapear el mensaje a una acción disponible."""
     texto = normalizar_texto(mensaje)
-    claves = {
-        "comparar_fo": ["comparar trazados", "comparacion fo", "comparar fo"],
-        "verificar_ingresos": ["verificar ingresos", "validar ingresos"],
-        "cargar_tracking": ["cargar tracking", "subir tracking"],
-        "id_carrier": ["identificador de servicio carrier", "id carrier", "identificar carrier"],
-        "informe_repetitividad": ["informe de repetitividad", "reporte de repetitividad"],
-        "informe_sla": ["informe de sla", "reporte de sla"],
-        "otro": ["otro"],
-        "nueva_solicitud": ["nueva solicitud", "registrar solicitud"],
-    }
 
-    for accion, palabras in claves.items():
-        for palabra in palabras:
-            if palabra in texto:
-                return accion
+    if "compar" in texto and ("fo" in texto or "trazad" in texto):
+        return "comparar_fo"
+
+    if "verific" in texto and "ingres" in texto:
+        return "verificar_ingresos"
+
+    if ("cargar" in texto or "subir" in texto) and "tracking" in texto:
+        return "cargar_tracking"
+
+    if ("ident" in texto or " id " in f" {texto} ") and "carrier" in texto:
+        return "id_carrier"
+
+    if "repetitiv" in texto:
+        return "informe_repetitividad"
+
+    if "sla" in texto:
+        return "informe_sla"
+
+    if "nueva" in texto and "solicitud" in texto or "registrar solicitud" in texto:
+        return "nueva_solicitud"
+
+    if texto.strip() == "otro":
+        return "otro"
+
     return None
 
 

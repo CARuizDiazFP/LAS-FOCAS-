@@ -11,7 +11,8 @@ Sandy es un agente inteligente que opera en Telegram y automatiza tareas repetit
 - Clasificación de mensajes ambiguos
 - Enrutamiento de tareas a Notion cuando no pueden resolverse
 - Ajuste de tono según interacciones de cada usuario
-- Las acciones de los botones también se pueden activar escribiendo la intención en lenguaje natural
+- Las acciones de los botones también se pueden activar escribiendo la intención en lenguaje natural.
+  Se detectan distintas variantes y sinónimos.
 
 ## 🎓 Filosofía de diseño
 
