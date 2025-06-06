@@ -165,8 +165,8 @@ class GPTHandler:
             return "¿Podrías aclarar tu solicitud?"
 
     async def procesar_json_response(
-        self, 
-        contenido: str, 
+        self,
+        contenido: str,
         schema: Dict[str, Any]
     ) -> Optional[Union[Dict, List]]:
         """
@@ -199,6 +199,33 @@ class GPTHandler:
             return None
         except Exception as e:
             logger.error("Error al procesar respuesta JSON de GPT: %s", str(e))
+            return None
+
+    async def analizar_incidencias(self, texto: str) -> Optional[List[Dict[str, str]]]:
+        """Analiza un texto y extrae una cronología de incidencias."""
+        prompt = (
+            "Extraé la cronología de incidencias del texto y "
+            "devolvé solo un array JSON de objetos con 'fecha' y 'evento'.\n\n"
+            f"Texto:\n{texto}"
+        )
+
+        esquema = {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "fecha": {"type": "string"},
+                    "evento": {"type": "string"},
+                },
+                "required": ["fecha", "evento"],
+            },
+        }
+
+        try:
+            respuesta = await self.consultar_gpt(prompt)
+            return await self.procesar_json_response(respuesta, esquema)
+        except Exception as e:
+            logger.error("Error al analizar incidencias: %s", e)
             return None
 
 # Instancia global

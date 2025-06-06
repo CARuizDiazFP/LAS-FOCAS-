@@ -12,6 +12,7 @@ from .comparador import iniciar_comparador, recibir_tracking, procesar_comparaci
 from .cargar_tracking import iniciar_carga_tracking, guardar_tracking_servicio
 from .descargar_tracking import iniciar_descarga_tracking, enviar_tracking_servicio
 from .id_carrier import iniciar_identificador_carrier, procesar_identificador_carrier
+from .incidencias import iniciar_incidencias, procesar_incidencias
 
 __all__ = [
     'start_handler',
@@ -30,5 +31,7 @@ __all__ = [
     'iniciar_descarga_tracking',
     'enviar_tracking_servicio',
     'iniciar_identificador_carrier',
-    'procesar_identificador_carrier'
+    'procesar_identificador_carrier',
+    'iniciar_incidencias',
+    'procesar_incidencias'
 ]

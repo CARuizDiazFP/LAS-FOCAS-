@@ -56,6 +56,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         registrar_conversacion(query.from_user.id, "boton_id_carrier", "Inicio id carrier", "callback")
         await iniciar_identificador_carrier(update, context)
 
+    elif query.data == "analizar_incidencias":
+        from .incidencias import iniciar_incidencias
+        registrar_conversacion(query.from_user.id, "analizar_incidencias", "Inicio incidencias", "callback")
+        await iniciar_incidencias(update, context)
+
     elif query.data == "confirmar_tracking":
         user_id = query.from_user.id
         context.user_data["id_servicio"] = context.user_data.get("id_servicio_detected")

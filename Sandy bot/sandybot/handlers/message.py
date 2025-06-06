@@ -329,6 +329,7 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "reporte de repetitividad",
         ],
         "informe_sla": ["informe de sla", "reporte de sla"],
+        "analizar_incidencias": ["analizar incidencias", "incidencias"],
         "start": [
             "start",
             "/start",
@@ -370,6 +371,8 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         return "informe_repetitividad"
     if "sla" in texto and "inform" in texto:
         return "informe_sla"
+    if "incidenc" in texto and ("analiz" in texto or "docx" in texto):
+        return "analizar_incidencias"
     if "nueva" in texto and "solicitud" in texto:
         return "nueva_solicitud"
     if (
@@ -413,6 +416,10 @@ async def _ejecutar_accion_natural(
         return True
     elif accion == "informe_repetitividad":
         await iniciar_repetitividad(update, context)
+        return True
+    elif accion == "analizar_incidencias":
+        from .incidencias import iniciar_incidencias
+        await iniciar_incidencias(update, context)
         return True
     elif accion == "informe_sla":
         await responder_registrando(
