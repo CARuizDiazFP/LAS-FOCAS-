@@ -20,6 +20,7 @@ from .handlers import (
     callback_handler,
     message_handler,
     document_handler,
+    voice_handler,
     procesar_comparacion,
     iniciar_carga_tracking,
     iniciar_descarga_tracking
@@ -55,6 +56,12 @@ class SandyBot:
         self.app.add_handler(MessageHandler(
             filters.Document.ALL,
             document_handler
+        ))
+
+        # Mensajes de voz
+        self.app.add_handler(MessageHandler(
+            filters.VOICE,
+            voice_handler
         ))
         
         # Error handler

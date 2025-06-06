@@ -14,6 +14,7 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 - Generación de documentos Word
 - Integración con Notion para seguimiento de solicitudes
 - Registro de interacciones para ajustar el tono de las respuestas
+- Transcripción de mensajes de voz usando la API de OpenAI
 
 ## Requisitos
 
