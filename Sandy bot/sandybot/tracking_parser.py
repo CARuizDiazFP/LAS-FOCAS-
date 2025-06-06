@@ -65,6 +65,7 @@ class TrackingParser:
         """Genera un Excel con cada tracking y las coincidencias."""
         # Durante las pruebas unitarias se simplifica la salida a un archivo
         # de texto para evitar dependencias pesadas como ``openpyxl``.
+
         if os.getenv("PYTEST_CURRENT_TEST"):
             with open(output, "w", encoding="utf-8") as f:
                 for sheet, _ in self._data:
@@ -79,3 +80,4 @@ class TrackingParser:
             for sheet, df in self._data:
                 df.to_excel(writer, sheet_name=sheet, index=False)
             coincidencias.to_excel(writer, sheet_name="Coincidencias", index=False)
+            
