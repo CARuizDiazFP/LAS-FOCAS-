@@ -15,26 +15,21 @@ def registrar_conversacion(user_id: int, mensaje: str, respuesta: str, modo: str
     :param respuesta: Respuesta enviada por el bot.
     :param modo: Modo de la conversación (ej. GPT, comando).
     """
-    session = None
-    try:
-        session = SessionLocal()
-        nueva_conversacion = Conversacion(
-            user_id=str(user_id),  # Asegurar que user_id sea string para el modelo
-            mensaje=mensaje,
-            respuesta=respuesta,
-            modo=modo,
-            fecha=datetime.utcnow()
-        )
-        session.add(nueva_conversacion)
-        session.commit()
-        logger.info(f"✅ Conversación guardada para user_id: {user_id}")
-    except Exception as e:
-        logger.error(f"❌ Error al guardar conversación para user_id {user_id}: {e}")
-        if session:
-            session.rollback() # Hacer rollback en caso de error
-    finally:
-        if session:
-            session.close()
+    with SessionLocal() as session:
+        try:
+            nueva_conversacion = Conversacion(
+                user_id=str(user_id),  # Asegurar que user_id sea string para el modelo
+                mensaje=mensaje,
+                respuesta=respuesta,
+                modo=modo,
+                fecha=datetime.utcnow()
+            )
+            session.add(nueva_conversacion)
+            session.commit()
+            logger.info(f"✅ Conversación guardada para user_id: {user_id}")
+        except Exception as e:
+            logger.error(f"❌ Error al guardar conversación para user_id {user_id}: {e}")
+            session.rollback()  # Hacer rollback en caso de error
 
 
 async def responder_registrando(
