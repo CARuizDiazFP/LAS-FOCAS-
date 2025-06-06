@@ -52,6 +52,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 await update.message.reply_text("Enviá el archivo .txt del tracking.")
             return
 
+        # Descarga de tracking
+        if UserState.get_mode(user_id) == "descargar_tracking":
+            from .descargar_tracking import enviar_tracking_servicio
+            await enviar_tracking_servicio(update, context)
+            return
+
         # Manejo de estado de usuario
         if UserState.is_waiting_detail(user_id):
             await _manejar_detalle_pendiente(update, context, user_id, mensaje_usuario)
@@ -228,6 +234,11 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "subir tracking",
             "adjuntar tracking",
         ],
+        "descargar_tracking": [
+            "descargar tracking",
+            "obtener tracking",
+            "bajar tracking",
+        ],
         "id_carrier": [
             "identificador de servicio carrier",
             "id carrier",
@@ -259,6 +270,12 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         or "adjuntar" in texto
     ):
         return "cargar_tracking"
+    if "tracking" in texto and (
+        "descarg" in texto
+        or "bajar" in texto
+        or "obten" in texto
+    ):
+        return "descargar_tracking"
     if "carrier" in texto and ("ident" in texto or "id" in texto):
         return "id_carrier"
     if "repetit" in texto and "inform" in texto:
@@ -280,6 +297,9 @@ async def _ejecutar_accion_natural(
         await iniciar_verificacion_ingresos(update, context)
     elif accion == "cargar_tracking":
         await iniciar_carga_tracking(update, context)
+    elif accion == "descargar_tracking":
+        from .descargar_tracking import iniciar_descarga_tracking
+        await iniciar_descarga_tracking(update, context)
     elif accion == "id_carrier":
         await iniciar_identificador_carrier(update, context)
     elif accion == "informe_repetitividad":
