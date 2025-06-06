@@ -9,6 +9,7 @@ from datetime import datetime
 from typing import Dict, Any, Optional
 from pathlib import Path
 from telegram import Update, Message
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,13 @@ def normalizar_texto(texto: str) -> str:
     Normaliza un string para comparaciones (elimina acentos, mayúsculas, etc)
     """
     return unicodedata.normalize('NFKD', texto).encode('ascii', 'ignore').decode('ascii').lower()
+
+def normalizar_camara(texto: str) -> str:
+    """Normaliza nombres de cámara eliminando acentos y equivalencias."""
+    t = normalizar_texto(texto)
+    t = t.replace('cam.', 'camara')
+    t = re.sub(r'\bcam\b', 'camara', t)
+    return t.strip()
 
 def cargar_json(ruta: Path) -> Dict:
     """

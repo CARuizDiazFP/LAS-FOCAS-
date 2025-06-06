@@ -5,6 +5,7 @@ Configuración y modelos de la base de datos
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect
 from sqlalchemy.orm import declarative_base, sessionmaker
 import json
+from .utils import normalizar_camara
 from datetime import datetime
 from .config import config
 
@@ -148,7 +149,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     session = SessionLocal()
     resultados: list[Servicio] = []
     try:
-        camara_lower = nombre_camara.lower()
+        camara_norm = normalizar_camara(nombre_camara)
         for servicio in session.query(Servicio).all():
             if not servicio.camaras:
                 continue
@@ -156,7 +157,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
                 camaras = json.loads(servicio.camaras)
             except json.JSONDecodeError:
                 continue
-            if any(camara_lower == str(c).lower() for c in camaras):
+            if any(normalizar_camara(str(c)) == camara_norm for c in camaras):
                 resultados.append(servicio)
         return resultados
     finally:
