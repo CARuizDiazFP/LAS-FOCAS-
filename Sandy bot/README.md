@@ -106,6 +106,7 @@ e `id_carrier`.
 - `/start`: Muestra el menú principal
 - `/procesar`: Procesa archivos en modo comparador
 - `/cargar_tracking`: Asocia un tracking a un servicio existente
+- `/descargar_tracking`: Descarga el tracking asociado a un servicio
 
 ## Funcionalidades
 
@@ -128,8 +129,11 @@ e `id_carrier`.
      o **Modificar ID** para ingresar otro número manualmente. También podés
      confirmar escribiendo "sí" o "si".
    - Si el ID no existe en la base, Sandy lo registrará automáticamente.
+4. Descarga de tracking
+   - Elegí "Descargar tracking" desde el menú o escribí `/descargar_tracking`
+   - Indicá el número de servicio y recibirás el `.txt` si está disponible
 
-4. Informes de repetitividad
+5. Informes de repetitividad
    - Procesa Excel de casos
    - Genera informe Word
    - Identifica líneas con reclamos múltiples

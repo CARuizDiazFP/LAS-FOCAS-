@@ -34,6 +34,8 @@ y mostrará dos botones para **Procesar tracking** o **Modificar ID**.
 También se acepta la confirmación escribiendo "sí" o "si".
 Si el ID no existe en la base de datos, Sandy creará el servicio automáticamente
 al guardar el tracking.
+Para recuperar un archivo existente podés usar `/descargar_tracking` y
+especificar el número de servicio.
 
 ## Identificador de servicio Carrier
 
