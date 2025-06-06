@@ -13,6 +13,9 @@ def setup_logging(level: int = logging.INFO) -> None:
     root.setLevel(level)
     root.handlers.clear()
 
+    # Evitar que bibliotecas como httpx registren tokens o datos sensibles
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+
     consola = logging.StreamHandler()
     consola.setFormatter(formatter)
     root.addHandler(consola)
