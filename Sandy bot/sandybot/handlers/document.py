@@ -33,7 +33,11 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             await guardar_tracking_servicio(update, context)
             return
         if mode == "ingresos":
-            await procesar_ingresos(update, context)
+            if context.user_data.get("opcion_ingresos") == "excel":
+                from .ingresos import procesar_ingresos_excel
+                await procesar_ingresos_excel(update, context)
+            else:
+                await procesar_ingresos(update, context)
             return
         if mode == "id_carrier":
             await procesar_identificador_carrier(update, context)

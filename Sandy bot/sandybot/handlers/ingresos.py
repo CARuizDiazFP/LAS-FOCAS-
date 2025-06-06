@@ -1,13 +1,14 @@
 """
 Handler para la verificación de ingresos.
 """
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import logging
 import os
 import tempfile
 import json
 import re
+import pandas as pd
 from sandybot.utils import obtener_mensaje, normalizar_camara
 from ..database import obtener_servicio, actualizar_tracking, crear_servicio
 from ..config import config
@@ -89,6 +90,36 @@ async def verificar_camara(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "ingresos",
         )
 
+async def opcion_por_nombre(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Configura la verificación por nombre de cámara."""
+    mensaje = obtener_mensaje(update)
+    user_id = update.effective_user.id
+    context.user_data["esperando_opcion"] = False
+    context.user_data["opcion_ingresos"] = "nombre"
+    await responder_registrando(
+        mensaje,
+        user_id,
+        "ingresos_nombre",
+        "Enviá el nombre de la cámara que querés verificar.",
+        "ingresos",
+    )
+
+
+async def opcion_por_excel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Configura la verificación a partir de un Excel con cámaras."""
+    mensaje = obtener_mensaje(update)
+    user_id = update.effective_user.id
+    context.user_data["esperando_opcion"] = False
+    context.user_data["opcion_ingresos"] = "excel"
+    context.user_data["esperando_archivo_excel"] = True
+    await responder_registrando(
+        mensaje,
+        user_id,
+        "ingresos_excel",
+        "Adjuntá el Excel con las cámaras en la columna A.",
+        "ingresos",
+    )
+
 async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
     Inicia el proceso de verificación de ingresos.
@@ -108,13 +139,26 @@ async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DE
         user_id = update.effective_user.id
         UserState.set_mode(user_id, "ingresos")
         context.user_data.clear()
+        context.user_data["esperando_opcion"] = True
 
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "Por nombre de cámara", callback_data="ingresos_nombre"
+                ),
+                InlineKeyboardButton(
+                    "Con Excel", callback_data="ingresos_excel"
+                ),
+            ]
+        ]
+        reply_markup = InlineKeyboardMarkup(keyboard)
         await responder_registrando(
             mensaje,
             user_id,
             "verificar_ingresos",
-            "Iniciando verificación de ingresos. Enviá el nombre de la cámara que querés verificar.",
+            "¿Cómo querés validar las cámaras?",
             "ingresos",
+            reply_markup=reply_markup,
         )
     except Exception as e:
         await responder_registrando(
@@ -249,6 +293,83 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             user_id if 'user_id' in locals() else update.effective_user.id,
             "procesar_ingresos",
             f"Error al procesar ingresos: {e}",
+            "ingresos",
+        )
+
+
+async def procesar_ingresos_excel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Procesa un Excel con un listado de cámaras en la columna A."""
+    try:
+        mensaje = obtener_mensaje(update)
+        if not mensaje or not mensaje.document:
+            logger.warning("No se recibió un Excel en procesar_ingresos_excel.")
+            return
+
+        documento = mensaje.document
+        if not documento.file_name.endswith(".xlsx"):
+            await responder_registrando(
+                mensaje,
+                mensaje.from_user.id,
+                documento.file_name,
+                "Solo acepto archivos Excel (.xlsx).",
+                "ingresos",
+            )
+            return
+
+        archivo = await documento.get_file()
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+            await archivo.download_to_drive(tmp.name)
+
+        try:
+            df = pd.read_excel(tmp.name, header=None)
+            camaras = [str(c).strip() for c in df.iloc[:, 0].dropna()]
+        except Exception as e:
+            logger.error("Error leyendo Excel: %s", e)
+            await responder_registrando(
+                mensaje,
+                mensaje.from_user.id,
+                documento.file_name,
+                "No pude leer el Excel. Verificá el formato.",
+                "ingresos",
+            )
+            os.remove(tmp.name)
+            return
+
+        os.remove(tmp.name)
+
+        from ..database import buscar_servicios_por_camara
+
+        lineas = []
+        for cam in camaras:
+            servicios = buscar_servicios_por_camara(cam)
+            if not servicios:
+                lineas.append(f"{cam}: sin coincidencias")
+            elif len(servicios) == 1:
+                s = servicios[0]
+                nombre = s.nombre or "Sin nombre"
+                lineas.append(f"{cam}: {s.id} - {nombre}")
+            else:
+                ids = ", ".join(str(s.id) for s in servicios)
+                lineas.append(f"{cam}: varios servicios ({ids})")
+
+        respuesta = "\n".join(lineas) if lineas else "No se encontraron cámaras en la columna A."
+
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            documento.file_name,
+            respuesta,
+            "ingresos",
+        )
+
+        UserState.set_mode(mensaje.from_user.id, "")
+        context.user_data.clear()
+    except Exception as e:
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id if mensaje else update.effective_user.id,
+            "procesar_ingresos_excel",
+            f"Error al procesar el Excel: {e}",
             "ingresos",
         )
 
