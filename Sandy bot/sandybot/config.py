@@ -48,6 +48,8 @@ class Config:
         self.ARCHIVO_INTERACCIONES = self.DATA_DIR / "interacciones.json"
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
+        # Cache de consultas a GPT para reducir costos y latencia
+        self.GPT_CACHE_FILE = self.DATA_DIR / "gpt_cache.json"
 
         # Plantilla de informes de repetitividad
         # Permite definir la ruta mediante la variable de entorno "PLANTILLA_PATH"

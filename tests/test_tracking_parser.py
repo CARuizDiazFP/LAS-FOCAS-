@@ -3,6 +3,7 @@ import os
 import importlib
 from types import ModuleType
 from pathlib import Path
+import pandas as pd
 import tempfile
 
 # Crear un stub de pandas para evitar dependencias externas
@@ -48,8 +49,11 @@ pandas_stub.DataFrame = DataFrame
 pandas_stub.ExcelWriter = ExcelWriter
 sys.modules.setdefault("pandas", pandas_stub)
 
+
+
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
+
 
 tracking_parser = importlib.import_module("sandybot.tracking_parser")
 TrackingParser = tracking_parser.TrackingParser

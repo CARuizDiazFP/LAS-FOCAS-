@@ -9,6 +9,7 @@ from datetime import datetime
 import openai
 from jsonschema import validate, ValidationError
 from .config import config
+from .utils import cargar_json, guardar_json
 
 logger = logging.getLogger(__name__)
 
@@ -18,7 +19,8 @@ class GPTHandler:
     Implementa cache, reintentos, y manejo de rate limits.
     """
     def __init__(self):
-        self.cache: Dict[str, tuple] = {}
+        # Cargar la cache desde disco para conservar respuestas entre ejecuciones
+        self.cache: Dict[str, Dict[str, str]] = cargar_json(config.GPT_CACHE_FILE)
         # Se crea un cliente asíncrono para la API de OpenAI.
         # De esta forma se aprovecha la nueva interfaz de la
         # biblioteca ``openai`` a partir de la versión 1.x.
@@ -38,13 +40,22 @@ class GPTHandler:
         Raises:
             Exception: Si no se puede obtener respuesta después de los reintentos
         """
-        if cache:
-            cache_key = mensaje.strip().lower()
-            if cache_key in self.cache:
-                timestamp, response = self.cache[cache_key]
-                if (datetime.now() - timestamp).seconds < config.GPT_CACHE_TIMEOUT:
-                    logger.info("Usando respuesta cacheada para: %s", mensaje[:50])
-                    return response
+        cache_key = mensaje.strip().lower()
+        if cache and cache_key in self.cache:
+            entrada = self.cache[cache_key]
+            ts = datetime.fromisoformat(entrada["timestamp"])
+            if (datetime.now() - ts).seconds < config.GPT_CACHE_TIMEOUT:
+                logger.info("Usando respuesta cacheada para: %s", mensaje[:50])
+                return entrada["response"]
+
+        # Limpiar respuestas vencidas de la cache
+        ahora = datetime.now()
+        vencidos = [k for k, v in self.cache.items()
+                   if (ahora - datetime.fromisoformat(v["timestamp"])).seconds >= config.GPT_CACHE_TIMEOUT]
+        for k in vencidos:
+            del self.cache[k]
+        if vencidos:
+            guardar_json(self.cache, config.GPT_CACHE_FILE)
 
         for intento in range(config.GPT_MAX_RETRIES):
             try:
@@ -59,7 +70,11 @@ class GPTHandler:
                 resultado = respuesta.choices[0].message.content.strip()
                 
                 if cache:
-                    self.cache[cache_key] = (datetime.now(), resultado)
+                    self.cache[cache_key] = {
+                        "timestamp": datetime.now().isoformat(),
+                        "response": resultado,
+                    }
+                    guardar_json(self.cache, config.GPT_CACHE_FILE)
                 return resultado
                 
             except openai.RateLimitError:
