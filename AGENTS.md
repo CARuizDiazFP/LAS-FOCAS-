@@ -16,6 +16,10 @@ Sandy es un agente inteligente que opera en Telegram y automatiza tareas repetit
   y reglas simples. Gracias a ello frases como "Comparemos trazados de FO"
   activan automáticamente el flujo "Comparar trazados FO" sin necesidad de
   presionar el botón.
+- Desde 2026 se añadió un módulo de GPT que intenta identificar el flujo
+  correspondiente a partir del texto completo del usuario.
+  Si no puede clasificarlo con certeza, genera una pregunta automática
+  para aclarar la intención antes de continuar.
 
 ## 🎓 Filosofía de diseño
 
