@@ -4,6 +4,8 @@ Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
 API utilizada en `sandybot`.
+Desde esta versión el bot también acepta mensajes de voz, los descarga y
+transcribe automáticamente utilizando la API de OpenAI.
 
 ## Variables de entorno
 
