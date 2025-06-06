@@ -40,4 +40,7 @@ al guardar el tracking.
 Desde el menú principal es posible seleccionar **Identificador de servicio Carrier**.
 Esta opción recibe un Excel con las columnas "ID Servicio" e "ID Carrier".
 El bot completa los valores faltantes consultando la base de datos y devuelve el archivo actualizado.
+Luego de enviar el Excel, cada fila se registra en la tabla `servicios`,
+actualizando el `id_carrier` si el servicio existe o creando una entrada nueva
+en caso contrario.
 
