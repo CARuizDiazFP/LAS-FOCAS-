@@ -39,7 +39,7 @@ async def iniciar_carga_tracking(update: Update, context: ContextTypes.DEFAULT_T
 async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Guarda el tracking en la base de datos."""
     mensaje = obtener_mensaje(update)
-    if not mensaje and "tracking_temp" not in context.user_data:
+    if not mensaje and not context.user_data.get("tracking_files"):
         return
 
     user_id = mensaje.from_user.id if mensaje else update.effective_user.id
@@ -60,48 +60,66 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
         archivo = await documento.get_file()
         ruta_temp = config.DATA_DIR / f"tmp_{documento.file_unique_id}.txt"
         await archivo.download_to_drive(str(ruta_temp))
-        context.user_data["tracking_temp"] = str(ruta_temp)
 
-        if "id_servicio" not in context.user_data:
-            match = re.search(r"_(\d+)", documento.file_name)
-            if match:
-                context.user_data["id_servicio_detected"] = int(match.group(1))
-                keyboard = InlineKeyboardMarkup(
-                    [
-                        [
-                            InlineKeyboardButton(
-                                "Procesar tracking", callback_data="confirmar_tracking"
-                            ),
-                            InlineKeyboardButton(
-                                "Modificar ID", callback_data="cambiar_id_tracking"
-                            ),
-                        ]
-                    ]
-                )
-                await responder_registrando(
-                    mensaje,
-                    user_id,
-                    documento.file_name,
-                    f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio?",
-                    "cargar_tracking",
-                )
-                await mensaje.reply_text(
-                    f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio?",
-                    reply_markup=keyboard,
-                )
-            else:
-                await responder_registrando(
-                    mensaje,
-                    user_id,
-                    documento.file_name,
-                    "No pude detectar el ID. Escribí el número del servicio.",
-                    "cargar_tracking",
-                )
-            context.user_data["confirmar_id"] = True
+        archivos = context.user_data.setdefault("tracking_files", [])
+        match = re.search(r"_(\d+)", documento.file_name)
+        archivos.append(
+            {
+                "ruta": str(ruta_temp),
+                "id": int(match.group(1)) if match else None,
+                "nombre": documento.file_name,
+            }
+        )
+
+        if len(archivos) > 1:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                documento.file_name,
+                f"Archivo agregado. Hay {len(archivos)} archivos en cola.",
+                "cargar_tracking",
+            )
             return
 
+        if match:
+            context.user_data["id_servicio_detected"] = int(match.group(1))
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Procesar tracking", callback_data="confirmar_tracking"
+                        ),
+                        InlineKeyboardButton(
+                            "Modificar ID", callback_data="cambiar_id_tracking"
+                        ),
+                    ]
+                ]
+            )
+            await responder_registrando(
+                mensaje,
+                user_id,
+                documento.file_name,
+                f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio?",
+                "cargar_tracking",
+            )
+            await mensaje.reply_text(
+                f"Se detectó el ID {match.group(1)}. ¿Deseás asociarlo a este servicio?",
+                reply_markup=keyboard,
+            )
+        else:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                documento.file_name,
+                "No pude detectar el ID. Escribí el número del servicio.",
+                "cargar_tracking",
+            )
+        context.user_data["confirmar_id"] = True
+        return
+
     servicio = context.user_data.get("id_servicio")
-    ruta_temp = context.user_data.get("tracking_temp")
+    archivos = context.user_data.get("tracking_files", [])
+    ruta_temp = archivos[0]["ruta"] if archivos else None
     if servicio is None or ruta_temp is None:
         await responder_registrando(
             mensaje,
@@ -149,6 +167,53 @@ async def guardar_tracking_servicio(update: Update, context: ContextTypes.DEFAUL
             "cargar_tracking",
         )
     finally:
+        parser.clear_data()
+
+    # Eliminar la ruta procesada y mantener la cola
+    if context.user_data.get("tracking_files"):
+        context.user_data["tracking_files"].pop(0)
+    context.user_data.pop("id_servicio", None)
+    context.user_data.pop("id_servicio_detected", None)
+    context.user_data.pop("confirmar_id", None)
+
+    if context.user_data.get("tracking_files"):
+        siguiente = context.user_data["tracking_files"][0]
+        if siguiente.get("id") is not None:
+            context.user_data["id_servicio_detected"] = siguiente["id"]
+            context.user_data["confirmar_id"] = True
+            keyboard = InlineKeyboardMarkup(
+                [
+                    [
+                        InlineKeyboardButton(
+                            "Procesar tracking", callback_data="confirmar_tracking"
+                        ),
+                        InlineKeyboardButton(
+                            "Modificar ID", callback_data="cambiar_id_tracking"
+                        ),
+                    ]
+                ]
+            )
+            await responder_registrando(
+                mensaje,
+                user_id,
+                siguiente["nombre"],
+                f"Se detectó el ID {siguiente['id']}. ¿Deseás asociarlo a este servicio?",
+                "cargar_tracking",
+            )
+            await mensaje.reply_text(
+                f"Se detectó el ID {siguiente['id']}. ¿Deseás asociarlo a este servicio?",
+                reply_markup=keyboard,
+            )
+        else:
+            context.user_data["confirmar_id"] = True
+            await responder_registrando(
+                mensaje,
+                user_id,
+                siguiente["nombre"],
+                "No pude detectar el ID. Escribí el número del servicio.",
+                "cargar_tracking",
+            )
+        UserState.set_mode(user_id, "cargar_tracking")
+    else:
         UserState.set_mode(user_id, "")
         context.user_data.clear()
-        parser.clear_data()
