@@ -8,8 +8,16 @@ import os
 import tempfile
 import pandas as pd
 from docx import Document
-import win32com.client as win32
-import pythoncom
+# Los siguientes módulos solo están disponibles en Windows. Se usan para
+# modificar el documento Word mediante COM.
+try:
+    import win32com.client as win32
+    import pythoncom
+except ImportError:
+    # Si fallan las importaciones, se asigna None para deshabilitar
+    # la funcionalidad específica de Windows.
+    win32 = None
+    pythoncom = None
 import locale
 from datetime import datetime
 import logging
@@ -206,11 +214,19 @@ def generar_informe_y_modificar(ruta_excel):
     ruta_docx_generado = os.path.join(tempfile.gettempdir(), nombre_archivo)
     doc.save(ruta_docx_generado)
 
-    modificar_informe_con_pythoncom(ruta_docx_generado, mes_actual, año_actual)
+    # Si win32 es None significa que la importación falló y estamos en un
+    # sistema que no soporta esta funcionalidad (generalmente no Windows).
+    if win32 is not None:
+        modificar_informe_con_pythoncom(ruta_docx_generado, mes_actual, año_actual)
+    else:
+        logger.info(
+            "Omitiendo modificación por COM; esta funcionalidad solo está disponible en Windows."
+        )
     return ruta_docx_generado
 
 
 def modificar_informe_con_pythoncom(docx_path, mes_actual, año_actual):
+    """Aplica cambios en el Word mediante COM. Solo disponible en Windows."""
     pythoncom.CoInitialize()
     try:
         word_app = win32.Dispatch("Word.Application")
