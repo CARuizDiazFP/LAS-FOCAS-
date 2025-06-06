@@ -9,8 +9,14 @@ from ..database import SessionLocal, Conversacion, obtener_servicio, crear_servi
 import os
 from .estado import UserState
 from .notion import registrar_accion_pendiente
-from .cargar_tracking import guardar_tracking_servicio
-from .ingresos import verificar_camara
+from .ingresos import verificar_camara, iniciar_verificacion_ingresos
+from .comparador import iniciar_comparador
+from .cargar_tracking import (
+    guardar_tracking_servicio,
+    iniciar_carga_tracking,
+)
+from .repetitividad import iniciar_repetitividad
+from .id_carrier import iniciar_identificador_carrier
 from ..utils import normalizar_texto
 
 logger = logging.getLogger(__name__)
@@ -52,6 +58,13 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         mode = UserState.get_mode(user_id)
+
+        if mode in ("", "sandy"):
+            accion = _detectar_accion_natural(mensaje_usuario)
+            if accion:
+                await _ejecutar_accion_natural(accion, update, context)
+                return
+
         if mode == "comparador":
             await _manejar_comparador(update, context, mensaje_usuario)
             return
@@ -184,6 +197,60 @@ async def _manejar_comparador(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "Opción inválida. Escribí 'siguiente' o adjuntá el archivo .txt."
             )
         return
+
+
+def _detectar_accion_natural(mensaje: str) -> str | None:
+    """Intenta mapear el mensaje a una acción disponible."""
+    texto = normalizar_texto(mensaje)
+    claves = {
+        "comparar_fo": ["comparar trazados", "comparacion fo", "comparar fo"],
+        "verificar_ingresos": ["verificar ingresos", "validar ingresos"],
+        "cargar_tracking": ["cargar tracking", "subir tracking"],
+        "id_carrier": ["identificador de servicio carrier", "id carrier", "identificar carrier"],
+        "informe_repetitividad": ["informe de repetitividad", "reporte de repetitividad"],
+        "informe_sla": ["informe de sla", "reporte de sla"],
+        "otro": ["otro"],
+        "nueva_solicitud": ["nueva solicitud", "registrar solicitud"],
+    }
+
+    for accion, palabras in claves.items():
+        for palabra in palabras:
+            if palabra in texto:
+                return accion
+    return None
+
+
+async def _ejecutar_accion_natural(
+    accion: str, update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Ejecuta la acción asociada al texto ingresado."""
+    if accion == "comparar_fo":
+        await iniciar_comparador(update, context)
+    elif accion == "verificar_ingresos":
+        await iniciar_verificacion_ingresos(update, context)
+    elif accion == "cargar_tracking":
+        await iniciar_carga_tracking(update, context)
+    elif accion == "id_carrier":
+        await iniciar_identificador_carrier(update, context)
+    elif accion == "informe_repetitividad":
+        await iniciar_repetitividad(update, context)
+    elif accion == "informe_sla":
+        await update.message.reply_text(
+            "🔧 Función 'Informe de SLA' aún no implementada."
+        )
+    elif accion == "otro":
+        UserState.set_mode(update.effective_user.id, "sandy")
+        await update.message.reply_text(
+            "¿Para qué me jodés? Indique su pregunta o solicitud. "
+            "Si no puedo hacerla, se enviará como solicitud de implementación."
+        )
+    elif accion == "nueva_solicitud":
+        UserState.set_mode(update.effective_user.id, "sandy")
+        UserState.set_waiting_detail(update.effective_user.id, True)
+        context.user_data["nueva_solicitud"] = True
+        await update.message.reply_text(
+            "✍️ Escribí el detalle de la solicitud y la registraré para revisión."
+        )
 
 def _generar_prompt_malhumorado(mensaje: str) -> str:
     """Genera el prompt con tono malhumorado para GPT"""
