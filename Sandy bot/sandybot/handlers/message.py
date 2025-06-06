@@ -203,11 +203,32 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
     """Intenta mapear el mensaje a una acción disponible."""
     texto = normalizar_texto(mensaje)
     claves = {
-        "comparar_fo": ["comparar trazados", "comparacion fo", "comparar fo"],
-        "verificar_ingresos": ["verificar ingresos", "validar ingresos"],
-        "cargar_tracking": ["cargar tracking", "subir tracking"],
-        "id_carrier": ["identificador de servicio carrier", "id carrier", "identificar carrier"],
-        "informe_repetitividad": ["informe de repetitividad", "reporte de repetitividad"],
+        "comparar_fo": [
+            "comparar trazados",
+            "comparacion fo",
+            "comparar fo",
+            "comparemos trazados",
+            "comparemos fo",
+        ],
+        "verificar_ingresos": [
+            "verificar ingresos",
+            "validar ingresos",
+            "verifiquemos ingresos",
+        ],
+        "cargar_tracking": [
+            "cargar tracking",
+            "subir tracking",
+            "adjuntar tracking",
+        ],
+        "id_carrier": [
+            "identificador de servicio carrier",
+            "id carrier",
+            "identificar carrier",
+        ],
+        "informe_repetitividad": [
+            "informe de repetitividad",
+            "reporte de repetitividad",
+        ],
         "informe_sla": ["informe de sla", "reporte de sla"],
         "otro": ["otro"],
         "nueva_solicitud": ["nueva solicitud", "registrar solicitud"],
@@ -217,6 +238,22 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         for palabra in palabras:
             if palabra in texto:
                 return accion
+
+    # Heurísticos para variaciones en lenguaje natural
+    if "compar" in texto and ("fo" in texto or "trazad" in texto):
+        return "comparar_fo"
+    if "ingres" in texto and ("verific" in texto or "valid" in texto):
+        return "verificar_ingresos"
+    if "tracking" in texto and ("cargar" in texto or "subir" in texto or "adjuntar" in texto):
+        return "cargar_tracking"
+    if "carrier" in texto and ("ident" in texto or "id" in texto):
+        return "id_carrier"
+    if "repetit" in texto and "inform" in texto:
+        return "informe_repetitividad"
+    if "sla" in texto and "inform" in texto:
+        return "informe_sla"
+    if "nueva" in texto and "solicitud" in texto:
+        return "nueva_solicitud"
     return None
 
 
