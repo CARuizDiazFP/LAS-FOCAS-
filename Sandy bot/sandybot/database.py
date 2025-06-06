@@ -147,10 +147,18 @@ def actualizar_tracking(
 def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada."""
     session = SessionLocal()
-    resultados: list[Servicio] = []
     try:
-        camara_norm = normalizar_camara(nombre_camara)
-        for servicio in session.query(Servicio).all():
+        fragmento = normalizar_camara(nombre_camara)
+
+        # Consulta preliminar para evitar recorrer todos los registros
+        candidatos = (
+            session.query(Servicio)
+            .filter(Servicio.camaras.ilike(f"%{fragmento}%"))
+            .all()
+        )
+
+        resultados: list[Servicio] = []
+        for servicio in candidatos:
             if not servicio.camaras:
                 continue
             try:
@@ -159,7 +167,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
                 continue
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
-                if camara_norm in c_norm or c_norm in camara_norm:
+                if fragmento in c_norm or c_norm in fragmento:
                     resultados.append(servicio)
                     break
         return resultados
