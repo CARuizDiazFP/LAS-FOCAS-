@@ -162,3 +162,30 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     finally:
         session.close()
 
+
+def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:
+    """Crea o actualiza un servicio con el ``id_servicio`` dado.
+
+    Si el servicio existe, se actualiza el campo ``id_carrier`` si fue
+    proporcionado. En caso contrario se genera un nuevo registro con los datos
+    recibidos.
+    """
+    session = SessionLocal()
+    try:
+        servicio = session.get(Servicio, id_servicio)
+        if servicio:
+            if id_carrier is not None:
+                servicio.id_carrier = str(id_carrier)
+            session.commit()
+            session.refresh(servicio)
+            return servicio
+        nuevo = Servicio(id=id_servicio)
+        if id_carrier is not None:
+            nuevo.id_carrier = str(id_carrier)
+        session.add(nuevo)
+        session.commit()
+        session.refresh(nuevo)
+        return nuevo
+    finally:
+        session.close()
+

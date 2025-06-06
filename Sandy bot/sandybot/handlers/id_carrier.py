@@ -8,7 +8,7 @@ import os
 import tempfile
 
 from ..utils import obtener_mensaje
-from ..database import SessionLocal, Servicio
+from ..database import SessionLocal, Servicio, registrar_servicio
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
@@ -99,6 +99,21 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
 
     with open(salida, "rb") as f:
         await mensaje.reply_document(f, filename=os.path.basename(salida))
+
+    # Registrar cada fila procesada en la base de datos luego de enviar el Excel
+    try:
+        for _, row in df.iterrows():
+            id_servicio = row.get(col_servicio)
+            id_carrier = row.get(col_carrier)
+            if pd.isna(id_servicio) or pd.isna(id_carrier):
+                continue
+            try:
+                id_servicio = int(id_servicio)
+            except ValueError:
+                continue
+            registrar_servicio(id_servicio, str(id_carrier))
+    except Exception as e:
+        logger.error("Error al registrar servicios: %s", e)
 
     os.remove(tmp.name)
     os.remove(salida)
