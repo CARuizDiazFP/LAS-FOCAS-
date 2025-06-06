@@ -8,7 +8,7 @@ import os
 import tempfile
 import json
 import re
-from sandybot.utils import obtener_mensaje
+from sandybot.utils import obtener_mensaje, normalizar_camara
 from ..database import obtener_servicio, actualizar_tracking, crear_servicio
 from ..config import config
 import shutil
@@ -187,9 +187,9 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         except json.JSONDecodeError:
             camaras_servicio = []
 
-        # Mapas en minúsculas para comparar sin distinguir mayúsculas o minúsculas
-        map_archivo = {c.lower(): c for c in camaras_archivo}
-        map_servicio = {c.lower(): c for c in camaras_servicio}
+        # Mapas normalizados para comparar sin acentos ni mayúsculas
+        map_archivo = {normalizar_camara(c): c for c in camaras_archivo}
+        map_servicio = {normalizar_camara(c): c for c in camaras_servicio}
 
         set_archivo = set(map_archivo.keys())
         set_servicio = set(map_servicio.keys())
