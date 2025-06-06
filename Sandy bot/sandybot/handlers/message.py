@@ -217,6 +217,8 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         ],
         "cargar_tracking": [
             "cargar tracking",
+            "carguemos un tracking",
+            "carguemos el tracking",
             "subir tracking",
             "adjuntar tracking",
         ],
@@ -244,7 +246,12 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         return "comparar_fo"
     if "ingres" in texto and ("verific" in texto or "valid" in texto):
         return "verificar_ingresos"
-    if "tracking" in texto and ("cargar" in texto or "subir" in texto or "adjuntar" in texto):
+    if "tracking" in texto and (
+        "cargar" in texto
+        or "cargu" in texto
+        or "subir" in texto
+        or "adjuntar" in texto
+    ):
         return "cargar_tracking"
     if "carrier" in texto and ("ident" in texto or "id" in texto):
         return "id_carrier"
