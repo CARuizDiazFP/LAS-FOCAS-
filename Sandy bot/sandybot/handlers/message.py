@@ -91,8 +91,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
             if accion:
-                await _ejecutar_accion_natural(accion, update, context)
-                return
+                handled = await _ejecutar_accion_natural(
+                    accion, update, context, mensaje_usuario
+                )
+                if handled:
+                    return
 
         if mode == "comparador":
             await _manejar_comparador(update, context, mensaje_usuario)
@@ -326,6 +329,14 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "reporte de repetitividad",
         ],
         "informe_sla": ["informe de sla", "reporte de sla"],
+        "start": [
+            "start",
+            "/start",
+            "menu",
+            "ayuda",
+            "funciones",
+            "opciones",
+        ],
         "otro": ["otro"],
         "nueva_solicitud": ["nueva solicitud", "registrar solicitud"],
     }
@@ -361,26 +372,48 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         return "informe_sla"
     if "nueva" in texto and "solicitud" in texto:
         return "nueva_solicitud"
+    if (
+        "funcion" in texto
+        or "opcion" in texto
+        or "menu" in texto
+        or "ayuda" in texto
+        or "que podes" in texto
+        or "que sabes" in texto
+    ):
+        return "start"
     return None
 
 
 async def _ejecutar_accion_natural(
-    accion: str, update: Update, context: ContextTypes.DEFAULT_TYPE
-) -> None:
-    """Ejecuta la acción asociada al texto ingresado."""
+    accion: str,
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    mensaje: str,
+) -> bool:
+    """Ejecuta la acción asociada al texto ingresado.
+
+    Devuelve ``True`` si se manejó la acción, ``False`` si debe
+    continuar con el flujo de conversación por defecto.
+    """
     if accion == "comparar_fo":
         await iniciar_comparador(update, context)
+        return True
     elif accion == "verificar_ingresos":
         await iniciar_verificacion_ingresos(update, context)
+        return True
     elif accion == "cargar_tracking":
         await iniciar_carga_tracking(update, context)
+        return True
     elif accion == "descargar_tracking":
         from .descargar_tracking import iniciar_descarga_tracking
         await iniciar_descarga_tracking(update, context)
+        return True
     elif accion == "id_carrier":
         await iniciar_identificador_carrier(update, context)
+        return True
     elif accion == "informe_repetitividad":
         await iniciar_repetitividad(update, context)
+        return True
     elif accion == "informe_sla":
         await responder_registrando(
             update.message,
@@ -389,15 +422,24 @@ async def _ejecutar_accion_natural(
             "🔧 Función 'Informe de SLA' aún no implementada.",
             "informe_sla",
         )
+        return True
+    elif accion == "start":
+        from .start import start_handler
+        await start_handler(update, context)
+        return True
     elif accion == "otro":
-        UserState.set_mode(update.effective_user.id, "sandy")
-        await responder_registrando(
-            update.message,
-            update.effective_user.id,
-            accion,
-            "¿Para qué me jodés? Indique su pregunta o solicitud. Si no puedo hacerla, se enviará como solicitud de implementación.",
-            "otro",
-        )
+        texto = normalizar_texto(mensaje or "")
+        if "otro" in texto:
+            UserState.set_mode(update.effective_user.id, "sandy")
+            await responder_registrando(
+                update.message,
+                update.effective_user.id,
+                mensaje,
+                "¿Para qué me jodés? Indique su pregunta o solicitud. Si no puedo hacerla, se enviará como solicitud de implementación.",
+                "otro",
+            )
+            return True
+        return False
     elif accion == "nueva_solicitud":
         UserState.set_mode(update.effective_user.id, "sandy")
         UserState.set_waiting_detail(update.effective_user.id, True)
@@ -409,7 +451,9 @@ async def _ejecutar_accion_natural(
             "✍️ Escribí el detalle de la solicitud y la registraré para revisión.",
             "nueva_solicitud",
         )
-
+        return True
+    else:
+        return True
 def _generar_prompt_malhumorado(mensaje: str) -> str:
     """Genera el prompt con tono malhumorado para GPT"""
     return (
