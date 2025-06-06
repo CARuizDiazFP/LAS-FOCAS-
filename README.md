@@ -56,10 +56,17 @@ Luego de enviar el Excel, cada fila se registra en la tabla `servicios`,
 actualizando el `id_carrier` si el servicio existe o creando una entrada nueva
 en caso contrario.
 
+## Analizador de incidencias
+
+Esta función genera un resumen de las fallas registradas en reportes de campo. Actualmente se debe adjuntar un archivo `.docx` con la información. En el futuro se usará una API para obtener las incidencias de manera automática.
+
+Para iniciar el análisis, seleccioná **Analizador de incidencias** en el menú principal o ejecutá `/analizar_incidencias`. Luego enviá el documento `.docx` y el bot responderá con los hallazgos.
+
 ## Errores por variables de entorno faltantes
 
 Al iniciar el bot, `config.py` valida que todas las variables de entorno
 necesarias estén definidas. Si alguna falta, se genera un mensaje como:
+
 
 ```
 ⚠️ No se encontraron las siguientes variables de entorno requeridas: VAR1, VAR2.
