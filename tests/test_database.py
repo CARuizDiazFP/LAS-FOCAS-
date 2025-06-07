@@ -2,6 +2,7 @@ import os
 import sys
 import importlib
 from pathlib import Path
+from datetime import datetime
 import pytest
 import openpyxl
 
@@ -65,3 +66,13 @@ def test_exportar_camaras_servicio(tmp_path):
     ws = wb.active
     filas = [c[0].value for c in ws.iter_rows(values_only=False)]
     assert filas == ["camara", "Camara 1", "Camara 2"]
+
+
+def test_crear_ingreso():
+    servicio = bd.crear_servicio(nombre="S5", cliente="E")
+    fecha = datetime(2023, 1, 1, 12, 30)
+    ingreso = bd.crear_ingreso(servicio.id, "Camara X", fecha=fecha, usuario="u")
+    with bd.SessionLocal() as session:
+        fila = session.query(bd.Ingreso).first()
+        assert fila.camara == "Camara X"
+        assert fila.fecha == fecha
