@@ -17,6 +17,9 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
            InlineKeyboardButton("⬇️ Descargar tracking", callback_data="descargar_tracking"),
         ],
         [
+           InlineKeyboardButton("⬇️ Descargar cámaras", callback_data="descargar_camaras"),
+        ],
+        [
            InlineKeyboardButton(
                "Identificador de servicio Carrier", callback_data="id_carrier"
            ),

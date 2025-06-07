@@ -6,6 +6,7 @@ Sandy es un agente inteligente que opera en Telegram y automatiza tareas repetit
 
 - Verificación de ingresos a cámaras de fibra óptica
 - Comparación de trazados (trackings)
+- Descarga de cámaras del servicio en Excel
 - Generación de informes (repetitividad, coincidencias, etc.)
 - Identificación de servicio Carrier a partir de archivos Excel. Los datos de
   cada fila se guardan en la base actualizando el `id_carrier` del servicio o
