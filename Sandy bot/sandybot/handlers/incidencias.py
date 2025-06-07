@@ -5,7 +5,9 @@ from telegram.ext import ContextTypes
 import logging
 import tempfile
 import os
+
 from ..incidencias import extraer_texto_doc
+
 
 from ..gpt_handler import gpt
 from ..utils import obtener_mensaje
@@ -14,8 +16,23 @@ from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
 
+
+def leer_documento(ruta: str) -> str:
+    """Devuelve el texto de un .docx o .doc."""
+    if ruta.lower().endswith(".docx"):
+        doc = Document(ruta)
+        return "\n".join(p.text for p in doc.paragraphs if p.text)
+    # Para archivos .doc se utiliza la herramienta `antiword`
+    resultado = subprocess.run([
+        "antiword",
+        ruta,
+    ], capture_output=True, text=True)
+    if resultado.returncode != 0:
+        raise RuntimeError(resultado.stderr.strip() or "antiword falló")
+    return resultado.stdout
+
 async def iniciar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Inicia el flujo de análisis de incidencias solicitando el .docx."""
+    """Inicia el flujo solicitando documentos .docx o .doc."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en iniciar_incidencias")
@@ -27,7 +44,7 @@ async def iniciar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYPE
         mensaje,
         user_id,
         "analizar_incidencias",
-        "Enviá el documento .docx con las incidencias para procesar.",
+        "Enviá el documento .docx o .doc con las incidencias para procesar.",
         "incidencias",
     )
 
@@ -40,7 +57,10 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = mensaje.from_user.id
     documento = mensaje.document
-    if not documento.file_name.lower().endswith(('.docx', '.doc')):
+
+    nombre = documento.file_name.lower()
+    if not (nombre.endswith(".docx") or nombre.endswith(".doc")):
+
         await responder_registrando(
             mensaje,
             user_id,
@@ -51,15 +71,19 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     archivo = await documento.get_file()
-    suf = ".docx" if documento.file_name.lower().endswith(".docx") else ".doc"
-    with tempfile.NamedTemporaryFile(delete=False, suffix=suf) as tmp:
+
+    sufijo = ".docx" if nombre.endswith(".docx") else ".doc"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=sufijo) as tmp:
+
         await archivo.download_to_drive(tmp.name)
         ruta_doc = tmp.name
 
     try:
-        texto = extraer_texto_doc(ruta_doc)
+
+        texto = leer_documento(ruta_doc)
+
     except Exception as e:
-        logger.error("Error leyendo docx: %s", e)
+        logger.error("Error leyendo documento: %s", e)
         await responder_registrando(
             mensaje,
             user_id,
@@ -67,10 +91,24 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
             f"No pude leer el documento: {e}",
             "incidencias",
         )
+        os.remove(ruta_doc)
         return
 
+    # Guardar ruta y texto para procesar varios documentos a la vez
+    context.user_data.setdefault("docs", []).append(ruta_doc)
+    if "contexto" in nombre:
+        context.user_data.setdefault("contexto", []).append(texto)
+    else:
+        context.user_data.setdefault("principal", []).append(texto)
+
+    texto_principal = "\n".join(context.user_data.get("principal", []))
+    if context.user_data.get("contexto"):
+        texto_total = texto_principal + "\n" + "\n".join(context.user_data["contexto"])
+    else:
+        texto_total = texto_principal
+
     try:
-        datos = await gpt.analizar_incidencias(texto)
+        datos = await gpt.analizar_incidencias(texto_total)
         if not datos:
             raise ValueError("JSON inválido")
     except Exception as e:
@@ -84,7 +122,13 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return
     finally:
-        os.remove(ruta_doc)
+        for ruta in context.user_data.get("docs", []):
+            try:
+                os.remove(ruta)
+            except OSError:
+                pass
+        context.user_data.clear()
+
 
     lineas = [f"{d.get('fecha')}: {d.get('evento')}" for d in datos]
 
