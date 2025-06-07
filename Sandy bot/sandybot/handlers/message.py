@@ -69,6 +69,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await enviar_tracking_servicio(update, context)
             return
 
+        # Descarga de cámaras
+        if UserState.get_mode(user_id) == "descargar_camaras":
+            from .descargar_camaras import enviar_camaras_servicio
+            await enviar_camaras_servicio(update, context)
+            return
+
         # Manejo de estado de usuario
         if UserState.is_waiting_detail(user_id):
             await _manejar_detalle_pendiente(update, context, user_id, mensaje_usuario)
@@ -327,6 +333,12 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "obtener tracking",
             "bajar tracking",
         ],
+        "descargar_camaras": [
+            "descargar camaras",
+            "descargar cámaras",
+            "obtener camaras",
+            "bajar camaras",
+        ],
         "id_carrier": [
             "identificador de servicio carrier",
             "id carrier",
@@ -373,6 +385,12 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         or "obten" in texto
     ):
         return "descargar_tracking"
+    if "camar" in texto and (
+        "descarg" in texto
+        or "bajar" in texto
+        or "obten" in texto
+    ):
+        return "descargar_camaras"
     if "carrier" in texto and ("ident" in texto or "id" in texto):
         return "id_carrier"
     if "repetit" in texto and "inform" in texto:
@@ -418,6 +436,10 @@ async def _ejecutar_accion_natural(
     elif accion == "descargar_tracking":
         from .descargar_tracking import iniciar_descarga_tracking
         await iniciar_descarga_tracking(update, context)
+        return True
+    elif accion == "descargar_camaras":
+        from .descargar_camaras import iniciar_descarga_camaras
+        await iniciar_descarga_camaras(update, context)
         return True
     elif accion == "id_carrier":
         await iniciar_identificador_carrier(update, context)

@@ -53,6 +53,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         registrar_conversacion(query.from_user.id, "boton_descargar_tracking", "Inicio descarga tracking", "callback")
         await iniciar_descarga_tracking(update, context)
 
+    elif query.data == "descargar_camaras":
+        from .descargar_camaras import iniciar_descarga_camaras
+        registrar_conversacion(query.from_user.id, "boton_descargar_camaras", "Inicio descarga camaras", "callback")
+        await iniciar_descarga_camaras(update, context)
+
     elif query.data == "id_carrier":
         from .id_carrier import iniciar_identificador_carrier
         registrar_conversacion(query.from_user.id, "boton_id_carrier", "Inicio id carrier", "callback")
