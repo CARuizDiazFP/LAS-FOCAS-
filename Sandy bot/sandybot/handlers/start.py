@@ -11,6 +11,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [
            InlineKeyboardButton("📊 Comparar trazados FO", callback_data="comparar_fo"),
            InlineKeyboardButton("📥 Verificar ingresos", callback_data="verificar_ingresos"),
+           InlineKeyboardButton("📌 Registro de ingresos", callback_data="registro_ingresos"),
         ],
         [
            InlineKeyboardButton("📂 Cargar tracking", callback_data="cargar_tracking"),

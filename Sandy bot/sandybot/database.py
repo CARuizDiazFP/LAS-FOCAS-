@@ -64,6 +64,33 @@ class Servicio(Base):
         return f"<Servicio(id={self.id}, nombre={self.nombre}, cliente={self.cliente})>"
 
 
+class Camara(Base):
+    """Registro de cámaras asociadas a los servicios."""
+    __tablename__ = "camaras"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, index=True)
+    id_servicio = Column(Integer, index=True)
+
+    def __repr__(self) -> str:
+        return f"<Camara(id={self.id}, nombre={self.nombre}, servicio={self.id_servicio})>"
+
+
+class Ingreso(Base):
+    """Almacena cada ingreso a una cámara con fecha y usuario."""
+    __tablename__ = "ingresos"
+
+    id = Column(Integer, primary_key=True)
+    id_servicio = Column(Integer, index=True)
+    id_camara = Column(Integer, index=True, nullable=True)
+    camara = Column(String, index=True)
+    fecha = Column(DateTime, default=datetime.utcnow, index=True)
+    usuario = Column(String)
+
+    def __repr__(self) -> str:
+        return f"<Ingreso(id={self.id}, camara={self.camara}, fecha={self.fecha})>"
+
+
 def ensure_servicio_columns() -> None:
     """Comprueba que la tabla ``servicios`` posea todas las columnas del modelo.
 
@@ -144,12 +171,20 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Consulta preliminar para evitar recorrer todos los registros
+        # Primer intento de filtrado usando el texto original para reducir
+        # la cantidad de filas cargadas. Este paso puede fallar si en la base
+        # se registró la cámara con abreviaturas o acentos diferentes.
         candidatos = (
             session.query(Servicio)
-            .filter(Servicio.camaras.ilike(f"%{fragmento}%"))
+            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
             .all()
         )
+
+        # Si no se encontraron coincidencias con la cadena tal cual se recibió,
+        # se recuperan todos los servicios para comparar en memoria utilizando
+        # la versión normalizada y así evitar falsos negativos.
+        if not candidatos:
+            candidatos = session.query(Servicio).all()
 
         resultados: list[Servicio] = []
         for servicio in candidatos:
@@ -217,4 +252,36 @@ def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servi
         session.commit()
         session.refresh(nuevo)
         return nuevo
+
+
+def crear_camara(nombre: str, id_servicio: int) -> Camara:
+    """Crea una cámara asociada a un servicio."""
+    with SessionLocal() as session:
+        camara = Camara(nombre=nombre, id_servicio=id_servicio)
+        session.add(camara)
+        session.commit()
+        session.refresh(camara)
+        return camara
+
+
+def crear_ingreso(
+    id_servicio: int,
+    camara: str,
+    fecha: datetime | None = None,
+    usuario: str | None = None,
+    id_camara: int | None = None,
+) -> Ingreso:
+    """Registra un ingreso a una cámara."""
+    with SessionLocal() as session:
+        ingreso = Ingreso(
+            id_servicio=id_servicio,
+            camara=camara,
+            fecha=fecha or datetime.utcnow(),
+            usuario=usuario,
+            id_camara=id_camara,
+        )
+        session.add(ingreso)
+        session.commit()
+        session.refresh(ingreso)
+        return ingreso
 

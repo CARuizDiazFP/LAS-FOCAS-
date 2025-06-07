@@ -2,6 +2,7 @@ import os
 import sys
 import importlib
 from pathlib import Path
+from datetime import datetime
 import pytest
 import openpyxl
 
@@ -50,6 +51,15 @@ def test_buscar_servicios_por_camara():
     res2 = bd.buscar_servicios_por_camara("gral. san martin")
     assert {s.nombre for s in res2} == {"S3"}
 
+    # Caso con abreviaturas y acentos que antes causaba falso negativo
+    camara = "Cra Av. Gral Juan Domingo Per\u00f3n 7540 BENAVIDEZ"
+    bd.crear_servicio(nombre="S4", cliente="D", camaras=[camara])
+
+    # La búsqueda utiliza la misma cadena que se almacen\u00f3. Con la mejora,
+    # debe encontrarse el servicio sin importar las diferencias de formato
+    res3 = bd.buscar_servicios_por_camara(camara)
+    assert {s.nombre for s in res3} == {"S4"}
+
 
 def test_exportar_camaras_servicio(tmp_path):
     servicio = bd.crear_servicio(
@@ -65,3 +75,13 @@ def test_exportar_camaras_servicio(tmp_path):
     ws = wb.active
     filas = [c[0].value for c in ws.iter_rows(values_only=False)]
     assert filas == ["camara", "Camara 1", "Camara 2"]
+
+
+def test_crear_ingreso():
+    servicio = bd.crear_servicio(nombre="S5", cliente="E")
+    fecha = datetime(2023, 1, 1, 12, 30)
+    ingreso = bd.crear_ingreso(servicio.id, "Camara X", fecha=fecha, usuario="u")
+    with bd.SessionLocal() as session:
+        fila = session.query(bd.Ingreso).first()
+        assert fila.camara == "Camara X"
+        assert fila.fecha == fecha
