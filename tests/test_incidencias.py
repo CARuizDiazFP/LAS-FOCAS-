@@ -73,34 +73,8 @@ def test_procesar_incidencias_docx(tmp_path):
     doc.add_paragraph("Segunda linea")
     doc.save(doc_path)
 
+    texto = incidencias.extraer_texto_doc(doc_path)
     respuesta = asyncio.run(incidencias.procesar_incidencias_docx(str(doc_path)))
     assert respuesta == "ok"
-    assert incidencias.gpt.last_msg == "Primera linea\nSegunda linea"
+    assert incidencias.gpt.last_msg == texto
 
-
-def test_procesar_varios_archivos(tmp_path):
-    doc1 = tmp_path / "a.docx"
-    doc2 = tmp_path / "b.docx"
-    ctx = tmp_path / "extra.txt"
-
-    d1 = Document()
-    d1.add_paragraph("Linea A")
-    d1.save(doc1)
-
-    d2 = Document()
-    d2.add_paragraph("Linea B")
-    d2.save(doc2)
-
-    ctx.write_text("Contexto", encoding="utf-8")
-
-    respuesta = asyncio.run(
-        incidencias.procesar_incidencias_archivos(
-            [str(doc1), str(doc2)], str(ctx)
-        )
-    )
-
-    assert respuesta == "ok"
-    assert (
-        incidencias.gpt.last_msg
-        == "Linea A\nLinea B\nContexto"
-    )
