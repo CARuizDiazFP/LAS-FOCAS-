@@ -5,8 +5,9 @@ from telegram.ext import ContextTypes
 import logging
 import tempfile
 import os
-import subprocess
-from docx import Document
+
+from ..incidencias import extraer_texto_doc
+
 
 from ..gpt_handler import gpt
 from ..utils import obtener_mensaje
@@ -56,8 +57,10 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = mensaje.from_user.id
     documento = mensaje.document
+
     nombre = documento.file_name.lower()
     if not (nombre.endswith(".docx") or nombre.endswith(".doc")):
+
         await responder_registrando(
             mensaje,
             user_id,
@@ -68,13 +71,17 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     archivo = await documento.get_file()
+
     sufijo = ".docx" if nombre.endswith(".docx") else ".doc"
     with tempfile.NamedTemporaryFile(delete=False, suffix=sufijo) as tmp:
+
         await archivo.download_to_drive(tmp.name)
         ruta_doc = tmp.name
 
     try:
+
         texto = leer_documento(ruta_doc)
+
     except Exception as e:
         logger.error("Error leyendo documento: %s", e)
         await responder_registrando(
@@ -122,12 +129,30 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
                 pass
         context.user_data.clear()
 
+
     lineas = [f"{d.get('fecha')}: {d.get('evento')}" for d in datos]
-    respuesta = "Cronología de incidencias:\n" + "\n".join(lineas)
+
+    # Crear un documento Word con un párrafo por evento
+    doc_salida = Document()
+    for linea in lineas:
+        doc_salida.add_paragraph(linea)
+
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_out:
+        doc_salida.save(tmp_out.name)
+        ruta_salida = tmp_out.name
+
+    # Enviar el archivo .docx al usuario
+    try:
+        with open(ruta_salida, "rb") as f:
+            await mensaje.reply_document(f, filename="cronologia_incidencias.docx")
+    finally:
+        os.remove(ruta_salida)
+
+    # Registrar la conversación con un mensaje breve
     await responder_registrando(
         mensaje,
         user_id,
         documento.file_name,
-        respuesta,
+        "Adjunto la cronología de incidencias en formato .docx.",
         "incidencias",
     )

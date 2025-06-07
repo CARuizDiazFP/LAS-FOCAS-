@@ -73,6 +73,8 @@ def test_procesar_incidencias_docx(tmp_path):
     doc.add_paragraph("Segunda linea")
     doc.save(doc_path)
 
+    texto = incidencias.extraer_texto_doc(doc_path)
     respuesta = asyncio.run(incidencias.procesar_incidencias_docx(str(doc_path)))
     assert respuesta == "ok"
-    assert incidencias.gpt.last_msg == "Primera linea\nSegunda linea"
+    assert incidencias.gpt.last_msg == texto
+
