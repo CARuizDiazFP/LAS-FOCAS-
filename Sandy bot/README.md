@@ -110,6 +110,7 @@ e `id_carrier`.
 - `/procesar`: Procesa archivos en modo comparador
 - `/cargar_tracking`: Asocia un tracking a un servicio existente
 - `/descargar_tracking`: Descarga el tracking asociado a un servicio
+- `/descargar_camaras`: Exporta las cámaras registradas para un servicio
 - `/comparar_fo`: Inicia la comparación de trazados
 
 ## Funcionalidades
@@ -139,8 +140,11 @@ e `id_carrier`.
 4. Descarga de tracking
    - Elegí "Descargar tracking" desde el menú o escribí `/descargar_tracking`
    - Indicá el número de servicio y recibirás el `.txt` si está disponible
+5. Descarga de cámaras
+   - Seleccioná "Descargar cámaras" desde el menú o enviá `/descargar_camaras`
+   - Indicá el ID y recibirás un Excel con todas las cámaras asociadas
 
-5. Informes de repetitividad
+6. Informes de repetitividad
    - Procesa Excel de casos
    - Genera informe Word
    - Identifica líneas con reclamos múltiples
@@ -148,7 +152,7 @@ e `id_carrier`.
      funciona en Windows. En otros sistemas puede generarse el archivo .docx
      sin esta modificación o realizar los cambios de forma manual.
 
-6. Consultas generales
+7. Consultas generales
    - Respuestas técnicas con GPT
    - Tono adaptado según interacciones (de cordial a muy malhumorado)
    - Registro de conversaciones
