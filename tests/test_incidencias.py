@@ -77,3 +77,4 @@ def test_procesar_incidencias_docx(tmp_path):
     respuesta = asyncio.run(incidencias.procesar_incidencias_docx(str(doc_path)))
     assert respuesta == "ok"
     assert incidencias.gpt.last_msg == texto
+
