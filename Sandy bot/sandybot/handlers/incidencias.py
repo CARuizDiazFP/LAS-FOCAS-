@@ -5,7 +5,7 @@ from telegram.ext import ContextTypes
 import logging
 import tempfile
 import os
-from docx import Document
+from ..incidencias import extraer_texto_doc
 
 from ..gpt_handler import gpt
 from ..utils import obtener_mensaje
@@ -40,24 +40,24 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = mensaje.from_user.id
     documento = mensaje.document
-    if not documento.file_name.endswith(".docx"):
+    if not documento.file_name.lower().endswith(('.docx', '.doc')):
         await responder_registrando(
             mensaje,
             user_id,
             documento.file_name,
-            "Solo acepto archivos .docx para analizar incidencias.",
+            "Solo acepto archivos .docx o .doc para analizar incidencias.",
             "incidencias",
         )
         return
 
     archivo = await documento.get_file()
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+    suf = ".docx" if documento.file_name.lower().endswith(".docx") else ".doc"
+    with tempfile.NamedTemporaryFile(delete=False, suffix=suf) as tmp:
         await archivo.download_to_drive(tmp.name)
-        ruta_docx = tmp.name
+        ruta_doc = tmp.name
 
     try:
-        doc = Document(ruta_docx)
-        texto = "\n".join(p.text for p in doc.paragraphs if p.text)
+        texto = extraer_texto_doc(ruta_doc)
     except Exception as e:
         logger.error("Error leyendo docx: %s", e)
         await responder_registrando(
@@ -84,7 +84,7 @@ async def procesar_incidencias(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return
     finally:
-        os.remove(ruta_docx)
+        os.remove(ruta_doc)
 
     lineas = [f"{d.get('fecha')}: {d.get('evento')}" for d in datos]
     respuesta = "Cronología de incidencias:\n" + "\n".join(lineas)
