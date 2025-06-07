@@ -116,12 +116,12 @@ Tu tarea es identificar los pedidos de ingreso válidos a cámaras, nodos, poste
 
 ## Analizador de incidencias
 
-Este módulo procesa reportes de fallas de campo y resume los eventos detectados. Por ahora se reciben archivos `.docx`, pero en el futuro se consultará una API para obtener los datos automáticamente.
+Este módulo procesa reportes de fallas de campo y resume los eventos detectados. Ahora admite archivos `.docx` y `.doc`, incluso múltiples adjuntos simultáneos. Entre ellos se puede incluir un archivo de contexto o correos electrónicos. En el futuro se consultará una API para obtener los datos automáticamente.
 
 Flujo básico:
 1. Seleccionar **Analizador de incidencias** en el menú principal.
-2. Adjuntar el documento `.docx` con el detalle de la incidencia.
-3. El bot analiza el archivo y entrega un resumen con los hallazgos.
+2. Adjuntar los documentos con el detalle de la incidencia (se permiten varios adjuntos).
+3. El bot analiza los archivos y entrega un documento con la cronología generada por GPT.
 
 ## 🧰 Roadmap de inteligencia artificial
 
