@@ -144,12 +144,20 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Consulta preliminar para evitar recorrer todos los registros
+        # Primer intento de filtrado usando el texto original para reducir
+        # la cantidad de filas cargadas. Este paso puede fallar si en la base
+        # se registró la cámara con abreviaturas o acentos diferentes.
         candidatos = (
             session.query(Servicio)
-            .filter(Servicio.camaras.ilike(f"%{fragmento}%"))
+            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
             .all()
         )
+
+        # Si no se encontraron coincidencias con la cadena tal cual se recibió,
+        # se recuperan todos los servicios para comparar en memoria utilizando
+        # la versión normalizada y así evitar falsos negativos.
+        if not candidatos:
+            candidatos = session.query(Servicio).all()
 
         resultados: list[Servicio] = []
         for servicio in candidatos:
