@@ -28,6 +28,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         registrar_conversacion(query.from_user.id, "boton_verificar_ingresos", "Inicio ingresos", "callback")
         await iniciar_verificacion_ingresos(update, context)
 
+    elif query.data == "registro_ingresos":
+        from .registro_ingresos import iniciar_registro_ingresos
+        registrar_conversacion(query.from_user.id, "registro_ingresos", "Inicio registro", "callback")
+        await iniciar_registro_ingresos(update, context)
+
     elif query.data == "ingresos_nombre":
         registrar_conversacion(query.from_user.id, "ingresos_nombre", "Elegir por nombre", "callback")
         from .ingresos import opcion_por_nombre

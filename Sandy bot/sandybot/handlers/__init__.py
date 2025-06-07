@@ -7,6 +7,7 @@ from .message import message_handler
 from .document import document_handler
 from .voice import voice_handler
 from .ingresos import iniciar_verificacion_ingresos, procesar_ingresos
+from .registro_ingresos import iniciar_registro_ingresos, guardar_registro
 from .repetitividad import procesar_repetitividad
 from .comparador import iniciar_comparador, recibir_tracking, procesar_comparacion
 from .cargar_tracking import iniciar_carga_tracking, guardar_tracking_servicio
@@ -23,6 +24,8 @@ __all__ = [
     'voice_handler',
     'iniciar_verificacion_ingresos',
     'procesar_ingresos',
+    'iniciar_registro_ingresos',
+    'guardar_registro',
     'procesar_repetitividad',
     'iniciar_comparador',
     'recibir_tracking',
