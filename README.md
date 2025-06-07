@@ -60,7 +60,9 @@ en caso contrario.
 
 Esta función genera un resumen de las fallas registradas en reportes de campo. Ahora acepta archivos `.docx` y `.doc`, incluso varios adjuntos al mismo tiempo. Entre ellos se puede incluir un archivo de contexto o correos electrónicos. En el futuro se usará una API para obtener las incidencias de manera automática.
 
-Para iniciar el análisis, seleccioná **Analizador de incidencias** en el menú principal o ejecutá `/analizar_incidencias`. Luego adjuntá los documentos y el bot responderá con un archivo que contiene la cronología elaborada por GPT con los hallazgos.
+
+Para iniciar el análisis, seleccioná **Analizador de incidencias** en el menú principal o ejecutá `/analizar_incidencias`. Luego enviá el documento `.docx` y el bot responderá con los hallazgos. Además, recibirás un nuevo `.docx` con la cronología de eventos extraídos.
+
 
 ## Errores por variables de entorno faltantes
 
