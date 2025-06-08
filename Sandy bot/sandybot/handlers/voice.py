@@ -1,6 +1,7 @@
 """Handler para mensajes de voz."""
 import logging
 import tempfile
+import os
 import openai
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -16,25 +17,31 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         return
 
     voice = await mensaje.voice.get_file()
-    with tempfile.NamedTemporaryFile(suffix=".ogg") as tmp:
-        await voice.download_to_drive(tmp.name)
-        try:
-            with open(tmp.name, "rb") as audio:
-                transcripcion = await openai.Audio.transcriptions.create(
-                    file=audio,
-                    model="whisper-1"
-                )
-            texto = transcripcion.text.strip()
-        except Exception as e:
-            logger.error("Error al transcribir audio: %s", e)
-            await responder_registrando(
-                mensaje,
-                mensaje.from_user.id,
-                "[voice]",
-                "No pude transcribir el audio. Reintentá más tarde.",
-                "voz",
+    fd, path = tempfile.mkstemp(suffix=".ogg")
+    os.close(fd)
+    try:
+        await voice.download_to_drive(path)
+        with open(path, "rb") as audio:
+            transcripcion = await openai.Audio.transcriptions.create(
+                file=audio,
+                model="whisper-1",
             )
-            return
+        texto = transcripcion.text.strip()
+    except Exception as e:
+        logger.error("Error al transcribir audio: %s", e)
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            "[voice]",
+            "No pude transcribir el audio. Reintentá más tarde.",
+            "voz",
+        )
+        return
+    finally:
+        try:
+            os.remove(path)
+        except OSError:
+            pass
 
     # Reutilizar el manejador de mensajes como si el usuario hubiera escrito
     mensaje.text = texto
