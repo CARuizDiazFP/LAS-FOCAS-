@@ -100,8 +100,6 @@ class Config:
         self.SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
         self.SMTP_USER = os.getenv("SMTP_USER")
         self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-        self.EMAIL_USER = os.getenv("EMAIL_USER")
-        self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
         self.EMAIL_FROM = os.getenv("EMAIL_FROM")
 
 
@@ -140,7 +138,7 @@ class Config:
         # Advertir si faltan datos de correo
         email_missing = [
             nombre
-            for nombre in ["EMAIL_USER", "EMAIL_PASSWORD", "EMAIL_FROM"]
+            for nombre in ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM"]
             if not getattr(self, nombre)
         ]
         if email_missing:
