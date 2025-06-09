@@ -27,10 +27,19 @@ def _enviar_mail(destino: str, archivo: str) -> None:
     msg.set_content("Adjunto las cámaras solicitadas.")
     with open(archivo, "rb") as f:
         datos = f.read()
-    msg.add_attachment(datos, maintype="application", subtype="octet-stream", filename=os.path.basename(archivo))
+    msg.add_attachment(
+        datos,
+        maintype="application",
+        subtype="octet-stream",
+        filename=os.path.basename(archivo),
+    )
+
     servidor = config.SMTP_HOST or "localhost"
     puerto = config.SMTP_PORT
     with smtplib.SMTP(servidor, puerto) as smtp:
+        smtp.starttls()
+        if config.SMTP_USER and config.SMTP_PASSWORD:
+            smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
         smtp.send_message(msg)
 
 

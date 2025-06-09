@@ -23,6 +23,17 @@ Para adjuntar archivos por email se utilizan las siguientes variables opcionales
 - `SMTP_USER` y `SMTP_PASSWORD`: credenciales si el servidor las requiere.
 - `EMAIL_FROM`: dirección remitente utilizada en los mensajes.
 
+Si vas a usar Gmail en desarrollo, activá la verificación en dos pasos y generá
+una **contraseña de aplicación**. Definí las variables así:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASSWORD=tu_contraseña_de_app
+EMAIL_FROM=tu_correo@gmail.com
+```
+
 ## Plantilla de informes de repetitividad
 
 El documento base para generar los reportes de repetitividad se indica
