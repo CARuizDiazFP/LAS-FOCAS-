@@ -48,7 +48,16 @@ sys.modules.setdefault("jsonschema", jsonschema_stub)
 
 # Variables de entorno mínimas para Config
 import os
-for var in ["TELEGRAM_TOKEN", "OPENAI_API_KEY", "NOTION_TOKEN", "NOTION_DATABASE_ID", "DB_USER", "DB_PASSWORD"]:
+for var in [
+    "TELEGRAM_TOKEN",
+    "OPENAI_API_KEY",
+    "NOTION_TOKEN",
+    "NOTION_DATABASE_ID",
+    "DB_USER",
+    "DB_PASSWORD",
+    "SLACK_WEBHOOK_URL",
+    "SUPERVISOR_DB_ID",
+]:
     os.environ.setdefault(var, "x")
 
 # Importar módulos de SandyBot
