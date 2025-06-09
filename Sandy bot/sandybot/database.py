@@ -103,8 +103,11 @@ def ensure_servicio_columns() -> None:
 
     faltantes = definidas - actuales
     for columna in faltantes:
+        tipo = Servicio.__table__.columns[columna].type.compile(engine.dialect)
         with engine.begin() as conn:
-            conn.execute(text(f"ALTER TABLE servicios ADD COLUMN {columna} VARCHAR"))
+            conn.execute(
+                text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}")
+            )
 
 def init_db():
     """Inicializa la base de datos y crea las tablas si no existen."""
