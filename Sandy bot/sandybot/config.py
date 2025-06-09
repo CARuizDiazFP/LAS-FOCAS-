@@ -46,6 +46,8 @@ class Config:
         self.ARCHIVO_CONTADOR = self.DATA_DIR / "contador_diario.json"
         # Registro histórico de interacciones por usuario
         self.ARCHIVO_INTERACCIONES = self.DATA_DIR / "interacciones.json"
+        # Lista de destinatarios de notificaciones
+        self.ARCHIVO_DESTINATARIOS = self.DATA_DIR / "destinatarios.json"
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
         # Cache de consultas a GPT para reducir costos y latencia
