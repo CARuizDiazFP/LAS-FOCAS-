@@ -157,3 +157,8 @@ Salida esperada:
 ]
 
 ☑️ Este documento debe mantenerse actualizado a medida que Sandy evoluciona. Puedes encontrarlo en AGENTS.md en la raíz del repositorio.
+
+## 📧 Envío de correos
+
+El bot puede enviar listados por email usando los destinatarios guardados en `Sandy bot/data/destinatarios.json`. Configurá `SMTP_HOST`, `SMTP_PORT` y `EMAIL_FROM` en el `.env`.
+

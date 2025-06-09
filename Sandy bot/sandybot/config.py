@@ -63,7 +63,7 @@ class Config:
         # Registro histórico de interacciones por usuario
         self.ARCHIVO_INTERACCIONES = self.DATA_DIR / "interacciones.json"
         # Lista de destinatarios de notificaciones
-        self.ARCHIVO_DESTINATARIOS = self.DATA_DIR / "destinatarios.json"
+        self.DESTINATARIOS_FILE = self.DATA_DIR / "destinatarios.json"
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
         # Cache de consultas a GPT para reducir costos y latencia
@@ -100,18 +100,10 @@ class Config:
         self.SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
         self.SMTP_USER = os.getenv("SMTP_USER")
         self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-        self.EMAIL_FROM = os.getenv("EMAIL_FROM")
-
-        # Ruta del archivo que almacena los destinatarios para los envíos
-        # automáticos de reportes o listados.
-        self.DESTINATARIOS_FILE = self.DATA_DIR / "destinatarios.json"
-
-        # Credenciales de correo electrónico
-        self.EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-        self.EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
         self.EMAIL_USER = os.getenv("EMAIL_USER")
         self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
         self.EMAIL_FROM = os.getenv("EMAIL_FROM")
+
 
         
         # Validación

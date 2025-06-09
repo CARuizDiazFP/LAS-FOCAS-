@@ -15,6 +15,14 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
   no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 
+### Envío de correos
+
+Para adjuntar archivos por email se utilizan las siguientes variables opcionales:
+
+- `SMTP_HOST` y `SMTP_PORT`: servidor y puerto del servicio SMTP.
+- `SMTP_USER` y `SMTP_PASSWORD`: credenciales si el servidor las requiere.
+- `EMAIL_FROM`: dirección remitente utilizada en los mensajes.
+
 ## Plantilla de informes de repetitividad
 
 El documento base para generar los reportes de repetitividad se indica
@@ -104,4 +112,9 @@ Verificá tu archivo .env o las variables del sistema.
 Este texto se registra con `logging.error` y luego se lanza una excepción
 `ValueError` con el mismo contenido. Revisá el archivo `.env` o la configuración
 del sistema para corregir el problema.
+
+
+## Licencia
+
+Este proyecto se publica bajo la licencia [MIT](LICENSE).
 

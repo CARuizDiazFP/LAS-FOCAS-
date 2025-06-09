@@ -8,6 +8,8 @@ import tempfile
 import smtplib
 from email.message import EmailMessage
 
+from ..config import config
+
 from ..utils import obtener_mensaje
 from ..database import exportar_camaras_servicio
 from ..registrador import responder_registrando, registrar_conversacion
@@ -20,14 +22,14 @@ def _enviar_mail(destino: str, archivo: str) -> None:
     """Envía un archivo por correo utilizando SMTP simple."""
     msg = EmailMessage()
     msg["Subject"] = "Listado de cámaras"
-    msg["From"] = os.getenv("EMAIL_FROM", "bot@example.com")
+    msg["From"] = config.EMAIL_FROM or "bot@example.com"
     msg["To"] = destino
     msg.set_content("Adjunto las cámaras solicitadas.")
     with open(archivo, "rb") as f:
         datos = f.read()
     msg.add_attachment(datos, maintype="application", subtype="octet-stream", filename=os.path.basename(archivo))
-    servidor = os.getenv("SMTP_SERVER", "localhost")
-    puerto = int(os.getenv("SMTP_PORT", "25"))
+    servidor = config.SMTP_HOST or "localhost"
+    puerto = config.SMTP_PORT
     with smtplib.SMTP(servidor, puerto) as smtp:
         smtp.send_message(msg)
 
