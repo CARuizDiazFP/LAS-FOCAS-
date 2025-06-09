@@ -15,6 +15,11 @@ from .descargar_tracking import iniciar_descarga_tracking, enviar_tracking_servi
 from .descargar_camaras import iniciar_descarga_camaras, enviar_camaras_servicio
 from .id_carrier import iniciar_identificador_carrier, procesar_identificador_carrier
 from .incidencias import iniciar_incidencias, procesar_incidencias
+from .destinatarios import (
+    agregar_destinatario,
+    eliminar_destinatario,
+    listar_destinatarios,
+)
 
 __all__ = [
     'start_handler',
@@ -39,5 +44,8 @@ __all__ = [
     'iniciar_identificador_carrier',
     'procesar_identificador_carrier',
     'iniciar_incidencias',
-    'procesar_incidencias'
+    'procesar_incidencias',
+    'agregar_destinatario',
+    'eliminar_destinatario',
+    'listar_destinatarios'
 ]
