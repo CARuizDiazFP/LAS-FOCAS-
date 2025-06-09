@@ -194,20 +194,14 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        if engine.dialect.name == "postgresql":
-            candidatos = (
-                session.query(Servicio)
-                .filter(
-                    func.unaccent(func.lower(Servicio.camaras)).contains(fragmento)
-                )
-                .all()
-            )
-        else:
-            candidatos = (
-                session.query(Servicio)
-                .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
-                .all()
-            )
+        # Primer intento de filtrado usando el texto original para reducir
+        # la cantidad de filas cargadas. Este paso puede fallar si en la base
+        # se registró la cámara con abreviaturas o acentos diferentes.
+        candidatos = (
+            session.query(Servicio)
+            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
+            .all()
+        )
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
@@ -260,28 +254,55 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
 
 
 def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:
+    """Inserta o actualiza un servicio utilizando ``session.merge``.
 
-    """Crea o actualiza un servicio con el ``id_servicio`` dado.
-
-    Si el servicio existe, se actualiza el campo ``id_carrier`` si fue
-    proporcionado. En caso contrario se genera un nuevo registro con los datos
-    recibidos.
+    Se crea un objeto :class:`Servicio` con el ID indicado y, si se
+    proporciona ``id_carrier``, también se asigna. ``merge`` evita duplicados
+    al combinarlo con la fila existente cuando corresponde.
     """
     with SessionLocal() as session:
-        servicio = session.get(Servicio, id_servicio)
-        if servicio:
-            if id_carrier is not None:
-                servicio.id_carrier = str(id_carrier)
-            session.commit()
-            session.refresh(servicio)
-            return servicio
-        nuevo = Servicio(id=id_servicio)
+        datos = {"id": id_servicio}
         if id_carrier is not None:
-            nuevo.id_carrier = str(id_carrier)
-        session.add(nuevo)
+            datos["id_carrier"] = str(id_carrier)
+
+        servicio = Servicio(**datos)
+        servicio = session.merge(servicio)
         session.commit()
-        session.refresh(nuevo)
-        return nuevo
+        session.refresh(servicio)
+        return servicio
+
+
+def crear_camara(nombre: str, id_servicio: int) -> Camara:
+    """Crea una cámara asociada a un servicio."""
+    with SessionLocal() as session:
+        camara = Camara(nombre=nombre, id_servicio=id_servicio)
+        session.add(camara)
+        session.commit()
+        session.refresh(camara)
+        return camara
+
+
+def crear_ingreso(
+    id_servicio: int,
+    camara: str,
+    fecha: datetime | None = None,
+    usuario: str | None = None,
+    id_camara: int | None = None,
+) -> Ingreso:
+    """Registra un ingreso a una cámara."""
+    with SessionLocal() as session:
+        ingreso = Ingreso(
+            id_servicio=id_servicio,
+            camara=camara,
+            fecha=fecha or datetime.utcnow(),
+            usuario=usuario,
+            id_camara=id_camara,
+        )
+        session.add(ingreso)
+        session.commit()
+        session.refresh(ingreso)
+        return ingreso
+
 
 
 def crear_camara(nombre: str, id_servicio: int) -> Camara:
