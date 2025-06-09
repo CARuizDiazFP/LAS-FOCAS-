@@ -3,10 +3,10 @@ Configuración y modelos de la base de datos
 """
 
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
+
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.dialects.postgresql import JSONB
-import json
+
 import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
@@ -23,6 +23,12 @@ DATABASE_URL = (
 engine = create_engine(
     DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800
 )
+
+# Determina el tipo JSON a utilizar según la base de datos
+if engine.dialect.name == "postgresql":
+    from sqlalchemy.dialects.postgresql import JSONB as JSONType
+else:  # pragma: no cover - para SQLite en tests
+    JSONType = JSON
 
 # Crear sessionmaker
 # ``expire_on_commit=False`` evita que los objetos devueltos pierdan sus datos
@@ -60,8 +66,8 @@ class Servicio(Base):
     nombre = Column(String, index=True)
     cliente = Column(String, index=True)
     ruta_tracking = Column(String)
-    trackings = Column(JSONB)
-    camaras = Column(JSONB)
+    trackings = Column(JSONType)
+    camaras = Column(JSONType)
     carrier = Column(String)
     id_carrier = Column(String)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
@@ -205,22 +211,16 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Primer intento de filtrado. Se castea ``Servicio.camaras`` a
-        # ``String`` para evitar problemas cuando se guarda como JSONB.
-        camaras_str = Servicio.camaras.cast(String)
 
-        # Algunas bases de datos como SQLite no cuentan con la función
-        # ``unaccent``. Se verifica el dialecto para aplicarla solo cuando
-        # está disponible (PostgreSQL).
-        if session.bind.dialect.name == "postgresql":
-            columna_normalizada = func.unaccent(func.lower(camaras_str))
-        else:
-            columna_normalizada = func.lower(camaras_str)
-
-        filtro = columna_normalizada.ilike(
-            f"%{normalizar_camara(nombre_camara)}%"
+        # Primer intento de filtrado usando el texto original para reducir
+        # la cantidad de filas cargadas. Este paso puede fallar si en la base
+        # se registró la cámara con abreviaturas o acentos diferentes.
+        candidatos = (
+            session.query(Servicio)
+            .filter(Servicio.camaras.cast(String).ilike(f"%{nombre_camara}%"))
+            .all()
         )
-        candidatos = session.query(Servicio).filter(filtro).all()
+
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
@@ -231,17 +231,11 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
         resultados: list[Servicio] = []
         for servicio in candidatos:
             # Si el servicio no posee cámaras registradas se ignora
+
             if not servicio.camaras:
                 continue
-            camaras_raw = servicio.camaras
-            if isinstance(camaras_raw, str):
-                try:
-                    camaras = json.loads(camaras_raw)
-                except json.JSONDecodeError:
-                    # Se descarta la fila si el JSON está malformado
-                    continue
-            else:
-                camaras = camaras_raw
+            camaras = servicio.camaras
+
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
                 if fragmento in c_norm or c_norm in fragmento:
@@ -261,14 +255,8 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
     if not servicio or not servicio.camaras:
         return False
 
-    camaras_raw = servicio.camaras
-    if isinstance(camaras_raw, str):
-        try:
-            camaras = json.loads(camaras_raw)
-        except json.JSONDecodeError:
-            return False
-    else:
-        camaras = camaras_raw
+    camaras = servicio.camaras
+
 
     # Se crea el DataFrame con una única columna
     df = pd.DataFrame(camaras, columns=["camara"])
