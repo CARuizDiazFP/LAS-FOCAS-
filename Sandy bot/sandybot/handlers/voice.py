@@ -3,6 +3,7 @@ import logging
 import tempfile
 import os
 import openai
+from ..config import config
 from telegram import Update
 from telegram.ext import ContextTypes
 from ..registrador import responder_registrando
@@ -22,7 +23,8 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     try:
         await voice.download_to_drive(path)
         with open(path, "rb") as audio:
-            transcripcion = await openai.Audio.transcriptions.create(
+            client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+            transcripcion = await client.audio.transcriptions.create(
                 file=audio,
                 model="whisper-1",
             )
