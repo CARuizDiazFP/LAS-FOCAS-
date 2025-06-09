@@ -19,6 +19,7 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         ],
         [
            InlineKeyboardButton("⬇️ Descargar cámaras", callback_data="descargar_camaras"),
+           InlineKeyboardButton("📧 Enviar cámaras por mail", callback_data="enviar_camaras_mail"),
         ],
         [
            InlineKeyboardButton(

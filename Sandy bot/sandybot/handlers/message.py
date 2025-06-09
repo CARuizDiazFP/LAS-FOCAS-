@@ -75,6 +75,12 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await enviar_camaras_servicio(update, context)
             return
 
+        # Enviar cámaras por mail
+        if UserState.get_mode(user_id) == "enviar_camaras_mail":
+            from .enviar_camaras_mail import procesar_envio_camaras_mail
+            await procesar_envio_camaras_mail(update, context)
+            return
+
         # Manejo de estado de usuario
         if UserState.is_waiting_detail(user_id):
             await _manejar_detalle_pendiente(update, context, user_id, mensaje_usuario)
@@ -344,6 +350,11 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "obtener camaras",
             "bajar camaras",
         ],
+        "enviar_camaras_mail": [
+            "enviar camaras por mail",
+            "enviar cámaras por mail",
+            "camaras por correo",
+        ],
         "id_carrier": [
             "identificador de servicio carrier",
             "id carrier",
@@ -396,6 +407,8 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         or "obten" in texto
     ):
         return "descargar_camaras"
+    if "camar" in texto and "mail" in texto:
+        return "enviar_camaras_mail"
     if "carrier" in texto and ("ident" in texto or "id" in texto):
         return "id_carrier"
     if "repetit" in texto and "inform" in texto:
@@ -445,6 +458,10 @@ async def _ejecutar_accion_natural(
     elif accion == "descargar_camaras":
         from .descargar_camaras import iniciar_descarga_camaras
         await iniciar_descarga_camaras(update, context)
+        return True
+    elif accion == "enviar_camaras_mail":
+        from .enviar_camaras_mail import iniciar_envio_camaras_mail
+        await iniciar_envio_camaras_mail(update, context)
         return True
     elif accion == "id_carrier":
         await iniciar_identificador_carrier(update, context)

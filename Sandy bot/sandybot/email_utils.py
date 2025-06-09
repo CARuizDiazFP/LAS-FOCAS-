@@ -1,3 +1,4 @@
+
 """Utilidades sencillas para el envio de correos."""
 
 import smtplib
@@ -53,3 +54,4 @@ def enviar_correo(asunto: str, cuerpo: str, ruta: Path, host: str = "localhost",
         smtp.set_debuglevel(1)
         smtp.sendmail(mensaje["From"], destinatarios, mensaje.as_string())
     return True
+
