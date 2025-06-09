@@ -14,6 +14,9 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
   no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
+  de correo saliente.
+- `SMTP_USE_TLS`: indica si se inicia TLS al conectarse (por defecto `true`).
 
 ## Plantilla de informes de repetitividad
 
@@ -83,11 +86,34 @@ Si necesitás procesar documentos con extensión `.doc`, instalá el paquete opc
 pip install textract
 ```
 
+
 También podés incluirlo al instalar todas las dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+## Enviar Excel por correo
+
+Para mandar un reporte por email se usa la función `enviar_excel_por_correo()`
+de `sandybot.email_utils`. No requiere instalar paquetes adicionales porque
+aprovecha `smtplib` y `email` de la biblioteca estándar.
+
+```python
+from sandybot.email_utils import enviar_excel_por_correo
+
+exito = enviar_excel_por_correo(
+    "destino@example.com",
+    "reporte.xlsx",
+    asunto="Reporte semanal",
+    cuerpo="Adjunto el archivo solicitado."
+)
+if exito:
+    print("Correo enviado correctamente")
+```
+
+Asegurate de definir `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` y `SMTP_PASSWORD`
+en tu `.env` para que el envío funcione.
 
 
 ## Errores por variables de entorno faltantes
