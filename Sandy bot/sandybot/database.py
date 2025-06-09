@@ -3,9 +3,8 @@ Configuración y modelos de la base de datos
 """
 
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
-import json
 import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
@@ -22,6 +21,12 @@ DATABASE_URL = (
 engine = create_engine(
     DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800
 )
+
+# Determina el tipo JSON a utilizar según la base de datos
+if engine.dialect.name == "postgresql":
+    from sqlalchemy.dialects.postgresql import JSONB as JSONType
+else:  # pragma: no cover - para SQLite en tests
+    JSONType = JSON
 
 # Crear sessionmaker
 # ``expire_on_commit=False`` evita que los objetos devueltos pierdan sus datos
@@ -59,8 +64,8 @@ class Servicio(Base):
     nombre = Column(String, index=True)
     cliente = Column(String, index=True)
     ruta_tracking = Column(String)
-    trackings = Column(JSONB)
-    camaras = Column(JSONB)
+    trackings = Column(JSONType)
+    camaras = Column(JSONType)
     carrier = Column(String)
     id_carrier = Column(String)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
@@ -199,7 +204,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
         # se registró la cámara con abreviaturas o acentos diferentes.
         candidatos = (
             session.query(Servicio)
-            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
+            .filter(Servicio.camaras.cast(String).ilike(f"%{nombre_camara}%"))
             .all()
         )
 
@@ -214,11 +219,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
             # Si el servicio no posee cámaras registradas se ignora
             if not servicio.camaras:
                 continue
-            try:
-                camaras = json.loads(servicio.camaras)
-            except json.JSONDecodeError:
-                # Se descarta la fila si el JSON está malformado
-                continue
+            camaras = servicio.camaras
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
                 if fragmento in c_norm or c_norm in fragmento:
@@ -238,10 +239,7 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
     if not servicio or not servicio.camaras:
         return False
 
-    try:
-        camaras = json.loads(servicio.camaras)
-    except json.JSONDecodeError:
-        return False
+    camaras = servicio.camaras
 
     # Se crea el DataFrame con una única columna
     df = pd.DataFrame(camaras, columns=["camara"])
