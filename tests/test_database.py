@@ -24,12 +24,13 @@ required_vars = {
     "DB_PASSWORD": "pass",
     "DB_HOST": "localhost",
     "DB_PORT": "5432",
-    "DB_NAME": "sandy"
+    "DB_NAME": "sandy",
 }
 os.environ.update(required_vars)
 
 # Forzar que ``sandybot.database`` utilice SQLite en memoria
 import sqlalchemy
+
 orig_create_engine = sqlalchemy.create_engine
 sqlalchemy.create_engine = lambda *a, **k: orig_create_engine("sqlite:///:memory:")
 
@@ -59,9 +60,11 @@ def test_buscar_servicios_por_camara():
     res3 = bd.buscar_servicios_por_camara("peron 7540")
     assert {s.nombre for s in res3} == {"S4"}
 
+
     bd.crear_servicio(nombre="S5", cliente="E", camaras=["Cámara Fiscalía"])
     res4 = bd.buscar_servicios_por_camara("camara fiscalia")
     assert {s.nombre for s in res4} == {"S5"}
+
 
 
 def test_exportar_camaras_servicio(tmp_path):
@@ -78,6 +81,17 @@ def test_exportar_camaras_servicio(tmp_path):
     ws = wb.active
     filas = [c[0].value for c in ws.iter_rows(values_only=False)]
     assert filas == ["camara", "Camara 1", "Camara 2"]
+
+
+def test_actualizar_tracking_jsonb():
+    servicio = bd.crear_servicio(nombre="S6", cliente="F")
+    bd.actualizar_tracking(servicio.id, "ruta.txt", ["C1"], ["t1.txt"])
+
+    with bd.SessionLocal() as s:
+        reg = s.get(bd.Servicio, servicio.id)
+        assert reg.ruta_tracking == "ruta.txt"
+        assert reg.camaras == ["C1"]
+        assert reg.trackings == ["t1.txt"]
 
 
 def test_crear_ingreso():
