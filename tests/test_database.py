@@ -7,7 +7,7 @@ import pytest
 import openpyxl
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 # Agregar ruta del paquete
@@ -102,3 +102,25 @@ def test_crear_ingreso():
         fila = session.query(bd.Ingreso).first()
         assert fila.camara == "Camara X"
         assert fila.fecha == fecha
+
+
+def test_ensure_servicio_columns_crea_tipos_correctos():
+    """Verifica que las columnas faltantes se creen con su tipo real."""
+    engine = create_engine("sqlite:///:memory:")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE servicios (id INTEGER PRIMARY KEY)"))
+
+    bd.engine = engine
+    bd.SessionLocal = sessionmaker(bind=engine)
+    bd.ensure_servicio_columns()
+
+    inspector = sqlalchemy.inspect(engine)
+    columnas = {
+        c["name"]: c["type"].compile(engine.dialect)
+        for c in inspector.get_columns("servicios")
+    }
+    esperados = {
+        col.name: col.type.compile(engine.dialect)
+        for col in bd.Servicio.__table__.columns
+    }
+    assert columnas == esperados

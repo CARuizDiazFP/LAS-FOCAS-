@@ -108,11 +108,14 @@ def ensure_servicio_columns() -> None:
     actuales = {col["name"] for col in inspector.get_columns("servicios")}
     definidas = {c.name for c in Servicio.__table__.columns}
 
+
     faltantes = definidas - actuales
     for columna in faltantes:
+        tipo = Servicio.__table__.columns[columna].type.compile(engine.dialect)
         with engine.begin() as conn:
-            tipo = "JSONB" if columna in {"camaras", "trackings"} else "VARCHAR"
-            conn.execute(text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}"))
+            conn.execute(
+                text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}")
+            )
 
 
 def init_db():
