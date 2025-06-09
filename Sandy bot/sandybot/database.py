@@ -3,7 +3,17 @@ Configuración y modelos de la base de datos
 """
 
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    text,
+    inspect,
+    func,
+    JSON,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
 import json
@@ -23,6 +33,12 @@ DATABASE_URL = (
 engine = create_engine(
     DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800
 )
+
+# Selecciona el tipo JSON adecuado según la base de datos.
+if engine.url.get_backend_name() == "sqlite":
+    JSONType = JSON
+else:
+    JSONType = JSONB
 
 # Crear sessionmaker
 # ``expire_on_commit=False`` evita que los objetos devueltos pierdan sus datos
@@ -60,8 +76,8 @@ class Servicio(Base):
     nombre = Column(String, index=True)
     cliente = Column(String, index=True)
     ruta_tracking = Column(String)
-    trackings = Column(JSONB)
-    camaras = Column(JSONB)
+    trackings = Column(JSONType)
+    camaras = Column(JSONType)
     carrier = Column(String)
     id_carrier = Column(String)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
@@ -156,8 +172,9 @@ def crear_servicio(**datos) -> Servicio:
     with SessionLocal() as session:
         permitidas = {c.name for c in Servicio.__table__.columns}
         datos_validos = {k: v for k, v in datos.items() if k in permitidas}
-        # Las columnas ``camaras`` y ``trackings`` ahora almacenan JSONB,
-        # por lo que se aceptan listas o diccionarios directamente.
+        # Las columnas ``camaras`` y ``trackings`` almacenan datos en formato
+        # JSON o JSONB según la base de datos, por lo que se aceptan listas o
+        # diccionarios directamente.
         servicio = Servicio(**datos_validos)
         session.add(servicio)
         session.commit()
@@ -205,8 +222,8 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Primer intento de filtrado. Se castea ``Servicio.camaras`` a
-        # ``String`` para evitar problemas cuando se guarda como JSONB.
+        # Primer intento de filtrado. Se castea ``Servicio.camaras`` a ``String``
+        # para evitar problemas cuando se guarda como JSON o JSONB.
         camaras_str = Servicio.camaras.cast(String)
 
         # Algunas bases de datos como SQLite no cuentan con la función
