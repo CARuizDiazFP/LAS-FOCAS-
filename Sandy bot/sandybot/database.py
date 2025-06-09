@@ -5,6 +5,7 @@ Configuración y modelos de la base de datos
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
 from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.dialects.postgresql import JSONB
 import json
 import pandas as pd
 from .utils import normalizar_camara
