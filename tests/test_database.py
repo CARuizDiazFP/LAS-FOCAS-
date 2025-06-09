@@ -88,6 +88,14 @@ def test_buscar_servicios_por_camara():
     assert {s.nombre for s in res4} == {"S5"}
 
 
+def test_buscar_servicios_por_camara_jsonb():
+    """Verifica la búsqueda cuando ``camaras`` se almacena como JSONB."""
+    bd.crear_servicio(nombre="SJ1", cliente="G", camaras=["Cámara JSONB"])
+
+    res = bd.buscar_servicios_por_camara("camara jsonb")
+    assert {s.nombre for s in res} == {"SJ1"}
+
+
 
 def test_exportar_camaras_servicio(tmp_path):
     servicio = bd.crear_servicio(
