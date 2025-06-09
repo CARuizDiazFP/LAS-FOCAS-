@@ -7,7 +7,7 @@ import pytest
 import openpyxl
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
 # Agregar ruta del paquete
@@ -46,24 +46,25 @@ required_vars = {
     "DB_PASSWORD": "pass",
     "DB_HOST": "localhost",
     "DB_PORT": "5432",
-    "DB_NAME": "sandy"
+    "DB_NAME": "sandy",
 }
 os.environ.update(required_vars)
 
 # Forzar que ``sandybot.database`` utilice SQLite en memoria
 import sqlalchemy
+
 orig_create_engine = sqlalchemy.create_engine
 sqlalchemy.create_engine = lambda *a, **k: orig_create_engine("sqlite:///:memory:")
 
 bd = importlib.import_module("sandybot.database")
 
 sqlalchemy.create_engine = orig_create_engine
-bd.SessionLocal = sessionmaker(bind=bd.engine)
+bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
 bd.Base.metadata.create_all(bind=bd.engine)
 
 
 def test_buscar_servicios_por_camara():
-    bd.crear_servicio(nombre="S1", cliente="A", camaras=["Camara Central"])
+    bd.crear_servicio(nombre="S1", cliente="A", camaras=["Cámara Central"])
     bd.crear_servicio(nombre="S2", cliente="B", camaras=["Nodo Secundario"])
     bd.crear_servicio(nombre="S3", cliente="C", camaras=["Avenida General San Martin"])
 
@@ -77,10 +78,15 @@ def test_buscar_servicios_por_camara():
     camara = "Cra Av. Gral Juan Domingo Per\u00f3n 7540 BENAVIDEZ"
     bd.crear_servicio(nombre="S4", cliente="D", camaras=[camara])
 
-    # La búsqueda utiliza la misma cadena que se almacen\u00f3. Con la mejora,
-    # debe encontrarse el servicio sin importar las diferencias de formato
-    res3 = bd.buscar_servicios_por_camara(camara)
+    # La búsqueda debería funcionar aunque se omitan los acentos
+    res3 = bd.buscar_servicios_por_camara("peron 7540")
     assert {s.nombre for s in res3} == {"S4"}
+
+
+    bd.crear_servicio(nombre="S5", cliente="E", camaras=["Cámara Fiscalía"])
+    res4 = bd.buscar_servicios_por_camara("camara fiscalia")
+    assert {s.nombre for s in res4} == {"S5"}
+
 
 
 def test_exportar_camaras_servicio(tmp_path):
@@ -97,6 +103,17 @@ def test_exportar_camaras_servicio(tmp_path):
     ws = wb.active
     filas = [c[0].value for c in ws.iter_rows(values_only=False)]
     assert filas == ["camara", "Camara 1", "Camara 2"]
+
+
+def test_actualizar_tracking_jsonb():
+    servicio = bd.crear_servicio(nombre="S6", cliente="F")
+    bd.actualizar_tracking(servicio.id, "ruta.txt", ["C1"], ["t1.txt"])
+
+    with bd.SessionLocal() as s:
+        reg = s.get(bd.Servicio, servicio.id)
+        assert reg.ruta_tracking == "ruta.txt"
+        assert reg.camaras == ["C1"]
+        assert reg.trackings == ["t1.txt"]
 
 
 def test_crear_ingreso():
@@ -118,3 +135,4 @@ def test_registrar_servicio_merge():
         filas = session.query(bd.Servicio).filter(bd.Servicio.id == 100).all()
         assert len(filas) == 1
         assert filas[0].id_carrier == "c1"
+
