@@ -19,6 +19,11 @@ from .enviar_camaras_mail import (
 )
 from .id_carrier import iniciar_identificador_carrier, procesar_identificador_carrier
 from .incidencias import iniciar_incidencias, procesar_incidencias
+from .destinatarios import (
+    agregar_destinatario,
+    eliminar_destinatario,
+    listar_destinatarios,
+)
 
 __all__ = [
     'start_handler',
@@ -45,5 +50,8 @@ __all__ = [
     'iniciar_identificador_carrier',
     'procesar_identificador_carrier',
     'iniciar_incidencias',
-    'procesar_incidencias'
+    'procesar_incidencias',
+    'agregar_destinatario',
+    'eliminar_destinatario',
+    'listar_destinatarios'
 ]

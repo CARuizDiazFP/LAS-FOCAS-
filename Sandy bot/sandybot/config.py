@@ -62,8 +62,11 @@ class Config:
         self.ARCHIVO_CONTADOR = self.DATA_DIR / "contador_diario.json"
         # Registro histórico de interacciones por usuario
         self.ARCHIVO_INTERACCIONES = self.DATA_DIR / "interacciones.json"
-        # Lista de destinatarios de notificaciones
-        self.DESTINATARIOS_FILE = self.DATA_DIR / "destinatarios.json"
+
+        # Destinatarios registrados para envío de mensajes
+
+        self.ARCHIVO_DESTINATARIOS = self.DATA_DIR / "destinatarios.json"
+
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
         # Cache de consultas a GPT para reducir costos y latencia
@@ -93,12 +96,14 @@ class Config:
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-        # SMTP
-        self.SMTP_HOST = os.getenv("SMTP_HOST")
-        self.SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
-        self.SMTP_USER = os.getenv("SMTP_USER")
-        self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-        self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+
+        # Credenciales de correo electrónico
+        self.EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+        self.EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+        self.EMAIL_USER = os.getenv("EMAIL_USER")
+        self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+        self.EMAIL_FROM = os.getenv("EMAIL_FROM")
+        
 
         # Validación
         self.validate()
@@ -134,7 +139,9 @@ class Config:
         # Advertir si faltan datos de correo
         email_missing = [
             nombre
-            for nombre in ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM"]
+
+            for nombre in ["EMAIL_USER", "EMAIL_PASSWORD", "EMAIL_FROM"]
+
             if not getattr(self, nombre)
         ]
         if email_missing:
