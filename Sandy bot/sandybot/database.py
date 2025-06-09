@@ -2,9 +2,18 @@
 Configuración y modelos de la base de datos
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect
+from sqlalchemy import (
+    create_engine,
+    Column,
+    Integer,
+    String,
+    DateTime,
+    text,
+    inspect,
+    cast,
+)
 from sqlalchemy.orm import declarative_base, sessionmaker
-import json
+from sqlalchemy.dialects.postgresql import JSONB
 import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
@@ -18,11 +27,7 @@ DATABASE_URL = (
 
 # Crear engine con connection pooling
 engine = create_engine(
-    DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=1800
+    DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800
 )
 
 # Crear sessionmaker
@@ -31,9 +36,11 @@ SessionLocal = sessionmaker(bind=engine)
 # Base declarativa para los modelos
 Base = declarative_base()
 
+
 class Conversacion(Base):
     """Modelo para almacenar conversaciones del bot"""
-    __tablename__ = 'conversaciones'
+
+    __tablename__ = "conversaciones"
 
     id = Column(Integer, primary_key=True)
     user_id = Column(String, index=True)
@@ -43,19 +50,22 @@ class Conversacion(Base):
     fecha = Column(DateTime, default=datetime.utcnow, index=True)
 
     def __repr__(self):
-        return f"<Conversacion(id={self.id}, user_id={self.user_id}, fecha={self.fecha})>"
+        return (
+            f"<Conversacion(id={self.id}, user_id={self.user_id}, fecha={self.fecha})>"
+        )
 
 
 class Servicio(Base):
     """Modelo que almacena datos de un servicio y su seguimiento"""
-    __tablename__ = 'servicios'
+
+    __tablename__ = "servicios"
 
     id = Column(Integer, primary_key=True)
     nombre = Column(String, index=True)
     cliente = Column(String, index=True)
     ruta_tracking = Column(String)
-    trackings = Column(String)
-    camaras = Column(String)
+    trackings = Column(JSONB)
+    camaras = Column(JSONB)
     carrier = Column(String)
     id_carrier = Column(String)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
@@ -66,6 +76,7 @@ class Servicio(Base):
 
 class Camara(Base):
     """Registro de cámaras asociadas a los servicios."""
+
     __tablename__ = "camaras"
 
     id = Column(Integer, primary_key=True)
@@ -73,11 +84,14 @@ class Camara(Base):
     id_servicio = Column(Integer, index=True)
 
     def __repr__(self) -> str:
-        return f"<Camara(id={self.id}, nombre={self.nombre}, servicio={self.id_servicio})>"
+        return (
+            f"<Camara(id={self.id}, nombre={self.nombre}, servicio={self.id_servicio})>"
+        )
 
 
 class Ingreso(Base):
     """Almacena cada ingreso a una cámara con fecha y usuario."""
+
     __tablename__ = "ingresos"
 
     id = Column(Integer, primary_key=True)
@@ -104,7 +118,9 @@ def ensure_servicio_columns() -> None:
     faltantes = definidas - actuales
     for columna in faltantes:
         with engine.begin() as conn:
-            conn.execute(text(f"ALTER TABLE servicios ADD COLUMN {columna} VARCHAR"))
+            tipo = "JSONB" if columna in {"camaras", "trackings"} else "VARCHAR"
+            conn.execute(text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}"))
+
 
 def init_db():
     """Inicializa la base de datos y crea las tablas si no existen."""
@@ -130,10 +146,8 @@ def crear_servicio(**datos) -> Servicio:
     with SessionLocal() as session:
         permitidas = {c.name for c in Servicio.__table__.columns}
         datos_validos = {k: v for k, v in datos.items() if k in permitidas}
-        if "camaras" in datos_validos and isinstance(datos_validos["camaras"], list):
-            datos_validos["camaras"] = json.dumps(datos_validos["camaras"])
-        if "trackings" in datos_validos and isinstance(datos_validos["trackings"], list):
-            datos_validos["trackings"] = json.dumps(datos_validos["trackings"])
+        # Las columnas ``camaras`` y ``trackings`` ahora almacenan JSONB,
+        # por lo que se aceptan listas o diccionarios directamente.
         servicio = Servicio(**datos_validos)
         session.add(servicio)
         session.commit()
@@ -155,11 +169,11 @@ def actualizar_tracking(
         if ruta is not None:
             servicio.ruta_tracking = ruta
         if camaras is not None:
-            servicio.camaras = json.dumps(camaras)
+            servicio.camaras = camaras
         if trackings_txt:
-            existentes = json.loads(servicio.trackings) if servicio.trackings else []
+            existentes = servicio.trackings or []
             existentes.extend(trackings_txt)
-            servicio.trackings = json.dumps(existentes)
+            servicio.trackings = existentes
         session.commit()
 
 
@@ -176,7 +190,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
         # se registró la cámara con abreviaturas o acentos diferentes.
         candidatos = (
             session.query(Servicio)
-            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
+            .filter(cast(Servicio.camaras, String).ilike(f"%{nombre_camara}%"))
             .all()
         )
 
@@ -191,11 +205,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
             # Si el servicio no posee cámaras registradas se ignora
             if not servicio.camaras:
                 continue
-            try:
-                camaras = json.loads(servicio.camaras)
-            except json.JSONDecodeError:
-                # Se descarta la fila si el JSON está malformado
-                continue
+            camaras = servicio.camaras or []
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
                 if fragmento in c_norm or c_norm in fragmento:
@@ -215,9 +225,8 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
     if not servicio or not servicio.camaras:
         return False
 
-    try:
-        camaras = json.loads(servicio.camaras)
-    except json.JSONDecodeError:
+    camaras = servicio.camaras
+    if not isinstance(camaras, list):
         return False
 
     # Se crea el DataFrame con una única columna
@@ -284,4 +293,3 @@ def crear_ingreso(
         session.commit()
         session.refresh(ingreso)
         return ingreso
-

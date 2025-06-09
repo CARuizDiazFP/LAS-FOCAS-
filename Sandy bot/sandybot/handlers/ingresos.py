@@ -1,6 +1,7 @@
 """
 Handler para la verificación de ingresos.
 """
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 import logging
@@ -17,6 +18,7 @@ from .estado import UserState
 from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
+
 
 async def manejar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -90,6 +92,7 @@ async def verificar_camara(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "ingresos",
         )
 
+
 async def opcion_por_nombre(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Configura la verificación por nombre de cámara."""
     mensaje = obtener_mensaje(update)
@@ -120,7 +123,10 @@ async def opcion_por_excel(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "ingresos",
     )
 
-async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def iniciar_verificacion_ingresos(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """
     Inicia el proceso de verificación de ingresos.
 
@@ -146,9 +152,7 @@ async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DE
                 InlineKeyboardButton(
                     "Por nombre de cámara", callback_data="ingresos_nombre"
                 ),
-                InlineKeyboardButton(
-                    "Con Excel", callback_data="ingresos_excel"
-                ),
+                InlineKeyboardButton("Con Excel", callback_data="ingresos_excel"),
             ]
         ]
         reply_markup = InlineKeyboardMarkup(keyboard)
@@ -168,6 +172,7 @@ async def iniciar_verificacion_ingresos(update: Update, context: ContextTypes.DE
             f"Error al iniciar la verificación de ingresos: {e}",
             "ingresos",
         )
+
 
 async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -226,10 +231,7 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 "ingresos",
             )
 
-        try:
-            camaras_servicio = json.loads(servicio.camaras) if servicio.camaras else []
-        except json.JSONDecodeError:
-            camaras_servicio = []
+        camaras_servicio = servicio.camaras or []
 
         # Mapas normalizados para comparar sin acentos ni mayúsculas
         map_archivo = {normalizar_camara(c): c for c in camaras_archivo}
@@ -254,7 +256,9 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
                 if key.startswith(serv_key) and re.search(r"bot\s*\d+", key, re.I):
                     match = re.search(r"bot\s*\d+", map_archivo[key], re.I)
                     if match:
-                        otras_botellas.append(f"{map_servicio[serv_key]} {match.group(0).title()}")
+                        otras_botellas.append(
+                            f"{map_servicio[serv_key]} {match.group(0).title()}"
+                        )
                         break
 
         # Remover de adicionales los elementos identificados como otras botellas
@@ -290,14 +294,16 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     except Exception as e:
         await responder_registrando(
             mensaje,
-            user_id if 'user_id' in locals() else update.effective_user.id,
+            user_id if "user_id" in locals() else update.effective_user.id,
             "procesar_ingresos",
             f"Error al procesar ingresos: {e}",
             "ingresos",
         )
 
 
-async def procesar_ingresos_excel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def procesar_ingresos_excel(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Procesa un Excel con un listado de cámaras en la columna A."""
     try:
         mensaje = obtener_mensaje(update)
@@ -352,7 +358,11 @@ async def procesar_ingresos_excel(update: Update, context: ContextTypes.DEFAULT_
                 ids = ", ".join(str(s.id) for s in servicios)
                 lineas.append(f"{cam}: varios servicios ({ids})")
 
-        respuesta = "\n".join(lineas) if lineas else "No se encontraron cámaras en la columna A."
+        respuesta = (
+            "\n".join(lineas)
+            if lineas
+            else "No se encontraron cámaras en la columna A."
+        )
 
         await responder_registrando(
             mensaje,
@@ -372,4 +382,3 @@ async def procesar_ingresos_excel(update: Update, context: ContextTypes.DEFAULT_
             f"Error al procesar el Excel: {e}",
             "ingresos",
         )
-
