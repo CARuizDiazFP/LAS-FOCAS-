@@ -196,14 +196,22 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Primer intento de filtrado usando el texto original para reducir
-        # la cantidad de filas cargadas. Este paso puede fallar si en la base
-        # se registró la cámara con abreviaturas o acentos diferentes.
-        candidatos = (
-            session.query(Servicio)
-            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
-            .all()
+        # Primer intento de filtrado. Se castea ``Servicio.camaras`` a
+        # ``String`` para evitar problemas cuando se guarda como JSONB.
+        camaras_str = Servicio.camaras.cast(String)
+
+        # Algunas bases de datos como SQLite no cuentan con la función
+        # ``unaccent``. Se verifica el dialecto para aplicarla solo cuando
+        # está disponible (PostgreSQL).
+        if session.bind.dialect.name == "postgresql":
+            columna_normalizada = func.unaccent(func.lower(camaras_str))
+        else:
+            columna_normalizada = func.lower(camaras_str)
+
+        filtro = columna_normalizada.ilike(
+            f"%{normalizar_camara(nombre_camara)}%"
         )
+        candidatos = session.query(Servicio).filter(filtro).all()
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
