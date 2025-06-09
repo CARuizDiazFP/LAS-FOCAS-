@@ -182,6 +182,15 @@ def actualizar_tracking(
             servicio.camaras = camaras
         if trackings_txt:
             existentes = servicio.trackings or []
+            # Compatibilidad con registros del esquema antiguo. Si ``existentes``
+            # es una cadena (antes se almacenaba como texto) intentamos
+            # convertirlo desde JSON. Si falla o está vacío, se utiliza una
+            # lista vacía.
+            if isinstance(existentes, str):
+                try:
+                    existentes = json.loads(existentes) if existentes else []
+                except json.JSONDecodeError:
+                    existentes = []
             existentes.extend(trackings_txt)
             servicio.trackings = existentes
         session.commit()

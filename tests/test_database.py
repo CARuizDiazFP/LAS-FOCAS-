@@ -124,6 +124,16 @@ def test_actualizar_tracking_jsonb():
         assert reg.trackings == ["t1.txt"]
 
 
+def test_actualizar_tracking_string():
+    """Verifica que se actualice si el campo ``trackings`` quedó como texto."""
+    servicio = bd.crear_servicio(nombre="S7", cliente="G", trackings="[]")
+    bd.actualizar_tracking(servicio.id, trackings_txt=["nuevo.txt"])
+
+    with bd.SessionLocal() as s:
+        reg = s.get(bd.Servicio, servicio.id)
+        assert reg.trackings == ["nuevo.txt"]
+
+
 def test_crear_ingreso():
     servicio = bd.crear_servicio(nombre="S5", cliente="E")
     fecha = datetime(2023, 1, 1, 12, 30)
