@@ -1,54 +1,9 @@
 import sys
 import os
 import importlib
-from types import ModuleType
 from pathlib import Path
-import pandas as pd
 import tempfile
 import openpyxl
-
-# Crear un stub de pandas para evitar dependencias externas
-pandas_stub = ModuleType("pandas")
-
-class DataFrame:
-    def __init__(self, registros=None, columns=None):
-        self._data = {c: [] for c in (columns or [])}
-        if registros:
-            for fila in registros:
-                for c, valor in zip(columns, fila):
-                    self._data[c].append(valor)
-
-    def __getitem__(self, columna):
-        valores = self._data[columna]
-
-        class Serie(list):
-            def astype(self, _):
-                return [str(v) for v in valores]
-
-        return Serie(valores)
-
-    def to_excel(self, writer, sheet_name=None, index=False):
-        writer.write(sheet_name, self._data)
-
-class ExcelWriter:
-    def __init__(self, path, engine=None):
-        self.path = path
-        self.sheets = {}
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        with open(self.path, "w", encoding="utf-8") as f:
-            for nombre in self.sheets:
-                f.write(f"{nombre}\n")
-
-    def write(self, sheet_name, data):
-        self.sheets[sheet_name] = data
-
-pandas_stub.DataFrame = DataFrame
-pandas_stub.ExcelWriter = ExcelWriter
-sys.modules.setdefault("pandas", pandas_stub)
 
 
 
