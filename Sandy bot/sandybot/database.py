@@ -26,7 +26,9 @@ engine = create_engine(
 )
 
 # Crear sessionmaker
-SessionLocal = sessionmaker(bind=engine)
+# ``expire_on_commit=False`` evita que los objetos devueltos pierdan sus datos
+# al cerrarse la sesión, algo útil cuando las funciones retornan instancias.
+SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 # Base declarativa para los modelos
 Base = declarative_base()

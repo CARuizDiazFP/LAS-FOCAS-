@@ -36,7 +36,7 @@ sqlalchemy.create_engine = lambda *a, **k: orig_create_engine("sqlite:///:memory
 bd = importlib.import_module("sandybot.database")
 
 sqlalchemy.create_engine = orig_create_engine
-bd.SessionLocal = sessionmaker(bind=bd.engine)
+bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
 bd.Base.metadata.create_all(bind=bd.engine)
 
 
