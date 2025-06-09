@@ -66,6 +66,7 @@ class Config:
         # Destinatarios registrados para envío de mensajes
 
         self.ARCHIVO_DESTINATARIOS = self.DATA_DIR / "destinatarios.json"
+
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
         # Cache de consultas a GPT para reducir costos y latencia
@@ -88,11 +89,13 @@ class Config:
         self.GPT_CACHE_TIMEOUT = 3600  # 1 hora
         
         # Base de datos
+
         self.DB_HOST = os.getenv("DB_HOST", "localhost")
         self.DB_PORT = os.getenv("DB_PORT", "5432")
         self.DB_NAME = os.getenv("DB_NAME", "sandybot")
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
+
 
         # Credenciales de correo electrónico
         self.EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
@@ -101,6 +104,7 @@ class Config:
         self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
         self.EMAIL_FROM = os.getenv("EMAIL_FROM")
         
+
         # Validación
         self.validate()
         
@@ -135,7 +139,9 @@ class Config:
         # Advertir si faltan datos de correo
         email_missing = [
             nombre
+
             for nombre in ["EMAIL_USER", "EMAIL_PASSWORD", "EMAIL_FROM"]
+
             if not getattr(self, nombre)
         ]
         if email_missing:

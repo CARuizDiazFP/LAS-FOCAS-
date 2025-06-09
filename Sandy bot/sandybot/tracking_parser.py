@@ -71,4 +71,3 @@ class TrackingParser:
                 df.to_excel(writer, sheet_name=sheet, index=False)
             coincidencias.to_excel(writer, sheet_name="Coincidencias", index=False)
 
-            

@@ -24,7 +24,8 @@ from .handlers import (
     iniciar_comparador,
     procesar_comparacion,
     iniciar_carga_tracking,
-    iniciar_descarga_tracking
+    iniciar_descarga_tracking,
+    iniciar_envio_camaras_mail
 )
 from .handlers import (
     agregar_destinatario,
@@ -49,9 +50,11 @@ class SandyBot:
         self.app.add_handler(CommandHandler("procesar", procesar_comparacion))
         self.app.add_handler(CommandHandler("cargar_tracking", iniciar_carga_tracking))
         self.app.add_handler(CommandHandler("descargar_tracking", iniciar_descarga_tracking))
+
         self.app.add_handler(CommandHandler("agregar_destinatario", agregar_destinatario))
         self.app.add_handler(CommandHandler("eliminar_destinatario", eliminar_destinatario))
         self.app.add_handler(CommandHandler("listar_destinatarios", listar_destinatarios))
+
         
         # Callbacks de botones
         self.app.add_handler(CallbackQueryHandler(callback_handler))

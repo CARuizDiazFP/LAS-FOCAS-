@@ -14,6 +14,28 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
   no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
+  de correo saliente.
+- `SMTP_USE_TLS`: indica si se inicia TLS al conectarse (por defecto `true`).
+
+### Envío de correos
+
+Para adjuntar archivos por email se utilizan las siguientes variables opcionales:
+
+- `SMTP_HOST` y `SMTP_PORT`: servidor y puerto del servicio SMTP.
+- `SMTP_USER` y `SMTP_PASSWORD`: credenciales si el servidor las requiere.
+- `EMAIL_FROM`: dirección remitente utilizada en los mensajes.
+
+Si vas a usar Gmail en desarrollo, activá la verificación en dos pasos y generá
+una **contraseña de aplicación**. Definí las variables así:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASSWORD=tu_contraseña_de_app
+EMAIL_FROM=tu_correo@gmail.com
+```
 
 ## Plantilla de informes de repetitividad
 
@@ -83,11 +105,34 @@ Si necesitás procesar documentos con extensión `.doc`, instalá el paquete opc
 pip install textract
 ```
 
+
 También podés incluirlo al instalar todas las dependencias:
 
 ```bash
 pip install -r requirements.txt
 ```
+
+## Enviar Excel por correo
+
+Para mandar un reporte por email se usa la función `enviar_excel_por_correo()`
+de `sandybot.email_utils`. No requiere instalar paquetes adicionales porque
+aprovecha `smtplib` y `email` de la biblioteca estándar.
+
+```python
+from sandybot.email_utils import enviar_excel_por_correo
+
+exito = enviar_excel_por_correo(
+    "destino@example.com",
+    "reporte.xlsx",
+    asunto="Reporte semanal",
+    cuerpo="Adjunto el archivo solicitado."
+)
+if exito:
+    print("Correo enviado correctamente")
+```
+
+Asegurate de definir `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` y `SMTP_PASSWORD`
+en tu `.env` para que el envío funcione.
 
 
 ## Errores por variables de entorno faltantes
@@ -104,4 +149,9 @@ Verificá tu archivo .env o las variables del sistema.
 Este texto se registra con `logging.error` y luego se lanza una excepción
 `ValueError` con el mismo contenido. Revisá el archivo `.env` o la configuración
 del sistema para corregir el problema.
+
+
+## Licencia
+
+Este proyecto se publica bajo la licencia [MIT](LICENSE).
 

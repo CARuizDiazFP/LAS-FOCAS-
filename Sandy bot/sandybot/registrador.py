@@ -43,3 +43,10 @@ async def responder_registrando(
     """Envía una respuesta y registra la interacción."""
     await mensaje_obj.reply_text(texto_respuesta, **kwargs)
     registrar_conversacion(user_id, texto_usuario, texto_respuesta, modo)
+
+
+def registrar_envio_email(user_id: int, destinatarios: list[str], archivo: str) -> None:
+    """Registra en la base que se envió un correo con un adjunto."""
+    mensaje = f"Email a {', '.join(destinatarios)}"
+    respuesta = f"Archivo {archivo} enviado por email"
+    registrar_conversacion(user_id, mensaje, respuesta, "email")

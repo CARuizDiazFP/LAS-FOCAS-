@@ -1,59 +1,66 @@
-"""Funciones para el envío de correos electrónicos"""
 
+"""Funciones para enviar archivos por correo."""
+
+from pathlib import Path
 import logging
 import smtplib
 from email.message import EmailMessage
-from pathlib import Path
-from typing import Iterable, Optional
 
 from .config import config
 
 logger = logging.getLogger(__name__)
 
 
-def enviar_email(
-    destinatarios: Iterable[str],
-    asunto: str,
-    cuerpo: str,
-    adjuntos: Optional[Iterable[str]] = None,
-) -> bool:
-    """Envía un correo utilizando las credenciales definidas en ``config``.
+def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str = "Reporte SandyBot", cuerpo: str = "Adjunto el archivo Excel.") -> bool:
+    """Envía un archivo Excel por correo usando la configuración SMTP.
 
-    Si falta alguna credencial obligatoria se registra un error y se
-    devuelve ``False``.
+    Parameters
+    ----------
+    destinatario: str
+        Dirección de correo del destinatario.
+    ruta_excel: str
+        Ruta al archivo Excel a adjuntar.
+    asunto: str, optional
+        Asunto del mensaje.
+    cuerpo: str, optional
+        Texto del cuerpo del correo.
+
+    Returns
+    -------
+    bool
+        ``True`` si el envío fue exitoso, ``False`` en caso de error.
     """
-
-    if not (config.EMAIL_USER and config.EMAIL_PASSWORD and config.EMAIL_FROM):
-        logger.error("Credenciales de correo incompletas")
-        return False
-
-    mensaje = EmailMessage()
-    mensaje["From"] = config.EMAIL_FROM
-    mensaje["To"] = ", ".join(destinatarios)
-    mensaje["Subject"] = asunto
-    mensaje.set_content(cuerpo)
-
-    if adjuntos:
-        for archivo in adjuntos:
-            try:
-                path = Path(archivo)
-                with open(path, "rb") as f:
-                    datos = f.read()
-                mensaje.add_attachment(
-                    datos,
-                    maintype="application",
-                    subtype="octet-stream",
-                    filename=path.name,
-                )
-            except Exception as e:
-                logger.error("Error al adjuntar %s: %s", archivo, e)
-
     try:
-        with smtplib.SMTP_SSL(config.EMAIL_HOST, config.EMAIL_PORT) as smtp:
-            smtp.login(config.EMAIL_USER, config.EMAIL_PASSWORD)
-            smtp.send_message(mensaje)
-        logger.info("\ud83d\udce7 Correo enviado a %s", mensaje["To"])
+        ruta = Path(ruta_excel)
+        if not ruta.exists():
+            raise FileNotFoundError(f"No se encontró el archivo: {ruta}")
+
+        msg = EmailMessage()
+        msg["From"] = config.SMTP_USER
+        msg["To"] = destinatario
+        msg["Subject"] = asunto
+        msg.set_content(cuerpo)
+
+        with open(ruta, "rb") as f:
+            datos = f.read()
+        msg.add_attachment(
+            datos,
+            maintype="application",
+            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=ruta.name,
+        )
+
+        if config.SMTP_USE_TLS:
+            server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
+            server.starttls()
+        else:
+            server = smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORT)
+
+        server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
         return True
-    except Exception as e:
-        logger.error("Error al enviar correo: %s", e)
+
+    except Exception as e:  # pragma: no cover - errores dependen del entorno
+        logger.error("Error enviando correo: %s", e)
         return False
