@@ -1,59 +1,57 @@
-"""Funciones para el envío de correos electrónicos"""
 
-import logging
+"""Utilidades sencillas para el envio de correos."""
+
 import smtplib
 from email.message import EmailMessage
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import List
 
-from .config import config
-
-logger = logging.getLogger(__name__)
+from .utils import cargar_json, guardar_json
 
 
-def enviar_email(
-    destinatarios: Iterable[str],
-    asunto: str,
-    cuerpo: str,
-    adjuntos: Optional[Iterable[str]] = None,
-) -> bool:
-    """Envía un correo utilizando las credenciales definidas en ``config``.
+def cargar_destinatarios(ruta: Path) -> List[str]:
+    """Devuelve la lista de emails almacenados en ``ruta``."""
+    datos = cargar_json(ruta)
+    if isinstance(datos, list):
+        return datos
+    return []
 
-    Si falta alguna credencial obligatoria se registra un error y se
-    devuelve ``False``.
-    """
 
-    if not (config.EMAIL_USER and config.EMAIL_PASSWORD and config.EMAIL_FROM):
-        logger.error("Credenciales de correo incompletas")
+def guardar_destinatarios(destinatarios: List[str], ruta: Path) -> bool:
+    """Guarda la lista de destinatarios en ``ruta``."""
+    return guardar_json(destinatarios, ruta)
+
+
+def agregar_destinatario(correo: str, ruta: Path) -> bool:
+    """Agrega un correo a la lista si no esta presente."""
+    dest = cargar_destinatarios(ruta)
+    if correo not in dest:
+        dest.append(correo)
+    return guardar_destinatarios(dest, ruta)
+
+
+def eliminar_destinatario(correo: str, ruta: Path) -> bool:
+    """Elimina un correo de la lista si existe."""
+    dest = cargar_destinatarios(ruta)
+    if correo in dest:
+        dest.remove(correo)
+    return guardar_destinatarios(dest, ruta)
+
+
+def enviar_correo(asunto: str, cuerpo: str, ruta: Path, host: str = "localhost", port: int = 25) -> bool:
+    """Envía un correo simple a todos los destinatarios registrados."""
+    destinatarios = cargar_destinatarios(ruta)
+    if not destinatarios:
         return False
 
     mensaje = EmailMessage()
-    mensaje["From"] = config.EMAIL_FROM
-    mensaje["To"] = ", ".join(destinatarios)
     mensaje["Subject"] = asunto
+    mensaje["From"] = "sandy@example.com"
+    mensaje["To"] = ", ".join(destinatarios)
     mensaje.set_content(cuerpo)
 
-    if adjuntos:
-        for archivo in adjuntos:
-            try:
-                path = Path(archivo)
-                with open(path, "rb") as f:
-                    datos = f.read()
-                mensaje.add_attachment(
-                    datos,
-                    maintype="application",
-                    subtype="octet-stream",
-                    filename=path.name,
-                )
-            except Exception as e:
-                logger.error("Error al adjuntar %s: %s", archivo, e)
+    with smtplib.SMTP(host, port) as smtp:
+        smtp.set_debuglevel(1)
+        smtp.sendmail(mensaje["From"], destinatarios, mensaje.as_string())
+    return True
 
-    try:
-        with smtplib.SMTP_SSL(config.EMAIL_HOST, config.EMAIL_PORT) as smtp:
-            smtp.login(config.EMAIL_USER, config.EMAIL_PASSWORD)
-            smtp.send_message(mensaje)
-        logger.info("\ud83d\udce7 Correo enviado a %s", mensaje["To"])
-        return True
-    except Exception as e:
-        logger.error("Error al enviar correo: %s", e)
-        return False
