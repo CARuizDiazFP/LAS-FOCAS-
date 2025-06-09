@@ -73,6 +73,13 @@ class Config:
         self.DB_NAME = os.getenv("DB_NAME", "sandybot")
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
+
+        # Credenciales de correo electrónico
+        self.EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
+        self.EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
+        self.EMAIL_USER = os.getenv("EMAIL_USER")
+        self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+        self.EMAIL_FROM = os.getenv("EMAIL_FROM")
         
         # Validación
         self.validate()
@@ -102,6 +109,18 @@ class Config:
             )
             logging.error(mensaje)
             raise ValueError(mensaje)
+
+        # Advertir si faltan datos de correo
+        email_missing = [
+            nombre
+            for nombre in ["EMAIL_USER", "EMAIL_PASSWORD", "EMAIL_FROM"]
+            if not getattr(self, nombre)
+        ]
+        if email_missing:
+            logging.warning(
+                "Variables de correo no definidas: %s",
+                ", ".join(email_missing),
+            )
 
 # Instancia global
 config = Config()
