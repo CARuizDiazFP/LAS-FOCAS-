@@ -1,56 +1,66 @@
-"""Utilidades sencillas para el envio de correos."""
 
+"""Funciones para enviar archivos por correo."""
+
+from pathlib import Path
+import logging
 import smtplib
 from email.message import EmailMessage
-from pathlib import Path
-from typing import List
 
-from .utils import cargar_json, guardar_json
+from .config import config
 
-
-def cargar_destinatarios(ruta: Path) -> List[str]:
-    """Devuelve la lista de emails almacenados en ``ruta``."""
-    datos = cargar_json(ruta)
-    if isinstance(datos, list):
-        return datos
-    return []
+logger = logging.getLogger(__name__)
 
 
-def guardar_destinatarios(destinatarios: List[str], ruta: Path) -> bool:
-    """Guarda la lista de destinatarios en ``ruta``."""
-    return guardar_json(destinatarios, ruta)
+def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str = "Reporte SandyBot", cuerpo: str = "Adjunto el archivo Excel.") -> bool:
+    """Envía un archivo Excel por correo usando la configuración SMTP.
 
+    Parameters
+    ----------
+    destinatario: str
+        Dirección de correo del destinatario.
+    ruta_excel: str
+        Ruta al archivo Excel a adjuntar.
+    asunto: str, optional
+        Asunto del mensaje.
+    cuerpo: str, optional
+        Texto del cuerpo del correo.
 
-def agregar_destinatario(correo: str, ruta: Path) -> bool:
-    """Agrega un correo a la lista si no esta presente."""
-    dest = cargar_destinatarios(ruta)
-    if correo not in dest:
-        dest.append(correo)
-    return guardar_destinatarios(dest, ruta)
+    Returns
+    -------
+    bool
+        ``True`` si el envío fue exitoso, ``False`` en caso de error.
+    """
+    try:
+        ruta = Path(ruta_excel)
+        if not ruta.exists():
+            raise FileNotFoundError(f"No se encontró el archivo: {ruta}")
 
+        msg = EmailMessage()
+        msg["From"] = config.SMTP_USER
+        msg["To"] = destinatario
+        msg["Subject"] = asunto
+        msg.set_content(cuerpo)
 
-def eliminar_destinatario(correo: str, ruta: Path) -> bool:
-    """Elimina un correo de la lista si existe."""
-    dest = cargar_destinatarios(ruta)
-    if correo in dest:
-        dest.remove(correo)
-    return guardar_destinatarios(dest, ruta)
+        with open(ruta, "rb") as f:
+            datos = f.read()
+        msg.add_attachment(
+            datos,
+            maintype="application",
+            subtype="vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            filename=ruta.name,
+        )
 
+        if config.SMTP_USE_TLS:
+            server = smtplib.SMTP(config.SMTP_HOST, config.SMTP_PORT)
+            server.starttls()
+        else:
+            server = smtplib.SMTP_SSL(config.SMTP_HOST, config.SMTP_PORT)
 
-def enviar_correo(asunto: str, cuerpo: str, ruta: Path, host: str = "localhost", port: int = 25) -> bool:
-    """Envía un correo simple a todos los destinatarios registrados."""
-    destinatarios = cargar_destinatarios(ruta)
-    if not destinatarios:
+        server.login(config.SMTP_USER, config.SMTP_PASSWORD)
+        server.send_message(msg)
+        server.quit()
+        return True
+
+    except Exception as e:  # pragma: no cover - errores dependen del entorno
+        logger.error("Error enviando correo: %s", e)
         return False
-
-    mensaje = EmailMessage()
-    mensaje["Subject"] = asunto
-    mensaje["From"] = "sandy@example.com"
-    mensaje["To"] = ", ".join(destinatarios)
-    mensaje.set_content(cuerpo)
-
-    with smtplib.SMTP(host, port) as smtp:
-        smtp.set_debuglevel(1)
-        smtp.sendmail(mensaje["From"], destinatarios, mensaje.as_string())
-    return True
-

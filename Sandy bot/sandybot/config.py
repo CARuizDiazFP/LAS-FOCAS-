@@ -86,24 +86,20 @@ class Config:
         self.GPT_CACHE_TIMEOUT = 3600  # 1 hora
         
         # Base de datos
+
         self.DB_HOST = os.getenv("DB_HOST", "localhost")
         self.DB_PORT = os.getenv("DB_PORT", "5432")
         self.DB_NAME = os.getenv("DB_NAME", "sandybot")
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-
-        # Opciones para el envío de correos. No son obligatorias, por lo que
-        # se cargan sin validar para mantener compatibilidad con entornos
-        # que no utilizan esta característica.
+        # SMTP
         self.SMTP_HOST = os.getenv("SMTP_HOST")
         self.SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
         self.SMTP_USER = os.getenv("SMTP_USER")
         self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
-        self.EMAIL_FROM = os.getenv("EMAIL_FROM")
+        self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
 
-
-        
         # Validación
         self.validate()
         
