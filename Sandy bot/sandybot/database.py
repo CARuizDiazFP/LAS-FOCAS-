@@ -2,7 +2,7 @@
 Configuración y modelos de la base de datos
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
 from sqlalchemy.orm import declarative_base, sessionmaker
 import json
 import pandas as pd
@@ -113,6 +113,16 @@ def init_db():
     # genere la estructura necesaria de forma automática la primera vez.
     Base.metadata.create_all(bind=engine)
     ensure_servicio_columns()
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
+                    "ON servicios USING gin ((unaccent(lower(camaras))) gin_trgm_ops)"
+                )
+            )
 
 
 # Crear las tablas al importar el módulo
@@ -171,14 +181,20 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Primer intento de filtrado usando el texto original para reducir
-        # la cantidad de filas cargadas. Este paso puede fallar si en la base
-        # se registró la cámara con abreviaturas o acentos diferentes.
-        candidatos = (
-            session.query(Servicio)
-            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
-            .all()
-        )
+        if engine.dialect.name == "postgresql":
+            candidatos = (
+                session.query(Servicio)
+                .filter(
+                    func.unaccent(func.lower(Servicio.camaras)).contains(fragmento)
+                )
+                .all()
+            )
+        else:
+            candidatos = (
+                session.query(Servicio)
+                .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
+                .all()
+            )
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
