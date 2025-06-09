@@ -135,7 +135,8 @@ def init_db():
             conn.execute(
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
-                    "ON servicios USING gin ((unaccent(lower(camaras))) gin_trgm_ops)"
+                    "ON servicios USING gin (" 
+                    "unaccent(lower(camaras::text)) gin_trgm_ops)"
                 )
             )
 
