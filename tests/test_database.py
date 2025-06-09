@@ -42,7 +42,7 @@ bd.Base.metadata.create_all(bind=bd.engine)
 
 
 def test_buscar_servicios_por_camara():
-    bd.crear_servicio(nombre="S1", cliente="A", camaras=["Camara Central"])
+    bd.crear_servicio(nombre="S1", cliente="A", camaras=["Cámara Central"])
     bd.crear_servicio(nombre="S2", cliente="B", camaras=["Nodo Secundario"])
     bd.crear_servicio(nombre="S3", cliente="C", camaras=["Avenida General San Martin"])
 
@@ -56,16 +56,15 @@ def test_buscar_servicios_por_camara():
     camara = "Cra Av. Gral Juan Domingo Per\u00f3n 7540 BENAVIDEZ"
     bd.crear_servicio(nombre="S4", cliente="D", camaras=[camara])
 
-    # La búsqueda utiliza la misma cadena que se almacen\u00f3. Con la mejora,
-    # debe encontrarse el servicio sin importar las diferencias de formato
-    res3 = bd.buscar_servicios_por_camara(camara)
+    # La búsqueda debería funcionar aunque se omitan los acentos
+    res3 = bd.buscar_servicios_por_camara("peron 7540")
     assert {s.nombre for s in res3} == {"S4"}
 
-    # Verificar que las cámaras se almacenen como lista y no como texto
-    with bd.SessionLocal() as s:
-        registro = s.query(bd.Servicio).filter_by(nombre="S1").first()
-        assert isinstance(registro.camaras, list)
-        assert registro.camaras == ["Camara Central"]
+
+    bd.crear_servicio(nombre="S5", cliente="E", camaras=["Cámara Fiscalía"])
+    res4 = bd.buscar_servicios_por_camara("camara fiscalia")
+    assert {s.nombre for s in res4} == {"S5"}
+
 
 
 def test_exportar_camaras_servicio(tmp_path):

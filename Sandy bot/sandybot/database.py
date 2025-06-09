@@ -2,22 +2,15 @@
 Configuración y modelos de la base de datos
 """
 
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    DateTime,
-    text,
-    inspect,
-    cast,
-)
+
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.dialects.postgresql import JSONB
+import json
 import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
 from .config import config
+
 
 # Configuración de la base de datos
 DATABASE_URL = (
@@ -129,6 +122,16 @@ def init_db():
     # genere la estructura necesaria de forma automática la primera vez.
     Base.metadata.create_all(bind=engine)
     ensure_servicio_columns()
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
+                    "ON servicios USING gin ((unaccent(lower(camaras))) gin_trgm_ops)"
+                )
+            )
 
 
 # Crear las tablas al importar el módulo
@@ -180,19 +183,26 @@ def actualizar_tracking(
 def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada."""
 
+
     # Se utiliza un contexto ``with`` para asegurar el cierre de la sesión
     # sin necesidad de manejar excepciones de forma explícita.
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Primer intento de filtrado usando el texto original para reducir
-        # la cantidad de filas cargadas. Este paso puede fallar si en la base
-        # se registró la cámara con abreviaturas o acentos diferentes.
-        candidatos = (
-            session.query(Servicio)
-            .filter(cast(Servicio.camaras, String).ilike(f"%{nombre_camara}%"))
-            .all()
-        )
+        if engine.dialect.name == "postgresql":
+            candidatos = (
+                session.query(Servicio)
+                .filter(
+                    func.unaccent(func.lower(Servicio.camaras)).contains(fragmento)
+                )
+                .all()
+            )
+        else:
+            candidatos = (
+                session.query(Servicio)
+                .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
+                .all()
+            )
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
@@ -205,7 +215,11 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
             # Si el servicio no posee cámaras registradas se ignora
             if not servicio.camaras:
                 continue
-            camaras = servicio.camaras or []
+            try:
+                camaras = json.loads(servicio.camaras)
+            except json.JSONDecodeError:
+                # Se descarta la fila si el JSON está malformado
+                continue
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
                 if fragmento in c_norm or c_norm in fragmento:
@@ -225,8 +239,9 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
     if not servicio or not servicio.camaras:
         return False
 
-    camaras = servicio.camaras
-    if not isinstance(camaras, list):
+    try:
+        camaras = json.loads(servicio.camaras)
+    except json.JSONDecodeError:
         return False
 
     # Se crea el DataFrame con una única columna
@@ -240,6 +255,7 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
 
 
 def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:
+
     """Crea o actualiza un servicio con el ``id_servicio`` dado.
 
     Si el servicio existe, se actualiza el campo ``id_carrier`` si fue
