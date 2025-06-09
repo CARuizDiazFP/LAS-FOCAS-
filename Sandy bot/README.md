@@ -9,7 +9,9 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 - Base de datos PostgreSQL para historial de conversaciones
 - `init_db()` crea las tablas y ejecuta `ensure_servicio_columns()`
   para verificar que la tabla `servicios` incluya las columnas
-  `ruta_tracking`, `trackings`, `camaras`, `carrier` e `id_carrier`
+  `ruta_tracking`, `trackings`, `camaras`, `carrier` e `id_carrier`.
+  Ahora `camaras` y `trackings` usan `JSONB` y guardan listas sin
+  convertirlas a texto
 - Procesamiento de archivos Excel para informes
 - Generación de documentos Word
 - Integración con Notion para seguimiento de solicitudes
@@ -99,6 +101,8 @@ La función `init_db()` crea las tablas automáticamente y ejecuta
 `ensure_servicio_columns()` para asegurar que la tabla `servicios`
 contenga las columnas `ruta_tracking`, `trackings`, `camaras`, `carrier`
 e `id_carrier`.
+Las columnas de cámaras y trackings se guardan como `JSONB` para
+admitir listas sin procesamiento adicional.
 
 - **Conversacion**: guarda los mensajes del bot y las respuestas.
 - **Servicio**: almacena nombre, cliente, carrier e ID carrier, además

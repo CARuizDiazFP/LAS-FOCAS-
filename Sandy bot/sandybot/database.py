@@ -2,13 +2,15 @@
 Configuración y modelos de la base de datos
 """
 
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect
+
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
 from sqlalchemy.orm import declarative_base, sessionmaker
 import json
 import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
 from .config import config
+
 
 # Configuración de la base de datos
 DATABASE_URL = (
@@ -18,11 +20,7 @@ DATABASE_URL = (
 
 # Crear engine con connection pooling
 engine = create_engine(
-    DATABASE_URL,
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=1800
+    DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800
 )
 
 # Crear sessionmaker
@@ -31,9 +29,11 @@ SessionLocal = sessionmaker(bind=engine)
 # Base declarativa para los modelos
 Base = declarative_base()
 
+
 class Conversacion(Base):
     """Modelo para almacenar conversaciones del bot"""
-    __tablename__ = 'conversaciones'
+
+    __tablename__ = "conversaciones"
 
     id = Column(Integer, primary_key=True)
     user_id = Column(String, index=True)
@@ -43,19 +43,22 @@ class Conversacion(Base):
     fecha = Column(DateTime, default=datetime.utcnow, index=True)
 
     def __repr__(self):
-        return f"<Conversacion(id={self.id}, user_id={self.user_id}, fecha={self.fecha})>"
+        return (
+            f"<Conversacion(id={self.id}, user_id={self.user_id}, fecha={self.fecha})>"
+        )
 
 
 class Servicio(Base):
     """Modelo que almacena datos de un servicio y su seguimiento"""
-    __tablename__ = 'servicios'
+
+    __tablename__ = "servicios"
 
     id = Column(Integer, primary_key=True)
     nombre = Column(String, index=True)
     cliente = Column(String, index=True)
     ruta_tracking = Column(String)
-    trackings = Column(String)
-    camaras = Column(String)
+    trackings = Column(JSONB)
+    camaras = Column(JSONB)
     carrier = Column(String)
     id_carrier = Column(String)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
@@ -66,6 +69,7 @@ class Servicio(Base):
 
 class Camara(Base):
     """Registro de cámaras asociadas a los servicios."""
+
     __tablename__ = "camaras"
 
     id = Column(Integer, primary_key=True)
@@ -73,11 +77,14 @@ class Camara(Base):
     id_servicio = Column(Integer, index=True)
 
     def __repr__(self) -> str:
-        return f"<Camara(id={self.id}, nombre={self.nombre}, servicio={self.id_servicio})>"
+        return (
+            f"<Camara(id={self.id}, nombre={self.nombre}, servicio={self.id_servicio})>"
+        )
 
 
 class Ingreso(Base):
     """Almacena cada ingreso a una cámara con fecha y usuario."""
+
     __tablename__ = "ingresos"
 
     id = Column(Integer, primary_key=True)
@@ -101,6 +108,7 @@ def ensure_servicio_columns() -> None:
     actuales = {col["name"] for col in inspector.get_columns("servicios")}
     definidas = {c.name for c in Servicio.__table__.columns}
 
+
     faltantes = definidas - actuales
     for columna in faltantes:
         tipo = Servicio.__table__.columns[columna].type.compile(engine.dialect)
@@ -109,6 +117,7 @@ def ensure_servicio_columns() -> None:
                 text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}")
             )
 
+
 def init_db():
     """Inicializa la base de datos y crea las tablas si no existen."""
     # ``bind=engine`` deja explícito que las tablas se crearán usando
@@ -116,6 +125,16 @@ def init_db():
     # genere la estructura necesaria de forma automática la primera vez.
     Base.metadata.create_all(bind=engine)
     ensure_servicio_columns()
+    if engine.dialect.name == "postgresql":
+        with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
+                    "ON servicios USING gin ((unaccent(lower(camaras))) gin_trgm_ops)"
+                )
+            )
 
 
 # Crear las tablas al importar el módulo
@@ -133,10 +152,8 @@ def crear_servicio(**datos) -> Servicio:
     with SessionLocal() as session:
         permitidas = {c.name for c in Servicio.__table__.columns}
         datos_validos = {k: v for k, v in datos.items() if k in permitidas}
-        if "camaras" in datos_validos and isinstance(datos_validos["camaras"], list):
-            datos_validos["camaras"] = json.dumps(datos_validos["camaras"])
-        if "trackings" in datos_validos and isinstance(datos_validos["trackings"], list):
-            datos_validos["trackings"] = json.dumps(datos_validos["trackings"])
+        # Las columnas ``camaras`` y ``trackings`` ahora almacenan JSONB,
+        # por lo que se aceptan listas o diccionarios directamente.
         servicio = Servicio(**datos_validos)
         session.add(servicio)
         session.commit()
@@ -158,30 +175,37 @@ def actualizar_tracking(
         if ruta is not None:
             servicio.ruta_tracking = ruta
         if camaras is not None:
-            servicio.camaras = json.dumps(camaras)
+            servicio.camaras = camaras
         if trackings_txt:
-            existentes = json.loads(servicio.trackings) if servicio.trackings else []
+            existentes = servicio.trackings or []
             existentes.extend(trackings_txt)
-            servicio.trackings = json.dumps(existentes)
+            servicio.trackings = existentes
         session.commit()
 
 
 def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada."""
 
+
     # Se utiliza un contexto ``with`` para asegurar el cierre de la sesión
     # sin necesidad de manejar excepciones de forma explícita.
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
-        # Primer intento de filtrado usando el texto original para reducir
-        # la cantidad de filas cargadas. Este paso puede fallar si en la base
-        # se registró la cámara con abreviaturas o acentos diferentes.
-        candidatos = (
-            session.query(Servicio)
-            .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
-            .all()
-        )
+        if engine.dialect.name == "postgresql":
+            candidatos = (
+                session.query(Servicio)
+                .filter(
+                    func.unaccent(func.lower(Servicio.camaras)).contains(fragmento)
+                )
+                .all()
+            )
+        else:
+            candidatos = (
+                session.query(Servicio)
+                .filter(Servicio.camaras.ilike(f"%{nombre_camara}%"))
+                .all()
+            )
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
@@ -234,6 +258,7 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
 
 
 def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:
+
     """Crea o actualiza un servicio con el ``id_servicio`` dado.
 
     Si el servicio existe, se actualiza el campo ``id_carrier`` si fue
@@ -287,4 +312,3 @@ def crear_ingreso(
         session.commit()
         session.refresh(ingreso)
         return ingreso
-
