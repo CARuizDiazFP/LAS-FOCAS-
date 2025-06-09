@@ -113,7 +113,16 @@ registrador_stub.responder_registrando = responder_registrando
 sys.modules.setdefault("sandybot.registrador", registrador_stub)
 
 # Variables requeridas por Config
-for var in ["TELEGRAM_TOKEN", "OPENAI_API_KEY", "NOTION_TOKEN", "NOTION_DATABASE_ID", "DB_USER", "DB_PASSWORD"]:
+for var in [
+    "TELEGRAM_TOKEN",
+    "OPENAI_API_KEY",
+    "NOTION_TOKEN",
+    "NOTION_DATABASE_ID",
+    "DB_USER",
+    "DB_PASSWORD",
+    "SLACK_WEBHOOK_URL",
+    "SUPERVISOR_DB_ID",
+]:
     os.environ.setdefault(var, "x")
 
 # Importar config despues de establecer las variables

@@ -44,6 +44,8 @@ required_vars = {
     "NOTION_DATABASE_ID": "x",
     "DB_USER": "user",
     "DB_PASSWORD": "pass",
+    "SLACK_WEBHOOK_URL": "x",
+    "SUPERVISOR_DB_ID": "x",
     "DB_HOST": "localhost",
     "DB_PORT": "5432",
     "DB_NAME": "sandy",
