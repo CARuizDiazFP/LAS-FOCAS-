@@ -92,12 +92,27 @@ class Config:
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
 
+
+        # Opciones para el envío de correos. No son obligatorias, por lo que
+        # se cargan sin validar para mantener compatibilidad con entornos
+        # que no utilizan esta característica.
+        self.SMTP_HOST = os.getenv("SMTP_HOST")
+        self.SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+        self.SMTP_USER = os.getenv("SMTP_USER")
+        self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
+        self.EMAIL_FROM = os.getenv("EMAIL_FROM")
+
+        # Ruta del archivo que almacena los destinatarios para los envíos
+        # automáticos de reportes o listados.
+        self.DESTINATARIOS_FILE = self.DATA_DIR / "destinatarios.json"
+
         # Credenciales de correo electrónico
         self.EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
         self.EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
         self.EMAIL_USER = os.getenv("EMAIL_USER")
         self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
         self.EMAIL_FROM = os.getenv("EMAIL_FROM")
+
         
         # Validación
         self.validate()
