@@ -12,3 +12,4 @@ pywin32>=300; sys_platform == 'win32'
 jsonschema>=4.0.0
 SQLAlchemy>=1.4
 textract>=1.0.0  # opcional para archivos .doc
+
