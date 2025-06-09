@@ -552,4 +552,4 @@ def _generar_prompt_por_animo(mensaje: str, puntaje: int) -> str:
         )
     if puntaje <= 80:
         return _generar_prompt_malhumorado(mensaje) + " Explicá con mucho detalle."
-    return _generar_prompt_malhumorado(mensaje) + " Sé muy directo y fastidioso." 
+    return _generar_prompt_malhumorado(mensaje) + " Sé muy directo y fastidioso."

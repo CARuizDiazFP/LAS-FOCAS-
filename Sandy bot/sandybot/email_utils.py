@@ -1,4 +1,3 @@
-
 """Utilidades sencillas para el envio de correos."""
 
 import smtplib
