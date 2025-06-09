@@ -88,6 +88,14 @@ def test_buscar_servicios_por_camara():
     assert {s.nombre for s in res4} == {"S5"}
 
 
+def test_buscar_servicios_por_camara_jsonb():
+    """Verifica la búsqueda cuando ``camaras`` se almacena como JSONB."""
+    bd.crear_servicio(nombre="SJ1", cliente="G", camaras=["Cámara JSONB"])
+
+    res = bd.buscar_servicios_por_camara("camara jsonb")
+    assert {s.nombre for s in res} == {"SJ1"}
+
+
 
 def test_exportar_camaras_servicio(tmp_path):
     servicio = bd.crear_servicio(
@@ -114,6 +122,16 @@ def test_actualizar_tracking_jsonb():
         assert reg.ruta_tracking == "ruta.txt"
         assert reg.camaras == ["C1"]
         assert reg.trackings == ["t1.txt"]
+
+
+def test_actualizar_tracking_string():
+    """Verifica que se actualice si el campo ``trackings`` quedó como texto."""
+    servicio = bd.crear_servicio(nombre="S7", cliente="G", trackings="[]")
+    bd.actualizar_tracking(servicio.id, trackings_txt=["nuevo.txt"])
+
+    with bd.SessionLocal() as s:
+        reg = s.get(bd.Servicio, servicio.id)
+        assert reg.trackings == ["nuevo.txt"]
 
 
 def test_crear_ingreso():

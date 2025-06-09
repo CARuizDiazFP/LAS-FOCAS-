@@ -3,8 +3,10 @@ Configuración y modelos de la base de datos
 """
 
 
+
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func, JSON
 from sqlalchemy.orm import declarative_base, sessionmaker
+
 import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
@@ -139,7 +141,8 @@ def init_db():
             conn.execute(
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
-                    "ON servicios USING gin ((unaccent(lower(camaras))) gin_trgm_ops)"
+                    "ON servicios USING gin (" 
+                    "unaccent(lower(camaras::text)) gin_trgm_ops)"
                 )
             )
 
@@ -185,6 +188,15 @@ def actualizar_tracking(
             servicio.camaras = camaras
         if trackings_txt:
             existentes = servicio.trackings or []
+            # Compatibilidad con registros del esquema antiguo. Si ``existentes``
+            # es una cadena (antes se almacenaba como texto) intentamos
+            # convertirlo desde JSON. Si falla o está vacío, se utiliza una
+            # lista vacía.
+            if isinstance(existentes, str):
+                try:
+                    existentes = json.loads(existentes) if existentes else []
+                except json.JSONDecodeError:
+                    existentes = []
             existentes.extend(trackings_txt)
             servicio.trackings = existentes
         session.commit()
@@ -199,6 +211,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
 
+
         # Primer intento de filtrado usando el texto original para reducir
         # la cantidad de filas cargadas. Este paso puede fallar si en la base
         # se registró la cámara con abreviaturas o acentos diferentes.
@@ -207,6 +220,7 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
             .filter(Servicio.camaras.cast(String).ilike(f"%{nombre_camara}%"))
             .all()
         )
+
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
