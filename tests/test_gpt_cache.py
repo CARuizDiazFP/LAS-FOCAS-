@@ -47,6 +47,8 @@ os.environ.setdefault("NOTION_TOKEN", "x")
 os.environ.setdefault("NOTION_DATABASE_ID", "x")
 os.environ.setdefault("DB_USER", "x")
 os.environ.setdefault("DB_PASSWORD", "x")
+os.environ.setdefault("SLACK_WEBHOOK_URL", "x")
+os.environ.setdefault("SUPERVISOR_DB_ID", "x")
 
 # Importar módulos de SandyBot
 config_mod = importlib.import_module("sandybot.config")
