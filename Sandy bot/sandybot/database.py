@@ -5,7 +5,7 @@ Configuración y modelos de la base de datos
 
 from sqlalchemy import create_engine, Column, Integer, String, DateTime, text, inspect, func
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import JSON as JSONB
 import json
 import pandas as pd
 from .utils import normalizar_camara
@@ -215,11 +215,15 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
             # Si el servicio no posee cámaras registradas se ignora
             if not servicio.camaras:
                 continue
-            try:
-                camaras = json.loads(servicio.camaras)
-            except json.JSONDecodeError:
-                # Se descarta la fila si el JSON está malformado
-                continue
+            camaras_raw = servicio.camaras
+            if isinstance(camaras_raw, str):
+                try:
+                    camaras = json.loads(camaras_raw)
+                except json.JSONDecodeError:
+                    # Se descarta la fila si el JSON está malformado
+                    continue
+            else:
+                camaras = camaras_raw
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
                 if fragmento in c_norm or c_norm in fragmento:
@@ -239,10 +243,14 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
     if not servicio or not servicio.camaras:
         return False
 
-    try:
-        camaras = json.loads(servicio.camaras)
-    except json.JSONDecodeError:
-        return False
+    camaras_raw = servicio.camaras
+    if isinstance(camaras_raw, str):
+        try:
+            camaras = json.loads(camaras_raw)
+        except json.JSONDecodeError:
+            return False
+    else:
+        camaras = camaras_raw
 
     # Se crea el DataFrame con una única columna
     df = pd.DataFrame(camaras, columns=["camara"])
@@ -306,33 +314,3 @@ def crear_ingreso(
 
 
 
-def crear_camara(nombre: str, id_servicio: int) -> Camara:
-    """Crea una cámara asociada a un servicio."""
-    with SessionLocal() as session:
-        camara = Camara(nombre=nombre, id_servicio=id_servicio)
-        session.add(camara)
-        session.commit()
-        session.refresh(camara)
-        return camara
-
-
-def crear_ingreso(
-    id_servicio: int,
-    camara: str,
-    fecha: datetime | None = None,
-    usuario: str | None = None,
-    id_camara: int | None = None,
-) -> Ingreso:
-    """Registra un ingreso a una cámara."""
-    with SessionLocal() as session:
-        ingreso = Ingreso(
-            id_servicio=id_servicio,
-            camara=camara,
-            fecha=fecha or datetime.utcnow(),
-            usuario=usuario,
-            id_camara=id_camara,
-        )
-        session.add(ingreso)
-        session.commit()
-        session.refresh(ingreso)
-        return ingreso
