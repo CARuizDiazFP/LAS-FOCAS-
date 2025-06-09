@@ -35,13 +35,7 @@ engine = create_engine(
     DATABASE_URL, pool_size=5, max_overflow=10, pool_timeout=30, pool_recycle=1800
 )
 
-# Selecciona el tipo JSON adecuado según la base de datos.
-if engine.url.get_backend_name() == "sqlite":
-    JSONType = JSON
-else:
-    JSONType = JSONB
-
-# Determina el tipo JSON a utilizar según la base de datos
+# Selecciona el tipo JSON adecuado según la base de datos
 if engine.dialect.name == "postgresql":
     from sqlalchemy.dialects.postgresql import JSONB as JSONType
 else:  # pragma: no cover - para SQLite en tests

@@ -90,3 +90,16 @@ def obtener_mensaje(update: Update) -> Optional[Message]:
     if update.callback_query and update.callback_query.message:
         return update.callback_query.message
     return None
+
+def cargar_destinatarios() -> Dict[str, Any]:
+    """Carga el archivo de destinatarios definido en :class:`Config`."""
+    from .config import config
+
+    return cargar_json(config.DESTINATARIOS_FILE)
+
+
+def guardar_destinatarios(destinatarios: Dict[str, Any]) -> bool:
+    """Guarda la lista de destinatarios en el archivo configurado."""
+    from .config import config
+
+    return guardar_json(destinatarios, config.DESTINATARIOS_FILE)

@@ -1,5 +1,10 @@
-"""
-Configuración centralizada para el bot Sandy
+"""Configuración centralizada para el bot Sandy.
+
+Este módulo concentra la lectura de todas las variables de entorno
+necesarias para ejecutar el bot. A partir de aquí se definen rutas de
+trabajo, claves de acceso a APIs y parámetros de conexión.  De esta
+forma el resto del código sólo importa :class:`Config` y no debe
+preocuparse por dónde provienen esos valores.
 """
 import os
 import logging
@@ -8,7 +13,14 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 class Config:
-    """Clase singleton para manejar la configuración global"""
+    """Clase singleton para manejar la configuración global.
+
+    Al instanciarla se cargan las variables de entorno indispensables
+    para el funcionamiento del bot.  Además de las claves de Telegram,
+    OpenAI y Notion se añaden ``SLACK_WEBHOOK_URL`` y ``SUPERVISOR_DB_ID``
+    que permiten enviar alertas a Slack y registrar acciones en una
+    base de Notion destinada al modo supervisor.
+    """
     _instance = None
 
     def __new__(cls):
@@ -41,11 +53,17 @@ class Config:
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
         self.NOTION_TOKEN = os.getenv("NOTION_TOKEN")
         self.NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
+        # URL del webhook para enviar notificaciones a Slack
+        self.SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
+        # ID de la base de Notion utilizada en el modo supervisor
+        self.SUPERVISOR_DB_ID = os.getenv("SUPERVISOR_DB_ID")
         
         # Archivos y rutas
         self.ARCHIVO_CONTADOR = self.DATA_DIR / "contador_diario.json"
         # Registro histórico de interacciones por usuario
         self.ARCHIVO_INTERACCIONES = self.DATA_DIR / "interacciones.json"
+        # Lista de destinatarios de notificaciones
+        self.DESTINATARIOS_FILE = self.DATA_DIR / "destinatarios.json"
         self.LOG_FILE = self.LOG_DIR / "sandy.log"
         self.ERRORES_FILE = self.LOG_DIR / "errores_ingresos.log"
         # Cache de consultas a GPT para reducir costos y latencia
@@ -68,6 +86,7 @@ class Config:
         self.GPT_CACHE_TIMEOUT = 3600  # 1 hora
         
         # Base de datos
+
         self.DB_HOST = os.getenv("DB_HOST", "localhost")
         self.DB_PORT = os.getenv("DB_PORT", "5432")
         self.DB_NAME = os.getenv("DB_NAME", "sandybot")
@@ -80,7 +99,7 @@ class Config:
         self.SMTP_USER = os.getenv("SMTP_USER")
         self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD")
         self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
-        
+
         # Validación
         self.validate()
         
@@ -96,6 +115,8 @@ class Config:
             "OPENAI_API_KEY": self.OPENAI_API_KEY,
             "NOTION_TOKEN": self.NOTION_TOKEN,
             "NOTION_DATABASE_ID": self.NOTION_DATABASE_ID,
+            "SLACK_WEBHOOK_URL": self.SLACK_WEBHOOK_URL,
+            "SUPERVISOR_DB_ID": self.SUPERVISOR_DB_ID,
             "DB_USER": self.DB_USER,
             "DB_PASSWORD": self.DB_PASSWORD
         }
@@ -109,6 +130,18 @@ class Config:
             )
             logging.error(mensaje)
             raise ValueError(mensaje)
+
+        # Advertir si faltan datos de correo
+        email_missing = [
+            nombre
+            for nombre in ["SMTP_HOST", "SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM"]
+            if not getattr(self, nombre)
+        ]
+        if email_missing:
+            logging.warning(
+                "Variables de correo no definidas: %s",
+                ", ".join(email_missing),
+            )
 
 # Instancia global
 config = Config()

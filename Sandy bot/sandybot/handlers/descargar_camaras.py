@@ -6,9 +6,15 @@ import logging
 import os
 import tempfile
 
-from ..utils import obtener_mensaje
+from ..utils import obtener_mensaje, cargar_json
 from ..database import exportar_camaras_servicio
-from ..registrador import responder_registrando, registrar_conversacion
+from ..registrador import (
+    responder_registrando,
+    registrar_conversacion,
+    registrar_envio_email,
+)
+from ..correo import enviar_email
+from ..config import config
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
@@ -72,6 +78,22 @@ async def enviar_camaras_servicio(update: Update, context: ContextTypes.DEFAULT_
             f"Documento {os.path.basename(ruta)} enviado",
             "descargar_camaras",
         )
+
+        # Cargar los destinatarios desde el JSON configurado y enviar el
+        # mismo archivo por correo. Si el envío es exitoso se registra en la
+        # base de conversaciones para mantener un historial.
+        data = cargar_json(config.DESTINATARIOS_FILE)
+        destinatarios = data.get("emails", []) if isinstance(data, dict) else []
+        if destinatarios:
+            if enviar_email(
+                destinatarios,
+                "Listado de camaras",
+                "Adjunto el Excel generado por SandyBot.",
+                ruta,
+            ):
+                registrar_envio_email(
+                    mensaje.from_user.id, destinatarios, os.path.basename(ruta)
+                )
     except Exception as e:
         logger.error("Error al enviar listado de cámaras: %s", e)
         await responder_registrando(

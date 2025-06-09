@@ -18,6 +18,25 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
   de correo saliente.
 - `SMTP_USE_TLS`: indica si se inicia TLS al conectarse (por defecto `true`).
 
+### Envío de correos
+
+Para adjuntar archivos por email se utilizan las siguientes variables opcionales:
+
+- `SMTP_HOST` y `SMTP_PORT`: servidor y puerto del servicio SMTP.
+- `SMTP_USER` y `SMTP_PASSWORD`: credenciales si el servidor las requiere.
+- `EMAIL_FROM`: dirección remitente utilizada en los mensajes.
+
+Si vas a usar Gmail en desarrollo, activá la verificación en dos pasos y generá
+una **contraseña de aplicación**. Definí las variables así:
+
+```env
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=tu_correo@gmail.com
+SMTP_PASSWORD=tu_contraseña_de_app
+EMAIL_FROM=tu_correo@gmail.com
+```
+
 ## Plantilla de informes de repetitividad
 
 El documento base para generar los reportes de repetitividad se indica
@@ -130,4 +149,9 @@ Verificá tu archivo .env o las variables del sistema.
 Este texto se registra con `logging.error` y luego se lanza una excepción
 `ValueError` con el mismo contenido. Revisá el archivo `.env` o la configuración
 del sistema para corregir el problema.
+
+
+## Licencia
+
+Este proyecto se publica bajo la licencia [MIT](LICENSE).
 

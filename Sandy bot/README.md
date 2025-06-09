@@ -147,6 +147,7 @@ admitir listas sin procesamiento adicional.
 5. Descarga de cámaras
    - Seleccioná "Descargar cámaras" desde el menú o enviá `/descargar_camaras`
    - Indicá el ID y recibirás un Excel con todas las cámaras asociadas
+   - También podés usar `/enviar_camaras_mail` para recibirlas por correo
 
 6. Informes de repetitividad
    - Procesa Excel de casos
@@ -171,4 +172,4 @@ admitir listas sin procesamiento adicional.
 
 ## Licencia
 
-Este proyecto está licenciado bajo [insertar licencia].
+El código se distribuye bajo la licencia [MIT](../LICENSE).

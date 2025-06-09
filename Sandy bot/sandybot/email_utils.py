@@ -1,3 +1,4 @@
+
 """Funciones para enviar archivos por correo."""
 
 from pathlib import Path
