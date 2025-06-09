@@ -231,27 +231,22 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
 
 
 def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:
-    """Crea o actualiza un servicio con el ``id_servicio`` dado.
+    """Inserta o actualiza un servicio utilizando ``session.merge``.
 
-    Si el servicio existe, se actualiza el campo ``id_carrier`` si fue
-    proporcionado. En caso contrario se genera un nuevo registro con los datos
-    recibidos.
+    Se crea un objeto :class:`Servicio` con el ID indicado y, si se
+    proporciona ``id_carrier``, también se asigna. ``merge`` evita duplicados
+    al combinarlo con la fila existente cuando corresponde.
     """
     with SessionLocal() as session:
-        servicio = session.get(Servicio, id_servicio)
-        if servicio:
-            if id_carrier is not None:
-                servicio.id_carrier = str(id_carrier)
-            session.commit()
-            session.refresh(servicio)
-            return servicio
-        nuevo = Servicio(id=id_servicio)
+        datos = {"id": id_servicio}
         if id_carrier is not None:
-            nuevo.id_carrier = str(id_carrier)
-        session.add(nuevo)
+            datos["id_carrier"] = str(id_carrier)
+
+        servicio = Servicio(**datos)
+        servicio = session.merge(servicio)
         session.commit()
-        session.refresh(nuevo)
-        return nuevo
+        session.refresh(servicio)
+        return servicio
 
 
 def crear_camara(nombre: str, id_servicio: int) -> Camara:

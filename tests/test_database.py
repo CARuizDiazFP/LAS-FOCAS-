@@ -14,6 +14,28 @@ from sqlalchemy.orm import sessionmaker
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
+# Crear stub del módulo telegram para las utilidades
+telegram_stub = importlib.util.module_from_spec(importlib.machinery.ModuleSpec("telegram", None))
+class Message:
+    def __init__(self, text=""):
+        self.text = text
+class CallbackQuery:
+    def __init__(self, message=None):
+        self.message = message
+class Update:
+    def __init__(self, message=None, edited_message=None, callback_query=None):
+        self.message = message
+        self.edited_message = edited_message
+        self.callback_query = callback_query
+telegram_stub.Update = Update
+telegram_stub.Message = Message
+sys.modules.setdefault("telegram", telegram_stub)
+
+# Stub de dotenv requerido por config
+dotenv_stub = importlib.util.module_from_spec(importlib.machinery.ModuleSpec("dotenv", None))
+dotenv_stub.load_dotenv = lambda *a, **k: None
+sys.modules.setdefault("dotenv", dotenv_stub)
+
 # Variables de entorno necesarias para Config
 required_vars = {
     "TELEGRAM_TOKEN": "x",
@@ -85,3 +107,14 @@ def test_crear_ingreso():
         fila = session.query(bd.Ingreso).first()
         assert fila.camara == "Camara X"
         assert fila.fecha == fecha
+
+
+def test_registrar_servicio_merge():
+    """Verifica que ``registrar_servicio`` no duplique filas."""
+    bd.crear_servicio(id=100, nombre="n1", cliente="a")
+    bd.registrar_servicio(100, "c1")
+    bd.registrar_servicio(100, "c1")
+    with bd.SessionLocal() as session:
+        filas = session.query(bd.Servicio).filter(bd.Servicio.id == 100).all()
+        assert len(filas) == 1
+        assert filas[0].id_carrier == "c1"
