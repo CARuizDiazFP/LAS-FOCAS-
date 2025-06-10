@@ -154,6 +154,21 @@ Este texto se registra con `logging.error` y luego se lanza una excepción
 `ValueError` con el mismo contenido. Revisá el archivo `.env` o la configuración
 del sistema para corregir el problema.
 
+## Pruebas automatizadas
+
+Para validar el funcionamiento del proyecto se incluye una suite de pruebas basada en `pytest`.
+Es necesario contar con las bibliotecas `openpyxl`, `python-docx` y `pandas` para que todas las
+pruebas puedan ejecutarse correctamente.
+
+Instalá las dependencias con el comando:
+
+```bash
+pip install -r requirements.txt
+```
+
+Algunas pruebas relacionadas con la base de datos se omiten de forma automática si `SQLAlchemy`
+no está presente en el entorno.
+
 
 ## Licencia
 
