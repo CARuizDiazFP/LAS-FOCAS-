@@ -1,10 +1,11 @@
-
 """Funciones utilitarias para el manejo de correos."""
 
 from pathlib import Path
 import logging
 import smtplib
 import os
+import re
+from datetime import datetime
 from email.message import EmailMessage
 
 from .config import config
@@ -49,7 +50,14 @@ def eliminar_destinatario(correo: str, ruta: str | Path) -> bool:
     return guardar_destinatarios(lista, ruta)
 
 
-def enviar_correo(asunto: str, cuerpo: str, ruta_dest: str | Path, *, host: str | None = None, port: int | None = None) -> bool:
+def enviar_correo(
+    asunto: str,
+    cuerpo: str,
+    ruta_dest: str | Path,
+    *,
+    host: str | None = None,
+    port: int | None = None,
+) -> bool:
     """Envía un correo simple a los destinatarios almacenados."""
     correos = cargar_destinatarios(ruta_dest)
     if not correos:
@@ -69,7 +77,13 @@ def enviar_correo(asunto: str, cuerpo: str, ruta_dest: str | Path, *, host: str 
         return False
 
 
-def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str = "Reporte SandyBot", cuerpo: str = "Adjunto el archivo Excel.") -> bool:
+def enviar_excel_por_correo(
+    destinatario: str,
+    ruta_excel: str,
+    *,
+    asunto: str = "Reporte SandyBot",
+    cuerpo: str = "Adjunto el archivo Excel.",
+) -> bool:
     """Envía un archivo Excel por correo usando la configuración SMTP.
 
     Parameters
@@ -96,11 +110,17 @@ def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str =
         msg = EmailMessage()
 
         import os
+
         smtp_user = os.getenv("SMTP_USER", getattr(config, "EMAIL_USER", ""))
         smtp_host = os.getenv("SMTP_HOST", getattr(config, "EMAIL_HOST", ""))
         smtp_port = int(os.getenv("SMTP_PORT", getattr(config, "EMAIL_PORT", 0)))
         smtp_pwd = os.getenv("SMTP_PASSWORD", getattr(config, "EMAIL_PASSWORD", ""))
-        use_tls = os.getenv("SMTP_USE_TLS", str(getattr(config, "SMTP_USE_TLS", True))).lower() != "false"
+        use_tls = (
+            os.getenv(
+                "SMTP_USE_TLS", str(getattr(config, "SMTP_USE_TLS", True))
+            ).lower()
+            != "false"
+        )
 
         msg["From"] = smtp_user or getattr(config, "EMAIL_FROM", "")
 
@@ -133,3 +153,64 @@ def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str =
     except Exception as e:  # pragma: no cover - errores dependen del entorno
         logger.error("Error enviando correo: %s", e)
         return False
+
+
+def _incrementar_contador(clave: str) -> int:
+    """Obtiene el próximo número diario para ``clave``."""
+    fecha = datetime.now().strftime("%d%m%Y")
+    data = cargar_json(config.ARCHIVO_CONTADOR)
+    key = f"{clave}_{fecha}"
+    numero = data.get(key, 0) + 1
+    data[key] = numero
+    guardar_json(data, config.ARCHIVO_CONTADOR)
+    return numero
+
+
+def generar_nombre_camaras(id_servicio: int) -> str:
+    """Genera el nombre base para un Excel de cámaras."""
+    nro = _incrementar_contador("camaras")
+    fecha = datetime.now().strftime("%d%m%Y")
+    return f"Camaras_{id_servicio}_{fecha}_{nro:02d}"
+
+
+def generar_nombre_tracking(id_servicio: int) -> str:
+    """Genera el nombre base para un archivo de tracking."""
+    nro = _incrementar_contador("tracking")
+    fecha = datetime.now().strftime("%d%m%Y")
+    return f"Tracking_{id_servicio}_{fecha}_{nro:02d}"
+
+
+def obtener_tracking_reciente(id_servicio: int) -> str | None:
+    """Devuelve la ruta del tracking más reciente del histórico."""
+    patron = re.compile(rf"tracking_{id_servicio}_(\d{{8}}_\d{{6}})\.txt")
+    archivos = []
+    for archivo in config.HISTORICO_DIR.glob(f"tracking_{id_servicio}_*.txt"):
+        m = patron.match(archivo.name)
+        if m:
+            archivos.append((m.group(1), archivo))
+    if archivos:
+        archivos.sort(key=lambda x: x[0], reverse=True)
+        return str(archivos[0][1])
+    from .database import obtener_servicio
+
+    servicio = obtener_servicio(id_servicio)
+    if servicio and servicio.ruta_tracking and os.path.exists(servicio.ruta_tracking):
+        return servicio.ruta_tracking
+    return None
+
+
+def enviar_tracking_reciente_por_correo(
+    destinatario: str,
+    id_servicio: int,
+    *,
+    asunto: str = "Tracking reciente",
+    cuerpo: str = "Adjunto el tracking solicitado.",
+) -> bool:
+    """Envía por correo el tracking más reciente registrado."""
+    ruta = obtener_tracking_reciente(id_servicio)
+    if not ruta:
+        return False
+    nombre = generar_nombre_tracking(id_servicio) + ".txt"
+    from .correo import enviar_email
+
+    return enviar_email([destinatario], asunto, cuerpo, ruta, nombre)

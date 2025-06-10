@@ -7,7 +7,7 @@ from .config import config
 logger = logging.getLogger(__name__)
 
 
-def enviar_email(destinatarios, asunto, cuerpo, archivo_adjunto):
+def enviar_email(destinatarios, asunto, cuerpo, archivo_adjunto, nombre_adjunto=None):
     """Envía un correo con un adjunto.
 
     Parameters
@@ -39,8 +39,10 @@ def enviar_email(destinatarios, asunto, cuerpo, archivo_adjunto):
     try:
         with open(archivo_adjunto, "rb") as f:
             datos = f.read()
-            nombre = os.path.basename(archivo_adjunto)
-        msg.add_attachment(datos, maintype="application", subtype="octet-stream", filename=nombre)
+            nombre = nombre_adjunto or os.path.basename(archivo_adjunto)
+        msg.add_attachment(
+            datos, maintype="application", subtype="octet-stream", filename=nombre
+        )
     except Exception as e:
         logger.error("No se pudo adjuntar el archivo: %s", e)
         return False

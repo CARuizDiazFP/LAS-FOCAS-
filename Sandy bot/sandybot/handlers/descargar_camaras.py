@@ -20,7 +20,9 @@ from .estado import UserState
 logger = logging.getLogger(__name__)
 
 
-async def iniciar_descarga_camaras(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def iniciar_descarga_camaras(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Solicita al usuario el ID del servicio para generar el Excel."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
@@ -39,7 +41,9 @@ async def iniciar_descarga_camaras(update: Update, context: ContextTypes.DEFAULT
     )
 
 
-async def enviar_camaras_servicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def enviar_camaras_servicio(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Genera y envía un Excel con las cámaras del servicio indicado."""
     mensaje = obtener_mensaje(update)
     if not mensaje or not mensaje.text:
@@ -57,8 +61,9 @@ async def enviar_camaras_servicio(update: Update, context: ContextTypes.DEFAULT_
         )
         return
 
+    id_servicio = int(id_text)
     ruta = os.path.join(tempfile.gettempdir(), f"camaras_{mensaje.from_user.id}.xlsx")
-    ok = exportar_camaras_servicio(int(id_text), ruta)
+    ok = exportar_camaras_servicio(id_servicio, ruta)
     if not ok or not os.path.exists(ruta):
         await responder_registrando(
             mensaje,
@@ -70,12 +75,15 @@ async def enviar_camaras_servicio(update: Update, context: ContextTypes.DEFAULT_
         return
 
     try:
+        from ..email_utils import generar_nombre_camaras
+
+        nombre_archivo = generar_nombre_camaras(id_servicio) + ".xlsx"
         with open(ruta, "rb") as f:
-            await mensaje.reply_document(f, filename=os.path.basename(ruta))
+            await mensaje.reply_document(f, filename=nombre_archivo)
         registrar_conversacion(
             mensaje.from_user.id,
             id_text,
-            f"Documento {os.path.basename(ruta)} enviado",
+            f"Documento {nombre_archivo} enviado",
             "descargar_camaras",
         )
 
@@ -90,9 +98,10 @@ async def enviar_camaras_servicio(update: Update, context: ContextTypes.DEFAULT_
                 "Listado de camaras",
                 "Adjunto el Excel generado por SandyBot.",
                 ruta,
+                nombre_archivo,
             ):
                 registrar_envio_email(
-                    mensaje.from_user.id, destinatarios, os.path.basename(ruta)
+                    mensaje.from_user.id, destinatarios, nombre_archivo
                 )
     except Exception as e:
         logger.error("Error al enviar listado de cámaras: %s", e)
