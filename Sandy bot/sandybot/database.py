@@ -166,7 +166,10 @@ def init_db():
                 conn.execute(
                     text(
                         "CREATE OR REPLACE FUNCTION immutable_unaccent(text)\n"
-                        "RETURNS text AS $$ SELECT unaccent($1) $$\n"
+                        # Se invoca "public.unaccent" porque el esquema
+                        # "public" puede no estar en el ``search_path`` al
+                        # crear la función.
+                        "RETURNS text AS $$ SELECT public.unaccent($1) $$\n"
                         "LANGUAGE SQL IMMUTABLE"
                     )
                 )
