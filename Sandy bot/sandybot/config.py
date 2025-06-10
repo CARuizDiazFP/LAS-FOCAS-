@@ -103,6 +103,13 @@ class Config:
         self.EMAIL_USER = os.getenv("EMAIL_USER")
         self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
         self.EMAIL_FROM = os.getenv("EMAIL_FROM")
+
+        # Nuevos nombres para la configuración SMTP
+        self.SMTP_HOST = os.getenv("SMTP_HOST") or self.EMAIL_HOST
+        self.SMTP_PORT = int(os.getenv("SMTP_PORT") or self.EMAIL_PORT)
+        self.SMTP_USER = os.getenv("SMTP_USER") or self.EMAIL_USER
+        self.SMTP_PASSWORD = os.getenv("SMTP_PASSWORD") or self.EMAIL_PASSWORD
+        self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() != "false"
         
 
         # Validación
