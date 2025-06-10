@@ -187,8 +187,9 @@ def init_db():
                 )
 
 
-# Crear las tablas al importar el módulo
-init_db()
+
+# La inicialización se realiza desde ``main.py`` para evitar errores al
+# importar el módulo cuando la base de datos no está disponible.
 
 
 def obtener_servicio(id_servicio: int) -> Servicio | None:
