@@ -22,7 +22,12 @@ class AsyncOpenAI:
     def __init__(self, api_key=None):
         self.chat = type("c", (), {"completions": CompletionStub()})()
 openai_stub.AsyncOpenAI = AsyncOpenAI
-sys.modules.setdefault("openai", openai_stub)
+
+# Guardar y reemplazar el módulo original para que otras pruebas
+# no se vean afectadas. Si ``openai`` no estaba cargado, se elimina
+# al finalizar el test.
+openai_original = sys.modules.get("openai")
+sys.modules["openai"] = openai_stub
 
 # Stub para jsonschema utilizado por GPTHandler
 jsonschema_stub = ModuleType("jsonschema")
@@ -70,4 +75,10 @@ def test_persistencia_cache(tmp_path):
     asyncio.run(handler2.consultar_gpt("hola"))
 
     assert llamadas["n"] == 1
+
+    # Restaurar el módulo "openai" para no alterar otras pruebas
+    if openai_original is not None:
+        sys.modules["openai"] = openai_original
+    else:
+        sys.modules.pop("openai", None)
 
