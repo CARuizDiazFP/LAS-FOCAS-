@@ -139,6 +139,7 @@ sys.modules.setdefault("sandybot.handlers", handlers_pkg)
 config_mod = importlib.import_module("sandybot.config")
 voice_module = importlib.import_module("sandybot.handlers.voice")
 voice_module.message_handler = message_handler
+voice_module.voice_client = openai_stub.AsyncOpenAI()
 
 # Restaurar el módulo ``openai`` para no interferir con la colección
 if openai_original is not None:
@@ -150,8 +151,10 @@ else:
 def test_voice_no_modifica_update():
     upd = Update(message=Message(voice=Voice()))
     ctx = SimpleNamespace(user_data={})
+    cliente = voice_module.voice_client
     asyncio.run(voice_module.voice_handler(upd, ctx))
     assert captura["texto"] == "texto voz"
     assert captura["original"] is None
     assert upd.message.text is None
     assert ctx.user_data == {}
+    assert voice_module.voice_client is cliente

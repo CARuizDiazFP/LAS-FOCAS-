@@ -11,6 +11,9 @@ from .message import message_handler
 
 logger = logging.getLogger(__name__)
 
+# Cliente global de OpenAI para transcribir audios
+voice_client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+
 async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Descarga el audio, lo transcribe y pasa el texto a ``message_handler``."""
     mensaje = update.message
@@ -23,8 +26,7 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     try:
         await voice.download_to_drive(path)
         with open(path, "rb") as audio:
-            client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
-            transcripcion = await client.audio.transcriptions.create(
+            transcripcion = await voice_client.audio.transcriptions.create(
                 file=audio,
                 model="whisper-1",
             )
