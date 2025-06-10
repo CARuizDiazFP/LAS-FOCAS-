@@ -60,6 +60,11 @@ ejecuta `ensure_servicio_columns()` para garantizar que la tabla
 `servicios` incluya las columnas `ruta_tracking`, `trackings`, `camaras`,
 `carrier` e `id_carrier`.
 
+Para aprovechar las búsquedas acentuadas se utilizan las extensiones
+`unaccent` y `pg_trgm`.  El usuario configurado en la base debe tener
+permisos para instalarlas o bien se deben crear manualmente con una
+cuenta administradora antes de iniciar el bot.
+
 Las columnas `camaras` y `trackings` ahora utilizan el tipo
 `JSONB`, por lo que almacenan listas o diccionarios de manera
 nativa. Ya no es necesario convertir los datos a texto con
