@@ -82,7 +82,7 @@ async def enviar_camaras_servicio(update: Update, context: ContextTypes.DEFAULT_
         # Cargar los destinatarios desde el JSON configurado y enviar el
         # mismo archivo por correo. Si el envío es exitoso se registra en la
         # base de conversaciones para mantener un historial.
-        data = cargar_json(config.DESTINATARIOS_FILE)
+        data = cargar_json(config.ARCHIVO_DESTINATARIOS)
         destinatarios = data.get("emails", []) if isinstance(data, dict) else []
         if destinatarios:
             if enviar_email(
