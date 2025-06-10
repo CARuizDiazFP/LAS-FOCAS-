@@ -19,6 +19,7 @@ from .cargar_tracking import (
 from .repetitividad import iniciar_repetitividad
 from .id_carrier import iniciar_identificador_carrier
 from ..utils import normalizar_texto
+from difflib import SequenceMatcher
 
 logger = logging.getLogger(__name__)
 
@@ -328,11 +329,16 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "comparar fo",
             "comparemos trazados",
             "comparemos fo",
+            "cmp fo",
+            "cmp trazados",
         ],
         "verificar_ingresos": [
             "verificar ingresos",
             "validar ingresos",
             "verifiquemos ingresos",
+            "ver ing",
+            "verif ing",
+            "valid ing",
         ],
         "cargar_tracking": [
             "cargar tracking",
@@ -340,34 +346,54 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "carguemos el tracking",
             "subir tracking",
             "adjuntar tracking",
+            "cargar trk",
+            "subir trk",
+            "adjuntar trk",
         ],
         "descargar_tracking": [
             "descargar tracking",
             "obtener tracking",
             "bajar tracking",
+            "desc trk",
+            "bajar trk",
+            "obt trk",
         ],
         "descargar_camaras": [
             "descargar camaras",
             "descargar cámaras",
             "obtener camaras",
             "bajar camaras",
+            "desc cams",
+            "bajar cams",
+            "obt cams",
         ],
         "enviar_camaras_mail": [
             "enviar camaras por mail",
             "enviar cámaras por mail",
             "camaras por correo",
+            "env cams mail",
+            "cam x mail",
         ],
         "id_carrier": [
             "identificador de servicio carrier",
             "id carrier",
             "identificar carrier",
+            "id carr",
+            "ident carr",
         ],
         "informe_repetitividad": [
             "informe de repetitividad",
             "reporte de repetitividad",
+            "inf repet",
+            "rep repet",
         ],
-        "informe_sla": ["informe de sla", "reporte de sla"],
-        "analizar_incidencias": ["analizar incidencias", "incidencias"],
+        "informe_sla": ["informe de sla", "reporte de sla", "inf sla", "rep sla"],
+        "analizar_incidencias": [
+            "analizar incidencias",
+            "incidencias",
+            "anal inc",
+            "incid.",
+        ],
         "start": [
             "start",
             "/start",
@@ -377,12 +403,19 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "opciones",
         ],
         "otro": ["otro"],
-        "nueva_solicitud": ["nueva solicitud", "registrar solicitud"],
+        "nueva_solicitud": [
+            "nueva solicitud",
+            "registrar solicitud",
+            "nva solicitud",
+            "nuevo req",
+        ],
     }
 
     for accion, palabras in claves.items():
         for palabra in palabras:
             if palabra in texto:
+                return accion
+            if SequenceMatcher(None, palabra, texto).ratio() > 0.8:
                 return accion
 
     # Heurísticos para variaciones en lenguaje natural

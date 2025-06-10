@@ -99,14 +99,16 @@ def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str =
             raise FileNotFoundError(f"No se encontró el archivo: {ruta}")
 
         msg = EmailMessage()
-        smtp_user = getattr(config, "SMTP_USER", os.getenv("SMTP_USER"))
-        smtp_pass = getattr(config, "SMTP_PASSWORD", os.getenv("SMTP_PASSWORD"))
-        from_addr = getattr(config, "EMAIL_FROM", smtp_user)
-        host = getattr(config, "SMTP_HOST", os.getenv("SMTP_HOST", "localhost"))
-        port = int(getattr(config, "SMTP_PORT", os.getenv("SMTP_PORT", 25)))
-        use_tls = getattr(config, "SMTP_USE_TLS", True)
 
-        msg["From"] = from_addr
+        import os
+        smtp_user = os.getenv("SMTP_USER", getattr(config, "EMAIL_USER", ""))
+        smtp_host = os.getenv("SMTP_HOST", getattr(config, "EMAIL_HOST", ""))
+        smtp_port = int(os.getenv("SMTP_PORT", getattr(config, "EMAIL_PORT", 0)))
+        smtp_pwd = os.getenv("SMTP_PASSWORD", getattr(config, "EMAIL_PASSWORD", ""))
+        use_tls = os.getenv("SMTP_USE_TLS", str(getattr(config, "SMTP_USE_TLS", True))).lower() != "false"
+
+        msg["From"] = smtp_user or getattr(config, "EMAIL_FROM", "")
+
         msg["To"] = destinatario
         msg["Subject"] = asunto
         msg.set_content(cuerpo)
@@ -121,13 +123,14 @@ def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str =
         )
 
         if use_tls:
-            server = smtplib.SMTP(host, port)
+
+            server = smtplib.SMTP(smtp_host, smtp_port)
             server.starttls()
         else:
-            server = smtplib.SMTP_SSL(host, port)
+            server = smtplib.SMTP_SSL(smtp_host, smtp_port)
+        if smtp_user and smtp_pwd:
+            server.login(smtp_user, smtp_pwd)
 
-        if smtp_user and smtp_pass:
-            server.login(smtp_user, smtp_pass)
         server.send_message(msg)
         server.quit()
         return True
@@ -137,60 +140,54 @@ def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str =
         return False
 
 
-def cargar_destinatarios(ruta: Path) -> list[str]:
+def cargar_destinatarios(ruta: str | Path) -> list[str]:
+    """Devuelve la lista de correos almacenada en ``ruta``."""
+    from .utils import cargar_json
 
-    """Devuelve la lista de destinatarios almacenada en ``ruta``."""
-    try:
-        with open(ruta, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        return data if isinstance(data, list) else []
-    except FileNotFoundError:
-        return []
-    except Exception as e:  # pragma: no cover - errores dependen del entorno
-        logger.error("Error al leer destinatarios: %s", e)
-        return []
+    datos = cargar_json(Path(ruta))
+    return datos.get("destinatarios", []) if isinstance(datos, dict) else []
 
 
-def _guardar_destinatarios(ruta: Path, lista: list[str]) -> bool:
-    try:
-        ruta.parent.mkdir(parents=True, exist_ok=True)
-        with open(ruta, "w", encoding="utf-8") as f:
-            json.dump(lista, f, ensure_ascii=False, indent=2)
-        return True
-    except Exception as e:  # pragma: no cover - errores dependen del entorno
-        logger.error("Error al guardar destinatarios: %s", e)
-        return False
+def agregar_destinatario(correo: str, ruta: str | Path) -> bool:
+    """Agrega un correo al listado guardado en ``ruta``."""
+    from .utils import guardar_json, cargar_json
 
-
-def agregar_destinatario(correo: str, ruta: Path) -> bool:
-    """Agrega un correo a la lista de destinatarios."""
-    lista = cargar_destinatarios(ruta)
-    if correo not in lista:
-        lista.append(correo)
-        return _guardar_destinatarios(ruta, lista)
-    return True
-
-
-def eliminar_destinatario(correo: str, ruta: Path) -> bool:
-    """Elimina un correo de la lista de destinatarios."""
-    lista = cargar_destinatarios(ruta)
+    ruta = Path(ruta)
+    datos = cargar_json(ruta)
+    lista = datos.get("destinatarios", []) if isinstance(datos, dict) else []
     if correo in lista:
-        lista.remove(correo)
-        return _guardar_destinatarios(ruta, lista)
-    return False
+        return True
+    lista.append(correo)
+    datos["destinatarios"] = lista
+    return guardar_json(datos, ruta)
 
 
-def enviar_correo(asunto: str, cuerpo: str, ruta_destinatarios: Path, *, host: str | None = None, port: int | None = None) -> bool:
-    """Envía un correo simple a los destinatarios cargados en un JSON."""
-    dests = cargar_destinatarios(ruta_destinatarios)
+def eliminar_destinatario(correo: str, ruta: str | Path) -> bool:
+    """Elimina un correo del listado de ``ruta``."""
+    from .utils import guardar_json, cargar_json
+
+    ruta = Path(ruta)
+    datos = cargar_json(ruta)
+    lista = datos.get("destinatarios", []) if isinstance(datos, dict) else []
+    if correo not in lista:
+        return False
+    lista.remove(correo)
+    datos["destinatarios"] = lista
+    return guardar_json(datos, ruta)
+
+
+def enviar_correo(asunto: str, cuerpo: str, ruta_dest: str | Path, *, host: str = "localhost", port: int = 25) -> bool:
+    """Envía un mensaje simple a los destinatarios almacenados."""
+    dests = cargar_destinatarios(ruta_dest)
     if not dests:
         return False
+
     try:
-        with smtplib.SMTP(host or "localhost", port or 25) as server:
+        with smtplib.SMTP(host, port) as server:
             server.set_debuglevel(1)
-            server.sendmail(config.EMAIL_FROM or config.SMTP_USER, dests, cuerpo)
+            server.sendmail("bot@example.com", dests, cuerpo)
         return True
-    except Exception as e:  # pragma: no cover - errores dependen del entorno
+    except Exception as e:  # pragma: no cover - errores dependientes
 
         logger.error("Error enviando correo: %s", e)
         return False

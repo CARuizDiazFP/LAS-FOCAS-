@@ -17,8 +17,10 @@ Sandy es un agente inteligente que opera en Telegram y automatiza tareas repetit
 - Las acciones de los botones también se pueden activar escribiendo la intención en lenguaje natural
 - Desde 2025 la detección de estas intenciones se apoya en palabras clave
   y reglas simples. Gracias a ello frases como "Comparemos trazados de FO"
-  activan automáticamente el flujo "Comparar trazados FO" sin necesidad de
+-  activan automáticamente el flujo "Comparar trazados FO" sin necesidad de
   presionar el botón.
+- El diccionario `claves` incluye abreviaturas como "cmp fo", "desc trk" o
+  "env cams mail". Se usa `difflib` para tolerar errores menores de tipeo.
 - Desde 2026 se añadió un módulo de GPT que intenta identificar el flujo
   correspondiente a partir del texto completo del usuario.
   Si no puede clasificarlo con certeza, genera una pregunta automática

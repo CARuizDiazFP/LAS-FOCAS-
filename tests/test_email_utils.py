@@ -52,9 +52,7 @@ os.environ.update({
 })
 
 config_mod = importlib.import_module("sandybot.config")
-
 email_utils = importlib.reload(importlib.import_module("sandybot.email_utils"))
-
 
 
 def test_enviar_excel_por_correo(tmp_path):
