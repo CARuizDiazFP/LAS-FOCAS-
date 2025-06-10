@@ -9,6 +9,7 @@ sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 # Stub telegram con soporte de mensajes de voz
 telegram_stub = ModuleType("telegram")
+telegram_stub = sys.modules.setdefault("telegram", telegram_stub)
 class VoiceFile:
     async def download_to_drive(self, path):
         Path(path).write_bytes(b"")
@@ -31,7 +32,8 @@ class Update:
         self.effective_user = message.from_user if message else None
 telegram_stub.Update = Update
 telegram_stub.Message = Message
-sys.modules.setdefault("telegram", telegram_stub)
+telegram_stub.InlineKeyboardButton = object
+telegram_stub.InlineKeyboardMarkup = object
 telegram_ext_stub = ModuleType("telegram.ext")
 telegram_ext_stub.ContextTypes = type("ContextTypes", (), {"DEFAULT_TYPE": object})
 sys.modules.setdefault("telegram.ext", telegram_ext_stub)
@@ -60,7 +62,9 @@ for var in [
 ]:
     os.environ.setdefault(var, "25" if var == "SMTP_PORT" else "x")
 
-# Stub openai compatible con GPTHandler y voice_handler
+# Stub de openai compatible con GPTHandler y voice_handler.
+# Guardamos el módulo original para restaurarlo tras cada prueba.
+openai_original = sys.modules.get("openai")
 openai_stub = ModuleType("openai")
 
 class CompletionStub:
@@ -97,11 +101,21 @@ openai_stub.RateLimitError = RateLimitError
 openai_stub.APIError = APIError
 sys.modules["openai"] = openai_stub
 
+# Restaurar el stub de ``openai`` al finalizar cada prueba para
+# evitar que otros tests hereden este reemplazo.
+import pytest
+
+@pytest.fixture(autouse=True)
+def _restaurar_openai():
+    sys.modules["openai"] = openai_stub
+    yield
+    if openai_original is not None:
+        sys.modules["openai"] = openai_original
+    else:
+        sys.modules.pop("openai", None)
+
 # Crear paquete handlers con un stub de message_handler
 handlers_pkg = ModuleType("sandybot.handlers")
-handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
-sys.modules.setdefault("sandybot.handlers", handlers_pkg)
-
 captura = {}
 message_stub = ModuleType("sandybot.handlers.message")
 async def message_handler(update, context):
@@ -115,11 +129,22 @@ registrador_stub = ModuleType("sandybot.registrador")
 async def responder_registrando(*a, **k):
     pass
 registrador_stub.responder_registrando = responder_registrando
+registrador_stub.registrar_conversacion = lambda *a, **k: None
 sys.modules["sandybot.registrador"] = registrador_stub
 
+handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+sys.modules.setdefault("sandybot.handlers", handlers_pkg)
+
+# Con el paquete stub listo importamos ``voice`` para las pruebas.
 config_mod = importlib.import_module("sandybot.config")
 voice_module = importlib.import_module("sandybot.handlers.voice")
 voice_module.message_handler = message_handler
+
+# Restaurar el módulo ``openai`` para no interferir con la colección
+if openai_original is not None:
+    sys.modules["openai"] = openai_original
+else:
+    sys.modules.pop("openai", None)
 
 
 def test_voice_no_modifica_update():
