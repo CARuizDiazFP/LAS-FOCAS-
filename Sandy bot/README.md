@@ -6,12 +6,13 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 
 - Integración con Telegram usando python-telegram-bot
 - Procesamiento de lenguaje natural con GPT-4
-- Base de datos PostgreSQL para historial de conversaciones
-- `init_db()` crea las tablas y ejecuta `ensure_servicio_columns()`
-  para verificar que la tabla `servicios` incluya las columnas
-  `ruta_tracking`, `trackings`, `camaras`, `carrier` e `id_carrier`.
-  Ahora `camaras` y `trackings` usan `JSONB` y guardan listas sin
-  convertirlas a texto
+- Base de datos PostgreSQL para historial de conversaciones.
+- `init_db()` se ejecuta desde `main.py` para crear las tablas y
+  ejecutar `ensure_servicio_columns()`. Esto verifica que la tabla
+  `servicios` incluya las columnas `ruta_tracking`, `trackings`,
+  `camaras`, `carrier` e `id_carrier`. Las columnas de cámaras y
+  trackings utilizan `JSONB` y permiten guardar listas sin convertirlas a
+  texto
 - Procesamiento de archivos Excel para informes
 - Generación de documentos Word
 - Integración con Notion para seguimiento de solicitudes
@@ -111,12 +112,12 @@ sandybot/
 
 ## Modelos de base de datos
 
-La función `init_db()` crea las tablas automáticamente y ejecuta
-`ensure_servicio_columns()` para asegurar que la tabla `servicios`
-contenga las columnas `ruta_tracking`, `trackings`, `camaras`, `carrier`
-e `id_carrier`.
-Las columnas de cámaras y trackings se guardan como `JSONB` para
-admitir listas sin procesamiento adicional.
+La función `init_db()` se ejecuta al inicio desde `main.py` para crear las
+tablas y llamar a `ensure_servicio_columns()`. Esto garantiza que la tabla
+`servicios` incluya las columnas `ruta_tracking`, `trackings`, `camaras`,
+`carrier` e `id_carrier`. Las cámaras y los trackings se almacenan como
+`JSONB`, por lo que se admiten listas de forma nativa sin procesamiento
+adicional.
 
 - **Conversacion**: guarda los mensajes del bot y las respuestas.
 - **Servicio**: almacena nombre, cliente, carrier e ID carrier, además
