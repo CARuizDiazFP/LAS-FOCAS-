@@ -98,20 +98,25 @@ class Config:
 
 
         # Credenciales de correo electrónico
-        self.EMAIL_HOST = os.getenv("EMAIL_HOST", "smtp.gmail.com")
-        self.EMAIL_PORT = int(os.getenv("EMAIL_PORT", "465"))
-        self.EMAIL_USER = os.getenv("EMAIL_USER")
-        self.EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD")
+        smtp_host = os.getenv("SMTP_HOST") or os.getenv("EMAIL_HOST", "smtp.gmail.com")
+        smtp_port = os.getenv("SMTP_PORT") or os.getenv("EMAIL_PORT", "465")
+        smtp_user = os.getenv("SMTP_USER") or os.getenv("EMAIL_USER")
+        smtp_pwd = os.getenv("SMTP_PASSWORD") or os.getenv("EMAIL_PASSWORD")
+
+        self.SMTP_HOST = smtp_host
+        self.SMTP_PORT = int(smtp_port)
+        self.SMTP_USER = smtp_user
+        self.SMTP_PASSWORD = smtp_pwd
         self.EMAIL_FROM = os.getenv("EMAIL_FROM")
 
-        self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+        # Uso de TLS
+        self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true")
 
-        # Compatibilidad con nombres antiguos
-        self.SMTP_HOST = self.EMAIL_HOST
-        self.SMTP_PORT = self.EMAIL_PORT
-        self.SMTP_USER = self.EMAIL_USER
-        self.SMTP_PASSWORD = self.EMAIL_PASSWORD
-        self.SMTP_USE_TLS = self.SMTP_USE_TLS
+        # Alias de compatibilidad
+        self.EMAIL_HOST = self.SMTP_HOST
+        self.EMAIL_PORT = self.SMTP_PORT
+        self.EMAIL_USER = self.SMTP_USER
+        self.EMAIL_PASSWORD = self.SMTP_PASSWORD
 
 
 
@@ -155,7 +160,7 @@ class Config:
         email_missing = [
             nombre
 
-            for nombre in ["EMAIL_USER", "EMAIL_PASSWORD", "EMAIL_FROM"]
+            for nombre in ["SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM"]
 
             if not getattr(self, nombre)
         ]
