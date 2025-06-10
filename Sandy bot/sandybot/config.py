@@ -140,10 +140,8 @@ class Config:
             "OPENAI_API_KEY": self.OPENAI_API_KEY,
             "NOTION_TOKEN": self.NOTION_TOKEN,
             "NOTION_DATABASE_ID": self.NOTION_DATABASE_ID,
-            "SLACK_WEBHOOK_URL": self.SLACK_WEBHOOK_URL,
-            "SUPERVISOR_DB_ID": self.SUPERVISOR_DB_ID,
             "DB_USER": self.DB_USER,
-            "DB_PASSWORD": self.DB_PASSWORD
+            "DB_PASSWORD": self.DB_PASSWORD,
         }
         
         missing = [var for var, val in required_vars.items() if not val]
@@ -155,6 +153,18 @@ class Config:
             )
             logging.error(mensaje)
             raise ValueError(mensaje)
+
+        # Verificar variables opcionales de Slack y modo supervisor
+        slack_vars = {
+            "SLACK_WEBHOOK_URL": self.SLACK_WEBHOOK_URL,
+            "SUPERVISOR_DB_ID": self.SUPERVISOR_DB_ID,
+        }
+        slack_missing = [var for var, val in slack_vars.items() if not val]
+        if slack_missing:
+            logging.warning(
+                "Variables de Slack o supervisor ausentes: %s",
+                ", ".join(slack_missing),
+            )
 
         # Advertir si faltan datos de correo
         email_missing = [
