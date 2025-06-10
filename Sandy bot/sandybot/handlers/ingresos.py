@@ -287,7 +287,11 @@ async def procesar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             "ingresos",
         )
 
-        actualizar_tracking(int(id_servicio), trackings_txt=[str(destino)])
+        actualizar_tracking(
+            int(id_servicio),
+            trackings_txt=[str(destino)],
+            tipo="complementario",
+        )
 
         UserState.set_mode(user_id, "")
         context.user_data.pop("id_servicio", None)

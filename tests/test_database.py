@@ -134,23 +134,26 @@ def test_exportar_camaras_servicio_cadena(tmp_path):
 
 def test_actualizar_tracking_jsonb():
     servicio = bd.crear_servicio(nombre="S6", cliente="F")
-    bd.actualizar_tracking(servicio.id, "ruta.txt", ["C1"], ["t1.txt"])
+    bd.actualizar_tracking(servicio.id, "ruta.txt", ["C1"], ["t1.txt"], tipo="principal")
 
     with bd.SessionLocal() as s:
         reg = s.get(bd.Servicio, servicio.id)
         assert reg.ruta_tracking == "ruta.txt"
         assert reg.camaras == ["C1"]
-        assert reg.trackings == ["t1.txt"]
+        assert isinstance(reg.trackings[0], dict)
+        assert reg.trackings[0]["ruta"] == "t1.txt"
+        assert reg.trackings[0]["tipo"] == "principal"
 
 
 def test_actualizar_tracking_string():
     """Verifica que se actualice si el campo ``trackings`` quedó como texto."""
     servicio = bd.crear_servicio(nombre="S7", cliente="G", trackings="[]")
-    bd.actualizar_tracking(servicio.id, trackings_txt=["nuevo.txt"])
+    bd.actualizar_tracking(servicio.id, trackings_txt=["nuevo.txt"], tipo="complementario")
 
     with bd.SessionLocal() as s:
         reg = s.get(bd.Servicio, servicio.id)
-        assert reg.trackings == ["nuevo.txt"]
+        assert reg.trackings[0]["ruta"] == "nuevo.txt"
+        assert reg.trackings[0]["tipo"] == "complementario"
 
 
 def test_crear_ingreso():
