@@ -58,7 +58,7 @@ for var in [
     "SMTP_PASSWORD",
     "EMAIL_FROM",
 ]:
-    os.environ.setdefault(var, "x")
+    os.environ.setdefault(var, "25" if var == "SMTP_PORT" else "x")
 
 # Stub openai compatible con GPTHandler y voice_handler
 openai_stub = ModuleType("openai")
