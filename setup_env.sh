@@ -6,7 +6,7 @@ PIP_CACHE_DIR="$HOME/.cache/pip"
 mkdir -p "$PIP_CACHE_DIR"
 
 # Crear y activar el entorno virtual
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 
 # Exportar PYTHONPATH para que los módulos del proyecto se encuentren
