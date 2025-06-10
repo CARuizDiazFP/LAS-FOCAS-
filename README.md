@@ -36,9 +36,10 @@ una **contraseña de aplicación**. Definí las variables así:
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=tu_correo@gmail.com
-SMTP_PASSWORD=tu_contraseña_de_app
+SMTP_PASSWORD=tu_contrasena_de_app  # sin espacios
 EMAIL_FROM=tu_correo@gmail.com
 ```
+Nota: si copiás la contraseña de aplicación de Gmail, asegurate de quitar los espacios que se muestran por legibilidad.
 
 ## Plantilla de informes de repetitividad
 
