@@ -111,8 +111,8 @@ class Config:
         self.SMTP_PASSWORD = smtp_pwd
         self.EMAIL_FROM = os.getenv("EMAIL_FROM")
 
-        # Uso de TLS
-        self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true")
+        # Uso de TLS como booleano
+        self.SMTP_USE_TLS = os.getenv("SMTP_USE_TLS", "true").lower() != "false"
 
         # Alias de compatibilidad
         self.EMAIL_HOST = self.SMTP_HOST
