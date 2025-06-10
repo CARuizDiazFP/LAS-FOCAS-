@@ -35,6 +35,10 @@ CREATE EXTENSION IF NOT EXISTS unaccent;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
 
+La función `immutable_unaccent` que crea `database.py` invoca
+`public.unaccent`. Si instalás la extensión en otro esquema,
+ajustá la instrucción para utilizar el nombre completo correspondiente.
+
 ## Instalación
 
 1. Clonar el repositorio:
