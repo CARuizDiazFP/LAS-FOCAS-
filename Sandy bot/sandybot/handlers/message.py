@@ -138,7 +138,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await guardar_registro(update, context)
             return
 
-        # Activar modo Sandy si no está activo␊
+        # Activar modo Sandy si no está activo
         if not mode:
             UserState.set_mode(user_id, "sandy")
 
