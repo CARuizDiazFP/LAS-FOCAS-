@@ -37,6 +37,9 @@ for var in [
     "NOTION_DATABASE_ID",
     "DB_USER",
     "DB_PASSWORD",
+    "SLACK_WEBHOOK_URL",
+    "SUPERVISOR_DB_ID",
+    "EMAIL_FROM",
 ]:
     os.environ.setdefault(var, "x")
 
