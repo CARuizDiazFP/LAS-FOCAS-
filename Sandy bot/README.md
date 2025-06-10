@@ -25,6 +25,16 @@ Bot de Telegram para gestión de infraestructura de fibra óptica.
 - Microsoft Word (para informes de repetitividad)
 - Paquete `openai` versión 1.0.0 o superior
 
+Para que el bot funcione correctamente la base de datos debe contar con las
+extensiones `unaccent` y `pg_trgm`. El usuario usado por SandyBot tiene que
+tener permisos suficientes para crearlas o bien un administrador debe
+habilitarlas de antemano. Los comandos son:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS unaccent;
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
+
 ## Instalación
 
 1. Clonar el repositorio:
