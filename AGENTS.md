@@ -160,5 +160,5 @@ Salida esperada:
 
 ## 📧 Envío de correos
 
-El bot puede enviar listados por email usando los destinatarios guardados en `Sandy bot/data/destinatarios.json`. Configurá `SMTP_HOST`, `SMTP_PORT` y `EMAIL_FROM` en el `.env`.
+El bot puede enviar listados por email usando los destinatarios guardados en `Sandy bot/data/destinatarios.json`. Configurá `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` y `SMTP_PASSWORD` junto a `EMAIL_FROM` en el `.env`. Las variables `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y `EMAIL_PASSWORD` siguen siendo válidas para compatibilidad.
 

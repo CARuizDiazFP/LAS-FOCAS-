@@ -17,6 +17,8 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
 - `SMTP_USE_TLS`: indica si se inicia TLS al conectarse (por defecto `true`).
+- También se aceptan `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y
+  `EMAIL_PASSWORD` para mantener compatibilidad con versiones antiguas.
 
 ### Envío de correos
 
@@ -132,7 +134,9 @@ if exito:
 ```
 
 Asegurate de definir `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` y `SMTP_PASSWORD`
-en tu `.env` para que el envío funcione.
+en tu `.env` para que el envío funcione. Si aún usás las variables
+`EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` o `EMAIL_PASSWORD`, SandyBot
+las tomará automáticamente.
 
 
 ## Errores por variables de entorno faltantes
