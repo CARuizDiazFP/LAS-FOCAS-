@@ -19,7 +19,7 @@ from .estado import UserState
 logger = logging.getLogger(__name__)
 
 
-def _enviar_mail(destino: str, archivo: str) -> None:
+def _enviar_mail(destino: str, archivo: str, nombre: str) -> None:
     """Envía un archivo por correo utilizando SMTP simple."""
     msg = EmailMessage()
     msg["Subject"] = "Listado de cámaras"
@@ -32,7 +32,7 @@ def _enviar_mail(destino: str, archivo: str) -> None:
         datos,
         maintype="application",
         subtype="octet-stream",
-        filename=os.path.basename(archivo),
+        filename=nombre,
     )
 
     servidor = config.SMTP_HOST or "localhost"
@@ -54,7 +54,9 @@ def _enviar_mail(destino: str, archivo: str) -> None:
             smtp.send_message(msg)
 
 
-async def iniciar_envio_camaras_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def iniciar_envio_camaras_mail(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Solicita ID de servicio y correo para enviar el Excel."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
@@ -73,7 +75,9 @@ async def iniciar_envio_camaras_mail(update: Update, context: ContextTypes.DEFAU
     )
 
 
-async def procesar_envio_camaras_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def procesar_envio_camaras_mail(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Genera el Excel de cámaras y lo envía por correo."""
     mensaje = obtener_mensaje(update)
     if not mensaje or not mensaje.text:
@@ -116,8 +120,11 @@ async def procesar_envio_camaras_mail(update: Update, context: ContextTypes.DEFA
         )
         return
 
+    from ..email_utils import generar_nombre_camaras
+
     try:
-        _enviar_mail(correo, ruta)
+        nombre_archivo = generar_nombre_camaras(id_servicio) + ".xlsx"
+        _enviar_mail(correo, ruta, nombre_archivo)
         registrar_conversacion(
             mensaje.from_user.id,
             mensaje.text,

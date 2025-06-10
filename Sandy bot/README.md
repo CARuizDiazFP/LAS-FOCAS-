@@ -158,10 +158,14 @@ admitir listas sin procesamiento adicional.
 4. Descarga de tracking
    - Elegí "Descargar tracking" desde el menú o escribí `/descargar_tracking`
    - Indicá el número de servicio y recibirás el `.txt` si está disponible
+   - Con `enviar_tracking_reciente_por_correo()` podés recibir por mail el
+     último archivo del histórico con nombre `Tracking_ID_DDMMAAAA_NN.txt`.
 5. Descarga de cámaras
    - Seleccioná "Descargar cámaras" desde el menú o enviá `/descargar_camaras`
    - Indicá el ID y recibirás un Excel con todas las cámaras asociadas
-   - También podés usar `/enviar_camaras_mail` para recibirlas por correo
+   - También podés usar `/enviar_camaras_mail` para recibirlas por correo.
+   - Los archivos se nombran `Camaras_ID_DDMMAAAA_NN.xlsx` según un contador
+     diario.
 
 6. Informes de repetitividad
    - Procesa Excel de casos
