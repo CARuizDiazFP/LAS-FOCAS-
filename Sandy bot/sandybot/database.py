@@ -16,12 +16,16 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
+import logging
+from sqlalchemy.exc import SQLAlchemyError
 import json
 
 import pandas as pd
 from .utils import normalizar_camara
 from datetime import datetime
 from .config import config
+
+logger = logging.getLogger(__name__)
 
 
 # Configuración de la base de datos
@@ -149,25 +153,35 @@ def init_db():
     ensure_servicio_columns()
     if engine.dialect.name == "postgresql":
         with engine.begin() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
-            # La función ``unaccent`` por defecto es ``STABLE`` y no puede
-            # emplearse en índices basados en ``pg_trgm``. Se crea una
-            # envoltura marcada como ``IMMUTABLE`` para permitir su uso.
-            conn.execute(
-                text(
-                    "CREATE OR REPLACE FUNCTION immutable_unaccent(text)\n"
-                    "RETURNS text AS $$ SELECT unaccent($1) $$\n"
-                    "LANGUAGE SQL IMMUTABLE"
+            try:
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
+                conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            except SQLAlchemyError as e:
+                logger.warning(
+                    "No se pudieron crear las extensiones unaccent/pg_trgm: %s",
+                    e,
                 )
-            )
-            conn.execute(
-                text(
-                    "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
-                    "ON servicios USING gin ("
-                    "immutable_unaccent(lower(camaras::text)) gin_trgm_ops)"
+
+            try:
+                conn.execute(
+                    text(
+                        "CREATE OR REPLACE FUNCTION immutable_unaccent(text)\n"
+                        "RETURNS text AS $$ SELECT unaccent($1) $$\n"
+                        "LANGUAGE SQL IMMUTABLE"
+                    )
                 )
-            )
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
+                        "ON servicios USING gin ("
+                        "immutable_unaccent(lower(camaras::text)) gin_trgm_ops)"
+                    )
+                )
+            except SQLAlchemyError as e:
+                logger.warning(
+                    "No se pudo crear el índice para las cámaras: %s",
+                    e,
+                )
 
 
 # Crear las tablas al importar el módulo
