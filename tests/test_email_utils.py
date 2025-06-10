@@ -32,7 +32,7 @@ class SMTP:
         pass
 smtp_stub.SMTP = SMTP
 smtp_stub.SMTP_SSL = SMTP
-sys.modules.setdefault("smtplib", smtp_stub)
+sys.modules["smtplib"] = smtp_stub
 
 # Variables de entorno mínimas
 os.environ.update({
@@ -42,6 +42,8 @@ os.environ.update({
     "NOTION_DATABASE_ID": "x",
     "DB_USER": "u",
     "DB_PASSWORD": "p",
+    "SLACK_WEBHOOK_URL": "x",
+    "SUPERVISOR_DB_ID": "x",
     "SMTP_HOST": "smtp.example.com",
     "SMTP_PORT": "25",
     "SMTP_USER": "bot@example.com",
@@ -49,7 +51,7 @@ os.environ.update({
 })
 
 config_mod = importlib.import_module("sandybot.config")
-email_utils = importlib.import_module("sandybot.email_utils")
+email_utils = importlib.reload(importlib.import_module("sandybot.email_utils"))
 
 
 def test_enviar_excel_por_correo(tmp_path):
