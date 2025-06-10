@@ -8,7 +8,7 @@ import os
 import tempfile
 from datetime import datetime
 from sandybot.tracking_parser import TrackingParser
-from sandybot.utils import obtener_mensaje
+from sandybot.utils import obtener_mensaje, normalizar_camara
 from sandybot.database import (
     actualizar_tracking,
     obtener_servicio,
@@ -115,9 +115,32 @@ async def recibir_tracking(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             parser.parse_file(str(ruta_destino))
             camaras = parser._data[0][1]["camara"].astype(str).tolist()
             rutas_extra.append(str(ruta_destino))
-            if not obtener_servicio(servicio):
+            existente = obtener_servicio(servicio)
+            if not existente:
                 crear_servicio(id=servicio)
-            actualizar_tracking(servicio, str(ruta_destino), camaras, rutas_extra)
+                cam_anterior = []
+            else:
+                cam_anterior = existente.camaras or []
+
+            nuevas = {normalizar_camara(c) for c in camaras}
+            anteriores = {normalizar_camara(c) for c in cam_anterior}
+            if nuevas == anteriores:
+                await responder_registrando(
+                    mensaje,
+                    mensaje.from_user.id,
+                    documento.file_name,
+                    "Sin diferencias con el último tracking. Se omitió la carga.",
+                    "comparador",
+                )
+                return
+
+            actualizar_tracking(
+                servicio,
+                str(ruta_destino),
+                camaras,
+                rutas_extra,
+                tipo="complementario",
+            )
             context.user_data.setdefault("servicios", []).append(servicio)
             context.user_data.setdefault("trackings", []).append(
                 (str(ruta_destino), documento.file_name)

@@ -217,6 +217,7 @@ def actualizar_tracking(
     ruta: str | None = None,
     camaras: list[str] | None = None,
     trackings_txt: list[str] | None = None,
+    tipo: str = "principal",
 ) -> None:
     """Actualiza datos del servicio: tracking, cámaras y archivos asociados."""
     with SessionLocal() as session:
@@ -233,6 +234,7 @@ def actualizar_tracking(
                     camaras = json.loads(camaras)
                 except json.JSONDecodeError:
                     camaras = []
+            cam_anterior = servicio.camaras or []
             servicio.camaras = camaras
         if trackings_txt:
             existentes = servicio.trackings or []
@@ -245,7 +247,26 @@ def actualizar_tracking(
                     existentes = json.loads(existentes) if existentes else []
                 except json.JSONDecodeError:
                     existentes = []
-            existentes.extend(trackings_txt)
+
+            nuevos = []
+            for t in trackings_txt:
+                if isinstance(t, dict):
+                    entrada = t
+                else:
+                    entrada = {
+                        "ruta": t,
+                        "tipo": tipo,
+                        "fecha": datetime.utcnow().isoformat(),
+                    }
+                if camaras is not None:
+                    nuevas = {normalizar_camara(c) for c in camaras}
+                    anteriores = {normalizar_camara(c) for c in cam_anterior}
+                    dif_agregadas = nuevas - anteriores
+                    dif_quitadas = anteriores - nuevas
+                    entrada["nuevas"] = [c for c in camaras if normalizar_camara(c) in dif_agregadas]
+                    entrada["quitadas"] = [c for c in cam_anterior if normalizar_camara(c) in dif_quitadas]
+                nuevos.append(entrada)
+            existentes.extend(nuevos)
             servicio.trackings = existentes
         session.commit()
 

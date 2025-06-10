@@ -83,12 +83,30 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         context.user_data["id_servicio"] = context.user_data.get("id_servicio_detected")
         context.user_data.pop("confirmar_id", None)
         registrar_conversacion(user_id, "confirmar_tracking", "Confirmar ID", "callback")
-        await guardar_tracking_servicio(update, context)
+        keyboard = InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton("Principal", callback_data="tracking_principal"),
+                    InlineKeyboardButton("Complementario", callback_data="tracking_complementario"),
+                ]
+            ]
+        )
+        await query.edit_message_text(
+            "¿El tracking es principal o complementario?",
+            reply_markup=keyboard,
+        )
 
     elif query.data == "cambiar_id_tracking":
         context.user_data["confirmar_id"] = True
         registrar_conversacion(query.from_user.id, "cambiar_id_tracking", "Solicitar ID", "callback")
         await query.edit_message_text("Escribí el ID correcto.")
+
+    elif query.data in ("tracking_principal", "tracking_complementario"):
+        context.user_data["tipo_tracking"] = (
+            "principal" if query.data == "tracking_principal" else "complementario"
+        )
+        registrar_conversacion(query.from_user.id, query.data, "Elegir tipo", "callback")
+        await guardar_tracking_servicio(update, context)
 
     elif query.data == "informe_sla":
         registrar_conversacion(query.from_user.id, "informe_sla", "No implementado", "callback")
