@@ -68,6 +68,9 @@ os.environ.update(
     }
 )
 
+from sandybot import config as config_mod
+config_mod.Config._instance = None
+importlib.reload(config_mod)
 config_mod = importlib.import_module("sandybot.config")
 email_utils = importlib.reload(importlib.import_module("sandybot.email_utils"))
 
@@ -82,7 +85,10 @@ def test_enviar_excel_por_correo(tmp_path):
     assert reg["port"] == 25
     assert reg["sent"] is True
     assert reg["tls"] is True
-    assert reg["login"] == ("bot@example.com", "pwd")
+    assert reg["login"] == (
+        email_utils.config.SMTP_USER,
+        email_utils.config.SMTP_PASSWORD,
+    )
 
 
 def test_enviar_excel_por_correo_compatibilidad(tmp_path, monkeypatch):

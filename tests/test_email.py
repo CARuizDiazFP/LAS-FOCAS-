@@ -75,6 +75,12 @@ def test_enviar_correo(monkeypatch, tmp_path):
             registros["port"] = port
             self.sent = []
 
+        def starttls(self):
+            registros["tls"] = True
+
+        def login(self, user, pwd):
+            registros["login"] = (user, pwd)
+
         def set_debuglevel(self, level):
             registros["debug"] = level
 
@@ -89,6 +95,11 @@ def test_enviar_correo(monkeypatch, tmp_path):
             pass
 
     monkeypatch.setattr(email_utils.smtplib, "SMTP", DebugSMTP)
+    monkeypatch.setattr(email_utils.smtplib, "SMTP_SSL", DebugSMTP)
+
+    email_utils.config.SMTP_USER = "bot"
+    email_utils.config.SMTP_PASSWORD = "pwd"
+    email_utils.config.SMTP_USE_TLS = True
 
     os.environ.pop("SMTP_DEBUG", None)
     registros.clear()
@@ -104,6 +115,8 @@ def test_enviar_correo(monkeypatch, tmp_path):
     assert ok is True
     assert registros["host"] == "localhost"
     assert registros["port"] == 1025
+    assert registros["tls"] is True
+    assert registros["login"] == ("bot", "pwd")
     assert "debug" not in registros
 
     os.environ["SMTP_DEBUG"] = "1"
@@ -120,3 +133,56 @@ def test_enviar_correo(monkeypatch, tmp_path):
     assert registros["debug"] == 1
     assert registros["sent"][0][1] == ["c@x.com"]
     os.environ.pop("SMTP_DEBUG", None)
+
+
+def test_enviar_correo_ssl(monkeypatch, tmp_path):
+    json_path = tmp_path / "dest.json"
+    email_utils.agregar_destinatario("d@x.com", json_path)
+
+    registros = {}
+
+    class SSLSMTP:
+        def __init__(self, host, port):
+            registros["host"] = host
+            registros["port"] = port
+
+        def set_debuglevel(self, level):
+            registros["debug"] = level
+
+        def starttls(self):
+            registros["tls"] = True
+
+        def login(self, user, pwd):
+            registros["login"] = (user, pwd)
+
+        def sendmail(self, from_addr, to_addrs, msg):
+            registros["sent"] = True
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+    monkeypatch.setattr(email_utils.smtplib, "SMTP_SSL", SSLSMTP)
+    monkeypatch.setattr(email_utils.smtplib, "SMTP", SSLSMTP)
+
+    email_utils.config.SMTP_USER = "u"
+    email_utils.config.SMTP_PASSWORD = "p"
+    email_utils.config.SMTP_USE_TLS = True
+
+    registros.clear()
+    ok = email_utils.enviar_correo(
+        "Alerta",
+        "SSL",
+        json_path,
+        host="mail",  # host
+        port=465,
+    )
+
+    assert ok is True
+    assert registros["host"] == "mail"
+    assert registros["port"] == 465
+    assert registros.get("tls") is None
+    assert registros.get("login") == ("u", "p")
+    assert "debug" not in registros

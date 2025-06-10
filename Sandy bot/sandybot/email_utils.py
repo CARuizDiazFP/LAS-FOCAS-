@@ -69,7 +69,9 @@ def enviar_correo(
 
     msg = f"Subject: {asunto}\n\n{cuerpo}"
     try:
-        with smtplib.SMTP(host, port) as smtp:
+        usar_ssl = port == 465
+        smtp_cls = smtplib.SMTP_SSL if usar_ssl else smtplib.SMTP
+        with smtp_cls(host, port) as smtp:
             activar_debug = (
                 debug
                 if debug is not None
@@ -77,6 +79,10 @@ def enviar_correo(
             )
             if activar_debug:
                 smtp.set_debuglevel(1)
+            if not usar_ssl and config.SMTP_USE_TLS:
+                smtp.starttls()
+            if config.SMTP_USER and config.SMTP_PASSWORD:
+                smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
             smtp.sendmail(config.EMAIL_FROM or config.SMTP_USER, correos, msg)
         return True
     except Exception as e:  # pragma: no cover - depende del entorno
@@ -116,21 +122,13 @@ def enviar_excel_por_correo(
 
         msg = EmailMessage()
 
-        import os
+        smtp_user = config.SMTP_USER
+        smtp_host = config.SMTP_HOST
+        smtp_port = config.SMTP_PORT
+        smtp_pwd = config.SMTP_PASSWORD
+        use_tls = config.SMTP_USE_TLS
 
-        smtp_user = os.getenv("SMTP_USER", getattr(config, "EMAIL_USER", ""))
-        smtp_host = os.getenv("SMTP_HOST", getattr(config, "EMAIL_HOST", ""))
-        smtp_port = int(os.getenv("SMTP_PORT", getattr(config, "EMAIL_PORT", 0)))
-        smtp_pwd = os.getenv("SMTP_PASSWORD", getattr(config, "EMAIL_PASSWORD", ""))
-
-        # Prioridad: variable de entorno o valor de config
-        use_tls_env = os.getenv("SMTP_USE_TLS")
-        if use_tls_env is None:
-            use_tls = getattr(config, "SMTP_USE_TLS", True)
-        else:
-            use_tls = use_tls_env.lower() != "false"
-
-        msg["From"] = smtp_user or getattr(config, "EMAIL_FROM", "")
+        msg["From"] = config.EMAIL_FROM or smtp_user or ""
 
         msg["To"] = destinatario
         msg["Subject"] = asunto
@@ -145,12 +143,11 @@ def enviar_excel_por_correo(
             filename=ruta.name,
         )
 
-        if use_tls:
-
-            server = smtplib.SMTP(smtp_host, smtp_port)
+        usar_ssl = smtp_port == 465
+        smtp_cls = smtplib.SMTP_SSL if usar_ssl else smtplib.SMTP
+        server = smtp_cls(smtp_host, smtp_port)
+        if not usar_ssl and use_tls:
             server.starttls()
-        else:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port)
         if smtp_user and smtp_pwd:
             server.login(smtp_user, smtp_pwd)
 
