@@ -16,8 +16,8 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
-- `SMTP_USE_TLS`: si vale `false` o se usa el puerto 465 se emplea
-  `SMTP_SSL`; en los demás casos se inicia TLS con `starttls()`.
+- `SMTP_USE_TLS`: controla si se inicia TLS. Si se define como `false` o se usa
+  el puerto 465 se emplea `SMTP_SSL`; en caso contrario se ejecuta `starttls()`.
 - También se aceptan `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y
   `EMAIL_PASSWORD` para mantener compatibilidad con versiones antiguas.
 

@@ -38,7 +38,7 @@ def _enviar_mail(destino: str, archivo: str, nombre: str) -> None:
     servidor = config.SMTP_HOST or "localhost"
     puerto = config.SMTP_PORT
 
-    usar_tls = str(config.SMTP_USE_TLS).lower() != "false"
+    usar_tls = config.SMTP_USE_TLS
     usar_ssl = not usar_tls or puerto == 465
 
     if usar_ssl:

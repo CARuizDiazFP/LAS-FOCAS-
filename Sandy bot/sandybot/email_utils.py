@@ -115,12 +115,13 @@ def enviar_excel_por_correo(
         smtp_host = os.getenv("SMTP_HOST", getattr(config, "EMAIL_HOST", ""))
         smtp_port = int(os.getenv("SMTP_PORT", getattr(config, "EMAIL_PORT", 0)))
         smtp_pwd = os.getenv("SMTP_PASSWORD", getattr(config, "EMAIL_PASSWORD", ""))
-        use_tls = (
-            os.getenv(
-                "SMTP_USE_TLS", str(getattr(config, "SMTP_USE_TLS", True))
-            ).lower()
-            != "false"
-        )
+
+        # Prioridad: variable de entorno o valor de config
+        use_tls_env = os.getenv("SMTP_USE_TLS")
+        if use_tls_env is None:
+            use_tls = getattr(config, "SMTP_USE_TLS", True)
+        else:
+            use_tls = use_tls_env.lower() != "false"
 
         msg["From"] = smtp_user or getattr(config, "EMAIL_FROM", "")
 
