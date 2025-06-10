@@ -95,11 +95,11 @@ def cargar_destinatarios() -> Dict[str, Any]:
     """Carga el archivo de destinatarios definido en :class:`Config`."""
     from .config import config
 
-    return cargar_json(config.DESTINATARIOS_FILE)
+    return cargar_json(config.ARCHIVO_DESTINATARIOS)
 
 
 def guardar_destinatarios(destinatarios: Dict[str, Any]) -> bool:
     """Guarda la lista de destinatarios en el archivo configurado."""
     from .config import config
 
-    return guardar_json(destinatarios, config.DESTINATARIOS_FILE)
+    return guardar_json(destinatarios, config.ARCHIVO_DESTINATARIOS)

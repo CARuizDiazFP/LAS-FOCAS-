@@ -113,7 +113,7 @@ class Config:
         self.SMTP_PASSWORD = self.EMAIL_PASSWORD
         self.SMTP_USE_TLS = self.SMTP_USE_TLS
 
-        
+
 
         # Validación
         self.validate()
@@ -122,6 +122,11 @@ class Config:
         # Configuración de logging gestionada desde `main.py`
         
         self._initialized = True
+
+    @property
+    def DESTINATARIOS_FILE(self):
+        """Alias de compatibilidad para ``ARCHIVO_DESTINATARIOS``."""
+        return self.ARCHIVO_DESTINATARIOS
 
     def validate(self) -> None:
         """Validar variables de entorno requeridas"""
