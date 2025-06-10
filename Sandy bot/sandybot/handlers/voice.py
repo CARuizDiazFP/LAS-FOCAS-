@@ -45,6 +45,8 @@ async def voice_handler(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
         except OSError:
             pass
 
-    # Reutilizar el manejador de mensajes como si el usuario hubiera escrito
-    mensaje.text = texto
+    # Pasar la transcripción a ``message_handler`` sin alterar el objeto
+    # ``Update`` original.
+    context.user_data["voice_text"] = texto
     await message_handler(update, context)
+    context.user_data.pop("voice_text", None)
