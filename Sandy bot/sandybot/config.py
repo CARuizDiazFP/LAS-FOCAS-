@@ -12,6 +12,7 @@ from typing import Dict, Any
 from pathlib import Path
 from dotenv import load_dotenv
 
+
 class Config:
     """Clase singleton para manejar la configuración global.
 
@@ -32,22 +33,22 @@ class Config:
     def __init__(self):
         if self._initialized:
             return
-            
+
         # Cargar variables de entorno
         load_dotenv()
-        
+
         # Rutas base
         self.BASE_DIR = Path(__file__).parent.parent
         self.DATA_DIR = self.BASE_DIR / "data"
         self.LOG_DIR = self.BASE_DIR / "logs"
         # Carpeta para conservar trackings anteriores
         self.HISTORICO_DIR = self.DATA_DIR / "historico"
-        
+
         # Crear directorios necesarios
         self.DATA_DIR.mkdir(exist_ok=True)
         self.LOG_DIR.mkdir(exist_ok=True)
         self.HISTORICO_DIR.mkdir(exist_ok=True)
-        
+
         # API Keys
         self.TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
         self.OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
@@ -57,7 +58,7 @@ class Config:
         self.SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
         # ID de la base de Notion utilizada en el modo supervisor
         self.SUPERVISOR_DB_ID = os.getenv("SUPERVISOR_DB_ID")
-        
+
         # Archivos y rutas
         self.ARCHIVO_CONTADOR = self.DATA_DIR / "contador_diario.json"
         # Registro histórico de interacciones por usuario
@@ -73,8 +74,8 @@ class Config:
         self.GPT_CACHE_FILE = self.DATA_DIR / "gpt_cache.json"
 
         # Plantilla de informes de repetitividad
-        # Permite definir la ruta mediante la variable de entorno "PLANTILLA_PATH"
-        # para adaptar la ubicación sin modificar el código fuente.
+        # La variable "PLANTILLA_PATH" permite ajustar la ruta sin
+        # modificar el código fuente.
         self.PLANTILLA_PATH = os.getenv(
             "PLANTILLA_PATH",
             r"C:\\Metrotel\\Sandy\\plantilla_informe.docx"
@@ -87,7 +88,7 @@ class Config:
         self.GPT_TIMEOUT = 30
         self.GPT_MAX_RETRIES = 3
         self.GPT_CACHE_TIMEOUT = 3600  # 1 hora
-        
+
         # Base de datos
 
         self.DB_HOST = os.getenv("DB_HOST", "localhost")
@@ -96,9 +97,10 @@ class Config:
         self.DB_USER = os.getenv("DB_USER")
         self.DB_PASSWORD = os.getenv("DB_PASSWORD")
 
-
         # Credenciales de correo electrónico
-        smtp_host = os.getenv("SMTP_HOST") or os.getenv("EMAIL_HOST", "smtp.gmail.com")
+        smtp_host = os.getenv("SMTP_HOST") or os.getenv(
+            "EMAIL_HOST", "smtp.gmail.com"
+        )
         smtp_port = os.getenv("SMTP_PORT") or os.getenv("EMAIL_PORT", "465")
         smtp_user = os.getenv("SMTP_USER") or os.getenv("EMAIL_USER")
         smtp_pwd = os.getenv("SMTP_PASSWORD") or os.getenv("EMAIL_PASSWORD")
@@ -118,14 +120,11 @@ class Config:
         self.EMAIL_USER = self.SMTP_USER
         self.EMAIL_PASSWORD = self.SMTP_PASSWORD
 
-
-
         # Validación
         self.validate()
-        
 
         # Configuración de logging gestionada desde `main.py`
-        
+
         self._initialized = True
 
     @property
@@ -143,7 +142,7 @@ class Config:
             "DB_USER": self.DB_USER,
             "DB_PASSWORD": self.DB_PASSWORD,
         }
-        
+
         missing = [var for var, val in required_vars.items() if not val]
         if missing:
             mensaje = (
@@ -179,6 +178,7 @@ class Config:
                 "Variables de correo no definidas: %s",
                 ", ".join(email_missing),
             )
+
 
 # Instancia global
 config = Config()
