@@ -35,36 +35,50 @@ from .handlers import (
 
 logger = logging.getLogger(__name__)
 
+
 class SandyBot:
     """Clase principal del bot"""
     def __init__(self):
         """Inicializa el bot y sus handlers"""
         self.app = Application.builder().token(config.TELEGRAM_TOKEN).build()
         self._setup_handlers()
-        
+
     def _setup_handlers(self):
         """Configura los handlers del bot"""
         # Comandos básicos
         self.app.add_handler(CommandHandler("start", start_handler))
-        self.app.add_handler(CommandHandler("comparar_fo", iniciar_comparador))
-        self.app.add_handler(CommandHandler("procesar", procesar_comparacion))
-        self.app.add_handler(CommandHandler("cargar_tracking", iniciar_carga_tracking))
-        self.app.add_handler(CommandHandler("descargar_tracking", iniciar_descarga_tracking))
+        self.app.add_handler(
+            CommandHandler("comparar_fo", iniciar_comparador)
+        )
+        self.app.add_handler(
+            CommandHandler("procesar", procesar_comparacion)
+        )
+        self.app.add_handler(
+            CommandHandler("cargar_tracking", iniciar_carga_tracking)
+        )
+        self.app.add_handler(
+            CommandHandler("descargar_tracking", iniciar_descarga_tracking)
+        )
 
-        self.app.add_handler(CommandHandler("agregar_destinatario", agregar_destinatario))
-        self.app.add_handler(CommandHandler("eliminar_destinatario", eliminar_destinatario))
-        self.app.add_handler(CommandHandler("listar_destinatarios", listar_destinatarios))
+        self.app.add_handler(
+            CommandHandler("agregar_destinatario", agregar_destinatario)
+        )
+        self.app.add_handler(
+            CommandHandler("eliminar_destinatario", eliminar_destinatario)
+        )
+        self.app.add_handler(
+            CommandHandler("listar_destinatarios", listar_destinatarios)
+        )
 
-        
         # Callbacks de botones
         self.app.add_handler(CallbackQueryHandler(callback_handler))
-        
+
         # Mensajes de texto
         self.app.add_handler(MessageHandler(
             filters.TEXT & ~filters.COMMAND,
             message_handler
         ))
-        
+
         # Documentos
         self.app.add_handler(MessageHandler(
             filters.Document.ALL,
@@ -76,10 +90,10 @@ class SandyBot:
             filters.VOICE,
             voice_handler
         ))
-        
+
         # Error handler
         self.app.add_error_handler(self._error_handler)
-        
+
     async def _error_handler(self, update: Update, context: Any):
         """Maneja errores globales del bot"""
         logger.error("Error procesando update: %s", context.error)
@@ -88,7 +102,7 @@ class SandyBot:
                 "😤 Ocurrió un error inesperado. "
                 "¿Por qué no intentás más tarde? #NoMeMolestes"
             )
-    
+
     def run(self):
         """Inicia el bot en modo polling"""
         logger.info("🤖 Iniciando SandyBot...")
