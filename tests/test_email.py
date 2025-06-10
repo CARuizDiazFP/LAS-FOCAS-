@@ -90,10 +90,33 @@ def test_enviar_correo(monkeypatch, tmp_path):
 
     monkeypatch.setattr(email_utils.smtplib, "SMTP", DebugSMTP)
 
-    ok = email_utils.enviar_correo("Alerta", "Prueba", json_path, host="localhost", port=1025)
+    os.environ.pop("SMTP_DEBUG", None)
+    registros.clear()
+
+    ok = email_utils.enviar_correo(
+        "Alerta",
+        "Prueba",
+        json_path,
+        host="localhost",
+        port=1025,
+    )
 
     assert ok is True
     assert registros["host"] == "localhost"
     assert registros["port"] == 1025
+    assert "debug" not in registros
+
+    os.environ["SMTP_DEBUG"] = "1"
+    registros.clear()
+
+    ok = email_utils.enviar_correo(
+        "Alerta",
+        "Prueba",
+        json_path,
+        host="localhost",
+        port=1025,
+    )
+
     assert registros["debug"] == 1
     assert registros["sent"][0][1] == ["c@x.com"]
+    os.environ.pop("SMTP_DEBUG", None)

@@ -57,6 +57,7 @@ def enviar_correo(
     *,
     host: str | None = None,
     port: int | None = None,
+    debug: bool | None = None,
 ) -> bool:
     """Envía un correo simple a los destinatarios almacenados."""
     correos = cargar_destinatarios(ruta_dest)
@@ -69,7 +70,13 @@ def enviar_correo(
     msg = f"Subject: {asunto}\n\n{cuerpo}"
     try:
         with smtplib.SMTP(host, port) as smtp:
-            smtp.set_debuglevel(1)
+            activar_debug = (
+                debug
+                if debug is not None
+                else os.getenv("SMTP_DEBUG", "0").lower() in {"1", "true", "yes"}
+            )
+            if activar_debug:
+                smtp.set_debuglevel(1)
             smtp.sendmail(config.EMAIL_FROM or config.SMTP_USER, correos, msg)
         return True
     except Exception as e:  # pragma: no cover - depende del entorno
