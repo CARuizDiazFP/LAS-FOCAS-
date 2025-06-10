@@ -7,6 +7,7 @@ import os
 import tempfile
 import smtplib
 from email.message import EmailMessage
+from sqlalchemy.exc import SQLAlchemyError
 
 from ..config import config
 
@@ -36,11 +37,21 @@ def _enviar_mail(destino: str, archivo: str) -> None:
 
     servidor = config.SMTP_HOST or "localhost"
     puerto = config.SMTP_PORT
-    with smtplib.SMTP(servidor, puerto) as smtp:
-        smtp.starttls()
-        if config.SMTP_USER and config.SMTP_PASSWORD:
-            smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
-        smtp.send_message(msg)
+
+    usar_tls = str(config.SMTP_USE_TLS).lower() != "false"
+    usar_ssl = not usar_tls or puerto == 465
+
+    if usar_ssl:
+        with smtplib.SMTP_SSL(servidor, puerto) as smtp:
+            if config.SMTP_USER and config.SMTP_PASSWORD:
+                smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
+            smtp.send_message(msg)
+    else:
+        with smtplib.SMTP(servidor, puerto) as smtp:
+            smtp.starttls()
+            if config.SMTP_USER and config.SMTP_PASSWORD:
+                smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
+            smtp.send_message(msg)
 
 
 async def iniciar_envio_camaras_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -83,7 +94,18 @@ async def procesar_envio_camaras_mail(update: Update, context: ContextTypes.DEFA
     id_servicio = int(partes[0])
     correo = partes[1]
     ruta = os.path.join(tempfile.gettempdir(), f"camaras_{mensaje.from_user.id}.xlsx")
-    ok = exportar_camaras_servicio(id_servicio, ruta)
+    try:
+        ok = exportar_camaras_servicio(id_servicio, ruta)
+    except SQLAlchemyError as e:
+        logger.error("Error al exportar cámaras: %s", e)
+        await responder_registrando(
+            mensaje,
+            mensaje.from_user.id,
+            mensaje.text,
+            "No pude conectarme a la base de datos. Verificá la configuración.",
+            "enviar_camaras_mail",
+        )
+        return
     if not ok or not os.path.exists(ruta):
         await responder_registrando(
             mensaje,
