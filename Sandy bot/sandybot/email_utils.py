@@ -2,6 +2,7 @@
 """Funciones para enviar archivos por correo."""
 
 from pathlib import Path
+import json
 import logging
 import json
 import smtplib
@@ -137,68 +138,59 @@ def enviar_excel_por_correo(destinatario: str, ruta_excel: str, *, asunto: str =
 
 
 def cargar_destinatarios(ruta: Path) -> list[str]:
-    """Devuelve la lista de correos almacenados en ``ruta``.
 
-    El archivo JSON debe contener una clave ``"emails"`` con una lista de
-    direcciones.  Si el archivo no existe se devuelve una lista vacía.
-    """
-    datos = cargar_json(ruta)
-    return datos.get("emails", [])
+    """Devuelve la lista de destinatarios almacenada en ``ruta``."""
+    try:
+        with open(ruta, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, list) else []
+    except FileNotFoundError:
+        return []
+    except Exception as e:  # pragma: no cover - errores dependen del entorno
+        logger.error("Error al leer destinatarios: %s", e)
+        return []
+
+
+def _guardar_destinatarios(ruta: Path, lista: list[str]) -> bool:
+    try:
+        ruta.parent.mkdir(parents=True, exist_ok=True)
+        with open(ruta, "w", encoding="utf-8") as f:
+            json.dump(lista, f, ensure_ascii=False, indent=2)
+        return True
+    except Exception as e:  # pragma: no cover - errores dependen del entorno
+        logger.error("Error al guardar destinatarios: %s", e)
+        return False
 
 
 def agregar_destinatario(correo: str, ruta: Path) -> bool:
-    """Agrega ``correo`` a la lista de destinatarios almacenada en ``ruta``."""
-    correos = cargar_destinatarios(ruta)
-    if correo in correos:
-        return True
-    correos.append(correo)
-    return guardar_json({"emails": correos}, ruta)
+    """Agrega un correo a la lista de destinatarios."""
+    lista = cargar_destinatarios(ruta)
+    if correo not in lista:
+        lista.append(correo)
+        return _guardar_destinatarios(ruta, lista)
+    return True
 
 
 def eliminar_destinatario(correo: str, ruta: Path) -> bool:
-    """Elimina ``correo`` de la lista guardada en ``ruta``."""
-    correos = cargar_destinatarios(ruta)
-    if correo not in correos:
-        return True
-    correos.remove(correo)
-    return guardar_json({"emails": correos}, ruta)
+    """Elimina un correo de la lista de destinatarios."""
+    lista = cargar_destinatarios(ruta)
+    if correo in lista:
+        lista.remove(correo)
+        return _guardar_destinatarios(ruta, lista)
+    return False
 
 
-def enviar_correo(asunto: str, cuerpo: str, ruta_json: Path, *, host=None, port=None) -> bool:
-    """Envía un correo de texto a todos los destinatarios registrados.
-
-    Parameters
-    ----------
-    asunto: str
-        Título del mensaje.
-    cuerpo: str
-        Contenido principal del mensaje.
-    ruta_json: Path
-        Ruta al archivo con los destinatarios.
-    host: str, optional
-        Servidor SMTP a utilizar.  Si no se indica se toma de la configuración
-        o ``localhost`` como último recurso.
-    port: int, optional
-        Puerto del servidor SMTP.  Si se omite se toma de la configuración o
-        ``25`` por defecto.
-    """
-
-    destinos = cargar_destinatarios(ruta_json)
-    if not destinos:
-        logger.warning("No se encontraron destinatarios en %s", ruta_json)
+def enviar_correo(asunto: str, cuerpo: str, ruta_destinatarios: Path, *, host: str | None = None, port: int | None = None) -> bool:
+    """Envía un correo simple a los destinatarios cargados en un JSON."""
+    dests = cargar_destinatarios(ruta_destinatarios)
+    if not dests:
         return False
-
-    remitente = getattr(config, "EMAIL_FROM", "bot@example.com")
-    host = host or getattr(config, "SMTP_HOST", "localhost")
-    port = int(port or getattr(config, "SMTP_PORT", 25))
-
-    mensaje = f"Subject: {asunto}\nFrom: {remitente}\n\n{cuerpo}"
-
     try:
-        with smtplib.SMTP(host, port) as smtp:
-            smtp.set_debuglevel(1)
-            smtp.sendmail(remitente, destinos, mensaje)
+        with smtplib.SMTP(host or "localhost", port or 25) as server:
+            server.set_debuglevel(1)
+            server.sendmail(config.EMAIL_FROM or config.SMTP_USER, dests, cuerpo)
         return True
-    except Exception as e:  # pragma: no cover - entorno depende del sistema
+    except Exception as e:  # pragma: no cover - errores dependen del entorno
+
         logger.error("Error enviando correo: %s", e)
         return False

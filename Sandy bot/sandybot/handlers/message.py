@@ -25,7 +25,9 @@ logger = logging.getLogger(__name__)
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Maneja mensajes de texto del usuario"""
     user_id = update.effective_user.id
-    mensaje_usuario = update.message.text
+    # Si ``voice_handler`` guardó una transcripción en ``context.user_data``
+    # la utilizamos como texto original sin modificar el ``Update``.
+    mensaje_usuario = context.user_data.pop("voice_text", None) or update.message.text
 
     try:
         # Manejo de carga de tracking
