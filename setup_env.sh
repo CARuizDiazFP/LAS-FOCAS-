@@ -9,6 +9,14 @@ mkdir -p "$PIP_CACHE_DIR"
 python -m venv .venv
 source .venv/bin/activate
 
+# Exportar PYTHONPATH para que los módulos del proyecto se encuentren
+SANDY_PATH="$PWD/Sandy bot"
+if [ -z "$PYTHONPATH" ]; then
+    export PYTHONPATH="$SANDY_PATH"
+else
+    export PYTHONPATH="$PYTHONPATH:$SANDY_PATH"
+fi
+
 # Actualizar pip e instalar dependencias
 pip install --upgrade pip
 pip install --cache-dir "$PIP_CACHE_DIR" -r "Sandy bot/requirements.txt"

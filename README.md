@@ -20,6 +20,9 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
   `SMTP_SSL`; en los demás casos se inicia TLS con `starttls()`.
 - También se aceptan `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y
   `EMAIL_PASSWORD` para mantener compatibilidad con versiones antiguas.
+- `PYTHONPATH`: `main.py` agrega de forma automática la carpeta `Sandy bot`.
+  `setup_env.sh` exporta la misma ruta para facilitar las pruebas y la
+  ejecución desde otros scripts.
 
 ### Envío de correos
 
@@ -173,7 +176,9 @@ pruebas puedan ejecutarse correctamente.
 
 Antes de ejecutar `pytest` es recomendable preparar el entorno con `setup_env.sh`.
 Este script crea el virtualenv en `.venv` y realiza la instalación de
-`Sandy bot/requirements.txt` automáticamente.
+`Sandy bot/requirements.txt` automáticamente. Además exporta la ruta
+`Sandy bot` en `PYTHONPATH` para que las importaciones funcionen sin ajustes
+manuales.
 
 ```bash
 ./setup_env.sh
