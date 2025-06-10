@@ -1,7 +1,7 @@
 # NiceGrow
 
 Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
-instalar las dependencias listadas en `requirements.txt`. Se recomienda usar
+instalar las dependencias listadas en `Sandy bot/requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
 API utilizada en `sandybot`.
 Desde esta versión el bot también acepta mensajes de voz, los descarga y
@@ -160,10 +160,13 @@ Para validar el funcionamiento del proyecto se incluye una suite de pruebas basa
 Es necesario contar con las bibliotecas `openpyxl`, `python-docx` y `pandas` para que todas las
 pruebas puedan ejecutarse correctamente.
 
-Instalá las dependencias con el comando:
+Antes de ejecutar `pytest` es recomendable preparar el entorno con `setup_env.sh`.
+Este script crea el virtualenv en `.venv` y realiza la instalación de
+`Sandy bot/requirements.txt` automáticamente.
 
 ```bash
-pip install -r requirements.txt
+./setup_env.sh
+pytest
 ```
 
 Algunas pruebas relacionadas con la base de datos se omiten de forma automática si `SQLAlchemy`
