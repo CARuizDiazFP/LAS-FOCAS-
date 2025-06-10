@@ -8,7 +8,7 @@ import os
 import tempfile
 
 from ..utils import obtener_mensaje
-from ..database import SessionLocal, Servicio, registrar_servicio
+from ..database import SessionLocal, Servicio
 from .estado import UserState
 from ..registrador import responder_registrando, registrar_conversacion
 
@@ -110,8 +110,6 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
                 servicio = session.get(Servicio, int(id_servicio))
                 if servicio and servicio.id_carrier:
                     df.at[idx, col_carrier] = servicio.id_carrier
-    finally:
-        session.close()
 
     salida = os.path.join(
         tempfile.gettempdir(), f"identificador_carrier_{mensaje.from_user.id}.xlsx"
@@ -127,7 +125,7 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
         "id_carrier",
     )
 
-    # Registrar cada fila procesada en la base de datos luego de enviar el Excel
+    # Registrar todas las filas en una única sesión
     try:
         for _, row in df.iterrows():
             id_servicio = row.get(col_servicio)
@@ -138,7 +136,8 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
                 id_servicio = int(id_servicio)
             except ValueError:
                 continue
-            registrar_servicio(id_servicio, str(id_carrier))
+            session.merge(Servicio(id=id_servicio, id_carrier=str(id_carrier)))
+        session.commit()
     except Exception as e:
         logger.error("Error al registrar servicios: %s", e)
         registrar_conversacion(
@@ -147,6 +146,8 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
             f"Error al registrar servicios: {e}",
             "id_carrier",
         )
+    finally:
+        session.close()
 
     os.remove(tmp.name)
     os.remove(salida)
