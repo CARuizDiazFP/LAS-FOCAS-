@@ -8,6 +8,20 @@ import asyncio
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
+# Stub de telegram con las clases mínimas utilizadas por el código. De esta
+# forma evitamos la dependencia real de ``python-telegram-bot`` en las pruebas.
+telegram_stub = ModuleType("telegram")
+
+class Update:  # pragma: no cover - comportamiento trivial para pruebas
+    pass
+
+class Message:  # pragma: no cover - comportamiento trivial para pruebas
+    pass
+
+telegram_stub.Update = Update
+telegram_stub.Message = Message
+sys.modules.setdefault("telegram", telegram_stub)
+
 # Stub de openai para evitar llamadas reales
 openai_stub = ModuleType("openai")
 llamadas = {"n": 0}
