@@ -60,10 +60,11 @@ Se incluyen dos modelos principales:
    También guarda la ruta del informe de comparación, los trackings
    asociados y las cámaras involucradas en cada servicio.
 
-Al iniciar el bot, `init_db()` crea las tablas de forma automática y
-ejecuta `ensure_servicio_columns()` para garantizar que la tabla
-`servicios` incluya las columnas `ruta_tracking`, `trackings`, `camaras`,
-`carrier` e `id_carrier`.
+Antes de crear la instancia del bot se ejecuta `init_db()` desde
+`main.py`. Esta función crea las tablas y ejecuta
+`ensure_servicio_columns()` para garantizar que la tabla `servicios`
+incluya las columnas `ruta_tracking`, `trackings`, `camaras`, `carrier` e
+`id_carrier`.
 
 Para aprovechar las búsquedas acentuadas se utilizan las extensiones
 `unaccent` y `pg_trgm`.  El usuario configurado en la base debe tener

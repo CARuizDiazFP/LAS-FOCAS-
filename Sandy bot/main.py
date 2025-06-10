@@ -9,6 +9,7 @@ from pathlib import Path
 from sandybot.bot import SandyBot
 from sandybot.logging_config import setup_logging
 
+
 # Asegurar que la ruta de "Sandy bot" figure en PYTHONPATH desde el inicio
 ROOT_DIR = Path(__file__).resolve().parent
 if str(ROOT_DIR) not in sys.path:
@@ -16,6 +17,9 @@ if str(ROOT_DIR) not in sys.path:
 os.environ["PYTHONPATH"] = os.pathsep.join(
     filter(None, [os.environ.get("PYTHONPATH"), str(ROOT_DIR)])
 )
+
+from sandybot.database import init_db
+
 
 # Configurar la consola para usar UTF-8 en Windows
 if os.name == 'nt':
@@ -28,6 +32,7 @@ setup_logging()
 def main():
     """Función principal que inicia el bot"""
     try:
+        init_db()
         bot = SandyBot()
         bot.run()
     except Exception as e:
