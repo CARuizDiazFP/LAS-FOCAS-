@@ -16,7 +16,8 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
-- `SMTP_USE_TLS`: indica si se inicia TLS al conectarse (por defecto `true`).
+- `SMTP_USE_TLS`: si vale `false` o se usa el puerto 465 se emplea
+  `SMTP_SSL`; en los demás casos se inicia TLS con `starttls()`.
 - También se aceptan `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y
   `EMAIL_PASSWORD` para mantener compatibilidad con versiones antiguas.
 
@@ -69,6 +70,10 @@ Las columnas `camaras` y `trackings` ahora utilizan el tipo
 `JSONB`, por lo que almacenan listas o diccionarios de manera
 nativa. Ya no es necesario convertir los datos a texto con
 `json.dumps` ni decodificarlos al leerlos.
+
+Si durante el envío de cámaras ocurre un error de conexión con la base,
+Sandy mostrará el mensaje:
+"No pude conectarme a la base de datos. Verificá la configuración.".
 
 ## Carga de tracking
 
