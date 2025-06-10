@@ -223,6 +223,13 @@ def actualizar_tracking(
         if ruta is not None:
             servicio.ruta_tracking = ruta
         if camaras is not None:
+            # Si las cámaras llegan como cadena (caso de registros antiguos),
+            # se intenta convertir desde JSON para guardar siempre una lista.
+            if isinstance(camaras, str):
+                try:
+                    camaras = json.loads(camaras)
+                except json.JSONDecodeError:
+                    camaras = []
             servicio.camaras = camaras
         if trackings_txt:
             existentes = servicio.trackings or []
@@ -302,7 +309,13 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
         return False
 
     camaras = servicio.camaras
-
+    # Compatibilidad con campos almacenados como texto JSON. Si es una cadena,
+    # se intenta decodificar para obtener la lista de cámaras.
+    if isinstance(camaras, str):
+        try:
+            camaras = json.loads(camaras)
+        except json.JSONDecodeError:
+            return False
 
     # Se crea el DataFrame con una única columna
     df = pd.DataFrame(camaras, columns=["camara"])

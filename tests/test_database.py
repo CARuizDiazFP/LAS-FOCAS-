@@ -115,6 +115,23 @@ def test_exportar_camaras_servicio(tmp_path):
     assert filas == ["camara", "Camara 1", "Camara 2"]
 
 
+def test_exportar_camaras_servicio_cadena(tmp_path):
+    """Verifica la exportación cuando las cámaras se guardaron como texto JSON."""
+    servicio = bd.crear_servicio(
+        nombre="S4b", cliente="D", camaras='["C1", "C2"]'
+    )
+
+    ruta = tmp_path / "camaras_str.xlsx"
+    ok = bd.exportar_camaras_servicio(servicio.id, str(ruta))
+    assert ok is True
+    assert ruta.exists()
+
+    wb = openpyxl.load_workbook(ruta)
+    ws = wb.active
+    filas = [c[0].value for c in ws.iter_rows(values_only=False)]
+    assert filas == ["camara", "C1", "C2"]
+
+
 def test_actualizar_tracking_jsonb():
     servicio = bd.crear_servicio(nombre="S6", cliente="F")
     bd.actualizar_tracking(servicio.id, "ruta.txt", ["C1"], ["t1.txt"])
