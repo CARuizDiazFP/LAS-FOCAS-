@@ -151,11 +151,21 @@ def init_db():
         with engine.begin() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS unaccent"))
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
+            # La función ``unaccent`` por defecto es ``STABLE`` y no puede
+            # emplearse en índices basados en ``pg_trgm``. Se crea una
+            # envoltura marcada como ``IMMUTABLE`` para permitir su uso.
+            conn.execute(
+                text(
+                    "CREATE OR REPLACE FUNCTION immutable_unaccent(text)\n"
+                    "RETURNS text AS $$ SELECT unaccent($1) $$\n"
+                    "LANGUAGE SQL IMMUTABLE"
+                )
+            )
             conn.execute(
                 text(
                     "CREATE INDEX IF NOT EXISTS ix_servicios_camaras_unaccent "
-                    "ON servicios USING gin (" 
-                    "unaccent(lower(camaras::text)) gin_trgm_ops)"
+                    "ON servicios USING gin ("
+                    "immutable_unaccent(lower(camaras::text)) gin_trgm_ops)"
                 )
             )
 
