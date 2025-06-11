@@ -372,7 +372,7 @@ def generar_archivo_msg(
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
 
-    return ruta
+    return ruta, contenido
 
 
 async def procesar_correo_a_tarea(

@@ -72,19 +72,19 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             await archivo.download_to_drive(tmp.name)
             ruta = tmp.name
-        try:
-            contenido = _leer_msg(ruta)
-            if not contenido:
-                raise ValueError("Sin contenido")
-            prompt = (
-                "Extraé del siguiente correo los datos de la ventana de mantenimiento "
-                "y devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
-                "'afectacion' e 'ids' (lista de servicios).\n\n"
-                f"Correo:\n{contenido}"
-            )
-            esquema = {
-                "type": "object",
-                "properties": {
+        contenido = _leer_msg(ruta)
+        if not contenido:
+            raise ValueError("Sin contenido")
+        prompt = (
+            "Extraé del siguiente correo los datos de la ventana de mantenimiento "
+            "y devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
+            "'afectacion' e 'ids' (lista de servicios).\n\n"
+            f"Correo:\n{contenido}"
+        )
+        esquema = {
+            "type": "object",
+            "properties": {},
+        }
 
         try:
             contenido = _leer_msg(ruta)
