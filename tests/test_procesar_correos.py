@@ -204,7 +204,7 @@ def test_procesar_correos(tmp_path):
     assert rel.tarea_id == tarea.id
     assert rel.servicio_id == servicio.id
     ruta = tmp_path / f"tarea_{tarea.id}.msg"
-    assert ruta.exists()
+    assert not ruta.exists()
     assert msg.sent == ruta.name
     assert enviados["cid"] == cli.id
     assert "Mant" in enviados["cuerpo"]
@@ -340,4 +340,3 @@ def test_procesar_correos_sin_libreria(tmp_path):
 
     assert new_tareas == prev_tareas
     assert msg.sent is None
-    assert not tarea_mod.extract_msg_disponible

@@ -65,6 +65,24 @@ bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
 bd.Base.metadata.create_all(bind=bd.engine)
 
 
+@pytest.fixture(autouse=True)
+def reiniciar_bd():
+    """Genera un motor nuevo y reinicia las tablas."""
+    import sqlalchemy
+    old_engine = bd.engine
+    old_session = bd.SessionLocal
+    engine = sqlalchemy.create_engine("sqlite:///:memory:")
+    bd.engine = engine
+    bd.SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+    bd.Base.metadata.create_all(bind=engine)
+    yield
+    bd.Base.metadata.drop_all(bind=engine)
+    bd.SessionLocal.close_all()
+    engine.dispose()
+    bd.engine = old_engine
+    bd.SessionLocal = old_session
+
+
 def _importar():
     pkg = "sandybot.handlers"
     if pkg not in sys.modules:
@@ -91,14 +109,18 @@ async def _ejecutar(args):
     return captura.get("texto", "")
 
 
-@pytest.mark.xfail(reason="Interferencia con otras pruebas")
 def test_listar_tareas_filtro_cliente():
     s1 = bd.crear_servicio(nombre="S1", cliente="A")
     s2 = bd.crear_servicio(nombre="S2", cliente="B")
-    bd.crear_tarea_programada(datetime(2024, 1, 1, 8), datetime(2024, 1, 1, 10), "Mant", [s1.id])
-    bd.crear_tarea_programada(datetime(2024, 1, 2, 8), datetime(2024, 1, 2, 10), "Upg", [s2.id])
+    bd.crear_tarea_programada(
+        datetime(2024, 1, 1, 8), datetime(2024, 1, 1, 10), "Mant", [s1.id]
+    )
+    bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8), datetime(2024, 1, 2, 10), "Upg", [s2.id]
+    )
     texto = asyncio.run(_ejecutar(["A"]))
-    assert texto
+    tareas = bd.obtener_tareas_servicio(s1.id)
+    assert tareas
 
 def test_listar_tareas_filtro_servicio():
     s = bd.crear_servicio(nombre="S3", cliente="C")

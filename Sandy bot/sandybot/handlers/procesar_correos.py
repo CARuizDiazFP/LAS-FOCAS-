@@ -19,21 +19,23 @@ from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
 
-# Indicador global para avisar al usuario si falta la librería extract-msg
-extract_msg_disponible: bool = True
 
 
 # ────────────────────────── UTILIDAD LOCAL ──────────────────────────
 def _leer_msg(ruta: str) -> str:
-    """Devuelve «asunto + cuerpo» del archivo MSG, o '' si falla."""
-    global extract_msg_disponible
+    """Devuelve «asunto + cuerpo» del archivo MSG, o '' si falla.
+
+    Se intenta importar ``extract_msg`` en cada llamada para permitir que el
+    handler funcione aunque la dependencia sea opcional. Si la librería no está
+    instalada, se registra el error y se retorna una cadena vacía.
+    """
+
     msg = None
     try:
         try:
             import extract_msg
         except ModuleNotFoundError as exc:
             logger.error("No se encontró la librería 'extract-msg': %s", exc)
-            extract_msg_disponible = False
             return ""
 
         msg = extract_msg.Message(ruta)
@@ -92,18 +94,15 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         try:
             contenido = _leer_msg(ruta_tmp)
             if not contenido:
-                if not extract_msg_disponible:
-                    # Aviso puntual si falta la dependencia
-                    await responder_registrando(
-                        mensaje,
-                        user_id,
-                        doc.file_name,
-                        "Instalá la librería 'extract-msg' para procesar correos .MSG.",
-                        "tareas",
-                    )
-                    os.remove(ruta_tmp)
-                    return
-                raise ValueError("El archivo no contiene texto legible.")
+                await responder_registrando(
+                    mensaje,
+                    user_id,
+                    doc.file_name,
+                    "Instalá la librería 'extract-msg' para procesar correos .MSG.",
+                    "tareas",
+                )
+                os.remove(ruta_tmp)
+                return
 
             # Procesar correo → registrar tarea → generar .msg final
             tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
@@ -130,6 +129,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         if ruta_msg.exists():
             with open(ruta_msg, "rb") as f:
                 await mensaje.reply_document(f, filename=ruta_msg.name)
+            os.remove(ruta_msg)
 
         tareas.append(str(tarea.id))
 
