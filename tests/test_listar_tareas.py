@@ -111,3 +111,33 @@ def test_listar_tareas_filtro_fechas():
     texto = asyncio.run(_ejecutar(["2024-02-01", "2024-02-02"]))
     assert "OK" in texto
     assert "Late" not in texto
+
+
+def test_listar_tareas_filtro_carrier():
+    car1 = bd.Carrier(nombre="C1")
+    car2 = bd.Carrier(nombre="C2")
+    with bd.SessionLocal() as s:
+        s.add_all([car1, car2])
+        s.commit()
+        s.refresh(car1)
+        s.refresh(car2)
+
+    srv = bd.crear_servicio(nombre="S5", cliente="E")
+    bd.crear_tarea_programada(
+        datetime(2024, 4, 1, 8),
+        datetime(2024, 4, 1, 10),
+        "A",
+        [srv.id],
+        carrier_id=car1.id,
+    )
+    bd.crear_tarea_programada(
+        datetime(2024, 4, 2, 8),
+        datetime(2024, 4, 2, 10),
+        "B",
+        [srv.id],
+        carrier_id=car2.id,
+    )
+
+    texto = asyncio.run(_ejecutar([f"carrier={car1.nombre}"]))
+    assert "A" in texto
+    assert "B" not in texto

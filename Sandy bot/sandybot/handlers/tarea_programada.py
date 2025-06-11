@@ -14,7 +14,7 @@ from ..database import (
     Carrier,
     SessionLocal,
 )
-from ..email_utils import generar_archivo_msg
+from ..email_utils import generar_archivo_msg, enviar_correo
 
 
 async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -90,6 +90,17 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
         nombre_arch = f"tarea_{tarea.id}.msg"
         ruta = Path(tempfile.gettempdir()) / nombre_arch
         generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta))
+
+        cuerpo = ""
+        try:
+            cuerpo = Path(ruta).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+        enviar_correo(
+            f"Aviso de tarea programada - {cliente.nombre}",
+            cuerpo,
+            cliente.id,
+        )
 
         if ruta.exists():
             with open(ruta, "rb") as f:
