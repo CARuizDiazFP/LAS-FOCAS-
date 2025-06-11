@@ -10,22 +10,18 @@ from email.message import EmailMessage
 
 # Para exportar mensajes .msg en Windows se usan estos módulos opcionales
 try:
-    import win32com.client as win32   # pragma: no cover - solo disponible en Windows
-    import pythoncom                  # pragma: no cover - solo disponible en Windows
-except Exception:                     # pragma: no cover - entornos sin win32
+    import win32com.client as win32  # pragma: no cover - solo disponible en Windows
+    import pythoncom  # pragma: no cover - solo disponible en Windows
+except Exception:  # pragma: no cover - entornos sin win32
     win32 = None
     pythoncom = None
 
 from .config import config
 
-SIGNATURE_PATH = (
-    Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
-)
+SIGNATURE_PATH = Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada, Carrier
 from .gpt_handler import gpt
 from .utils import (
-    cargar_destinatarios as utils_cargar_dest,
-    guardar_destinatarios as utils_guardar,
     cargar_json,
     guardar_json,
 )
@@ -33,56 +29,79 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
-def cargar_destinatarios(cliente_id: int) -> list[str]:
+def cargar_destinatarios(cliente_id: int, carrier: str | None = None) -> list[str]:
     """Obtiene la lista de correos para el cliente indicado."""
 
     with SessionLocal() as session:
         cli = session.get(Cliente, cliente_id)
-        return cli.destinatarios if cli and cli.destinatarios else []
+        if not cli:
+            return []
+        if carrier:
+            if cli.destinatarios_carrier:
+                lista = cli.destinatarios_carrier.get(carrier)
+                if lista is not None:
+                    return lista
+            return []
+        return cli.destinatarios if cli.destinatarios else []
 
 
-def guardar_destinatarios(destinatarios: list[str], cliente_id: int) -> bool:
+def guardar_destinatarios(
+    destinatarios: list[str], cliente_id: int, carrier: str | None = None
+) -> bool:
     """Actualiza los correos de un cliente."""
 
     with SessionLocal() as session:
         cli = session.get(Cliente, cliente_id)
         if not cli:
             return False
-        cli.destinatarios = destinatarios
+        if carrier:
+            mapa = dict(cli.destinatarios_carrier or {})
+            if destinatarios:
+                mapa[carrier] = destinatarios
+            else:
+                mapa.pop(carrier, None)
+            cli.destinatarios_carrier = mapa
+        else:
+            cli.destinatarios = destinatarios
         session.commit()
         return True
 
 
-def agregar_destinatario(correo: str, cliente_id: int) -> bool:
+def agregar_destinatario(
+    correo: str, cliente_id: int, carrier: str | None = None
+) -> bool:
     """Agrega ``correo`` al listado del cliente si no existe."""
 
-    lista = cargar_destinatarios(cliente_id)
+    lista = cargar_destinatarios(cliente_id, carrier)
     if correo not in lista:
         lista.append(correo)
-    return guardar_destinatarios(lista, cliente_id)
+    return guardar_destinatarios(lista, cliente_id, carrier)
 
 
-def eliminar_destinatario(correo: str, cliente_id: int) -> bool:
+def eliminar_destinatario(
+    correo: str, cliente_id: int, carrier: str | None = None
+) -> bool:
     """Elimina ``correo`` del listado si existe."""
 
-    lista = cargar_destinatarios(cliente_id)
+    lista = cargar_destinatarios(cliente_id, carrier)
     if correo not in lista:
         return False
     lista.remove(correo)
-    return guardar_destinatarios(lista, cliente_id)
+    return guardar_destinatarios(lista, cliente_id, carrier)
 
 
 def enviar_correo(
     asunto: str,
     cuerpo: str,
     cliente_id: int,
+    carrier: str | None = None,
     *,
     host: str | None = None,
     port: int | None = None,
     debug: bool | None = None,
 ) -> bool:
     """Envía un correo simple a los destinatarios almacenados."""
-    correos = cargar_destinatarios(cliente_id)
+    correos = cargar_destinatarios(cliente_id, carrier)
     if not correos:
         return False
 

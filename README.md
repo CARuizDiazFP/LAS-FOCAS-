@@ -139,7 +139,7 @@ principales. Este aviso puede abrirse con Outlook y reenviarse o
 ajustarse antes de enviarlo. Si `pywin32` está presente, el sistema
 aplica la firma ubicada en `SIGNATURE_PATH` y aprovecha Outlook para
 formatear el mensaje.
-Además Sandy envía el aviso por correo a los destinatarios configurados para el cliente.
+Además Sandy envía el aviso por correo a los destinatarios configurados para el cliente o para el par (cliente, carrier) cuando corresponde.
 
 ### Procesar correos y registrar tareas
 
@@ -175,6 +175,22 @@ Desde el menú principal es posible seleccionar **Identificador de servicio Carr
 Esta opción recibe un Excel con las columnas "ID Servicio" y "Carrier".
 El bot registra cada carrier, lo vincula al servicio mediante `carrier_id` y
 devuelve el archivo actualizado con los datos completados.
+
+## Administración de carriers y destinatarios
+
+Podés crear carriers manualmente con `/agregar_carrier <nombre>` y consultarlos
+usando `/listar_carriers`.
+Los contactos de cada cliente se gestionan con:
+
+```
+/agregar_destinatario <cliente> <correo> [carrier]
+/eliminar_destinatario <cliente> <correo> [carrier]
+/listar_destinatarios <cliente> [carrier]
+```
+
+Si indicás un carrier, el correo queda asociado únicamente a ese proveedor. De
+lo contrario se guarda como destinatario general del cliente. Cuando se envían
+avisos, Sandy prioriza la lista específica si existe para el `(cliente, carrier)`.
 
 ## Analizador de incidencias
 

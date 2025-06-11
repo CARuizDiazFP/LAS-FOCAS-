@@ -14,7 +14,10 @@ from ..registrador import responder_registrando, registrar_conversacion
 
 logger = logging.getLogger(__name__)
 
-async def iniciar_identificador_carrier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def iniciar_identificador_carrier(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Solicita el archivo Excel con IDs de servicio y carrier."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
@@ -32,7 +35,10 @@ async def iniciar_identificador_carrier(update: Update, context: ContextTypes.DE
         "id_carrier",
     )
 
-async def procesar_identificador_carrier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def procesar_identificador_carrier(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Completa los IDs faltantes en el Excel proporcionado."""
     mensaje = obtener_mensaje(update)
     if not mensaje or not mensaje.document:
@@ -116,29 +122,32 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
                     sid = int(id_servicio)
                 except ValueError:
                     continue
-                registrar_servicio(sid, carrier_id=carrier_obj.id if carrier_obj else None)
+                registrar_servicio(
+                    sid, carrier_id=carrier_obj.id if carrier_obj else None
+                )
                 if carrier_obj:
                     svc = session.get(Servicio, sid)
                     svc.carrier = nombre_carrier
                     session.commit()
 
-    salida = os.path.join(
-        tempfile.gettempdir(), f"identificador_carrier_{mensaje.from_user.id}.xlsx"
-    )
-    df.to_excel(salida, index=False)
+        salida = os.path.join(
+            tempfile.gettempdir(),
+            f"identificador_carrier_{mensaje.from_user.id}.xlsx",
+        )
+        df.to_excel(salida, index=False)
 
-    with open(salida, "rb") as f:
-        await mensaje.reply_document(f, filename=os.path.basename(salida))
-    registrar_conversacion(
-        mensaje.from_user.id,
-        documento.file_name,
-        f"Documento {os.path.basename(salida)} enviado",
-        "id_carrier",
-    )
-    session.close()
+        with open(salida, "rb") as f:
+            await mensaje.reply_document(f, filename=os.path.basename(salida))
+        registrar_conversacion(
+            mensaje.from_user.id,
+            documento.file_name,
+            f"Documento {os.path.basename(salida)} enviado",
+            "id_carrier",
+        )
+    finally:
+        session.close()
+        os.remove(tmp.name)
+        os.remove(salida)
 
-    os.remove(tmp.name)
-    os.remove(salida)
-
-    UserState.set_mode(mensaje.from_user.id, "")
-    context.user_data.clear()
+        UserState.set_mode(mensaje.from_user.id, "")
+        context.user_data.clear()
