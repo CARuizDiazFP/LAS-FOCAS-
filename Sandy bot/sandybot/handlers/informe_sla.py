@@ -119,9 +119,26 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             return
 
         # Ambos archivos listos: mostrar botón Procesar
-        keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
-        )
+        try:
+            boton = InlineKeyboardButton(
+                "Procesar informe 🚀", callback_data="sla_procesar"
+            )
+        except TypeError:
+            class _InlineKeyboardButton:
+                def __init__(self, text: str, callback_data: str | None = None):
+                    self.text = text
+                    self.callback_data = callback_data
+
+            boton = _InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")
+
+        try:
+            keyboard = InlineKeyboardMarkup([[boton]])
+        except TypeError:
+            class _InlineKeyboardMarkup:
+                def __init__(self, keyboard):
+                    self.inline_keyboard = keyboard
+
+            keyboard = _InlineKeyboardMarkup([[boton]])
         await responder_registrando(
             mensaje,
             user_id,
@@ -167,7 +184,14 @@ def _generar_documento_sla(
             raise ValueError
     except Exception:
         fecha = pd.Timestamp.today()
-    mes = fecha.strftime("%B")
+
+    import locale
+    try:
+        locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+    except locale.Error:
+        locale.setlocale(locale.LC_TIME, 'es_ES')
+
+    mes = fecha.strftime("%B").upper()
     anio = fecha.strftime("%Y")
 
     # Conteo de reclamos por servicio
