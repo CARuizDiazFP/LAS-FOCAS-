@@ -280,3 +280,61 @@ def test_procesar_correos_varios(tmp_path):
     assert ids_nuevos[0] != ids_nuevos[1]
     assert msg.sent == f"tarea_{tareas[-1].id}.msg"
     assert enviados["cid"] == cli.id
+
+
+def test_procesar_correos_sin_libreria(tmp_path):
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+
+    def _tmpdir():
+        return str(TEMP_DIR)
+
+    tempfile.gettempdir = _tmpdir
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.procesar_correos"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "procesar_correos.py",
+    )
+    tarea_mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = tarea_mod
+    spec.loader.exec_module(tarea_mod)
+
+    doc = Document(content="dummy")
+    msg = Message(document=doc)
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=["Cliente"])
+
+    import builtins
+
+    orig_import = builtins.__import__
+
+    def fake_import(name, *args, **kwargs):
+        if name == "extract_msg":
+            raise ModuleNotFoundError
+        return orig_import(name, *args, **kwargs)
+
+    builtins.__import__ = fake_import
+
+    with bd.SessionLocal() as s:
+        prev_tareas = s.query(bd.TareaProgramada).count()
+
+    asyncio.run(tarea_mod.procesar_correos(update, ctx))
+
+    builtins.__import__ = orig_import
+
+    with bd.SessionLocal() as s:
+        new_tareas = s.query(bd.TareaProgramada).count()
+
+    tempfile.gettempdir = orig_tmp
+
+    assert new_tareas == prev_tareas
+    assert msg.sent is None
+    assert not tarea_mod.extract_msg_disponible
