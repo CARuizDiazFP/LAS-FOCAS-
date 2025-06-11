@@ -178,8 +178,8 @@ devuelve el archivo actualizado con los datos completados.
 
 ## Administración de carriers y destinatarios
 
-Podés crear carriers manualmente con `/agregar_carrier <nombre>` y consultarlos
-usando `/listar_carriers`.
+Podés crear carriers manualmente con `/agregar_carrier <nombre>`, consultarlos
+mediante `/listar_carriers` y borrarlos con `/eliminar_carrier <nombre>`.
 Los contactos de cada cliente se gestionan con:
 
 ```
