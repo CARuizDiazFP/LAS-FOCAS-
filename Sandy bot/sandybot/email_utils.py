@@ -266,8 +266,13 @@ def generar_archivo_msg(
     cliente: Cliente,
     servicios: list[Servicio],
     ruta: str,
-) -> str:
+) -> tuple[str, str]:
     """Genera un archivo *.msg* (Outlook) o texto plano con la tarea programada.
+
+    Returns
+    -------
+    tuple[str, str]
+        Ruta del archivo generado y el texto completo del aviso.
 
     - Con ``win32`` + ``pythoncom`` disponibles → se crea un verdadero **MSG**,
       se establece asunto, cuerpo y se agrega firma (si existe).
@@ -342,7 +347,7 @@ def generar_archivo_msg(
                     os.remove(temp_txt)
                 except OSError:
                     pass
-            return ruta
+            return ruta, mail.Body
         except Exception as e:  # pragma: no cover
             logger.error("Error generando archivo MSG: %s", e)
         finally:
@@ -356,4 +361,4 @@ def generar_archivo_msg(
     # 📝 Fallback a texto plano
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
-    return ruta
+    return ruta, contenido
