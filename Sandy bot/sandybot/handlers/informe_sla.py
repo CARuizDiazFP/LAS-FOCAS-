@@ -5,14 +5,13 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-from pathlib import Path
-
 import pandas as pd
 from docx import Document
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from sandybot.config import config
+# Funciones auxiliares para manejo del flujo de conversación
 from ..utils import obtener_mensaje
 from .estado import UserState
 from ..registrador import responder_registrando, registrar_conversacion
