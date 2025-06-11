@@ -157,16 +157,10 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             session.commit()
 
         nombre_arch = f"tarea_{tarea.id}.msg"
-        ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
-        generar_archivo_msg(
-            tarea, cliente, [s for s in servicios if s], str(ruta_msg)
+        ruta_path = Path(tempfile.gettempdir()) / nombre_arch
+        _, cuerpo = generar_archivo_msg(
+            tarea, cliente, [s for s in servicios if s], str(ruta_path)
         )
-
-        cuerpo = ""
-        try:
-            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
             cuerpo,
@@ -174,8 +168,8 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             carrier.nombre if carrier else None,
         )
 
-        if ruta_msg.exists():
-            with open(ruta_msg, "rb") as f:
+        if ruta_path.exists():
+            with open(ruta_path, "rb") as f:
                 await mensaje.reply_document(f, filename=nombre_arch)
         tareas.append(str(tarea.id))
 
