@@ -10,6 +10,7 @@ from telegram.ext import ContextTypes
 from ..utils import obtener_mensaje
 from ..email_utils import procesar_correo_a_tarea
 from ..registrador import responder_registrando
+from .procesar_correos import _leer_msg
 
 logger = logging.getLogger(__name__)
 
@@ -42,7 +43,13 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
             await archivo.download_to_drive(tmp.name)
             ruta = tmp.name
         try:
-            contenido = Path(ruta).read_text(encoding="utf-8", errors="ignore")
+            nombre = (mensaje.document.file_name or "").lower()
+            if nombre.endswith(".msg"):
+                contenido = _leer_msg(ruta)
+            else:
+                contenido = Path(ruta).read_text(
+                    encoding="utf-8", errors="ignore"
+                )
         except Exception as e:
             logger.error("Error leyendo adjunto: %s", e)
             os.remove(ruta)
