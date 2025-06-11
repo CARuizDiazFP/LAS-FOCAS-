@@ -12,7 +12,13 @@ import pandas as pd
 from docx import Document
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
-from types import SimpleNamespace        # fallback para stubs de test
+from types import SimpleNamespace  # Fallback para stubs de test
+
+# Dependencia opcional para exportar PDF en Windows
+try:  # pragma: no cover
+    import win32com.client as win32  # type: ignore
+except Exception:  # pragma: no cover
+    win32 = None
 
 from sandybot.config import config
 from ..utils import obtener_mensaje
@@ -36,13 +42,13 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = update.effective_user.id
     UserState.set_mode(user_id, "informe_sla")
     context.user_data.clear()
-    context.user_data["archivos"] = [None, None]                  # [reclamos, servicios]
+    context.user_data["archivos"] = [None, None]  # posiciones: [reclamos, servicios]
 
     # Botón para permitir cambiar la plantilla
     try:
         boton = InlineKeyboardButton("Actualizar plantilla", callback_data="sla_cambiar_plantilla")
         teclado = InlineKeyboardMarkup([[boton]])
-    except Exception:                                             # fallback para stubs
+    except Exception:  # Para stubs sin clases reales
         boton = SimpleNamespace(text="Actualizar plantilla", callback_data="sla_cambiar_plantilla")
         teclado = SimpleNamespace(inline_keyboard=[[boton]])
 
@@ -58,7 +64,7 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # ────────────────────────── FLUJO DE PROCESO ─────────────────────────
 async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Recibe dos Excel → botón “Procesar informe” → genera Word con el SLA."""
+    """Recibe dos Excel → botón “Procesar informe” → genera Word (y opcional PDF)."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en procesar_informe_sla")
@@ -73,9 +79,10 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         await update.callback_query.message.reply_text("Adjuntá la nueva plantilla .docx.")
         return
 
+    # Guardar nueva plantilla
     if context.user_data.get("cambiar_plantilla"):
         if getattr(mensaje, "document", None):
-            await actualizar_plantilla_sla(update, context)
+            await _actualizar_plantilla_sla(update, context)
         else:
             await responder_registrando(
                 mensaje,
@@ -86,17 +93,18 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
         return
 
-    # ─── Callback «Procesar informe» ─────────────────────────────────
+    # ─── Callback «Procesar informe» ────────────────────────────────
     if update.callback_query and update.callback_query.data == "sla_procesar":
         reclamos_xlsx, servicios_xlsx = archivos
         try:
             ruta_final = _generar_documento_sla(reclamos_xlsx, servicios_xlsx)
             with open(ruta_final, "rb") as f:
                 await update.callback_query.message.reply_document(f, filename=os.path.basename(ruta_final))
+            os.remove(ruta_final)
             registrar_conversacion(
                 user_id, "informe_sla", f"Documento {os.path.basename(ruta_final)} enviado", "informe_sla"
             )
-        except Exception as e:   # pragma: no cover
+        except Exception as e:  # pragma: no cover
             logger.error("Error generando informe SLA: %s", e)
             await update.callback_query.message.reply_text("💥 Algo falló generando el informe de SLA.")
         finally:
@@ -109,12 +117,8 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             UserState.set_mode(user_id, "")
         return
 
-    # ───── Recepción de archivos Excel ─────
-    docs: list = []
-    if getattr(mensaje, "document", None):
-        docs.append(mensaje.document)
-    docs.extend(getattr(mensaje, "documents", []))
-
+    # ─── Recepción de archivos Excel ────────────────────────────────
+    docs = [d for d in (getattr(mensaje, "document", None), *getattr(mensaje, "documents", [])) if d]
     if docs:
         for doc in docs:
             archivo = await doc.get_file()
@@ -134,48 +138,39 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             falta = "reclamos" if archivos[0] is None else "servicios"
             await responder_registrando(
                 mensaje, user_id, docs[-1].file_name,
-                f"Archivo guardado. Falta el Excel de {falta}.",
-                "informe_sla",
+                f"Archivo guardado. Falta el Excel de {falta}.", "informe_sla",
             )
             return
 
-        # Ambos Excel listos → botón Procesar
+        # Ambos archivos listos → botón Procesar
         try:
             boton = InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")
             keyboard = InlineKeyboardMarkup([[boton]])
-        except Exception:                                          # fallback stubs
+        except Exception:  # fallback para stubs
             boton = SimpleNamespace(text="Procesar informe 🚀", callback_data="sla_procesar")
             keyboard = SimpleNamespace(inline_keyboard=[[boton]])
 
         await responder_registrando(
-            mensaje,
-            user_id,
-            docs[-1].file_name,
-            "Archivos cargados. Presioná *Procesar informe*.",
-            "informe_sla",
+            mensaje, user_id, docs[-1].file_name,
+            "Archivos cargados. Presioná *Procesar informe*.", "informe_sla",
             reply_markup=keyboard,
         )
         return
 
-    # Mensaje sin adjuntos ni callbacks
+    # Ningún adjunto ni callback reconocido
     await responder_registrando(
-        mensaje,
-        user_id,
-        getattr(mensaje, "text", ""),
-        "Adjuntá los archivos de reclamos y servicios para comenzar.",
-        "informe_sla",
+        mensaje, user_id, getattr(mensaje, "text", ""),
+        "Adjuntá los archivos de reclamos y servicios para comenzar.", "informe_sla",
     )
 
 
-# ─────────────────────── ACTUALIZAR PLANTILLA ────────────────────────
-async def actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+# ──────────────────── ACTUALIZAR PLANTILLA SLA ───────────────────────
+async def _actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Guarda la plantilla enviada reemplazando la configuración actual."""
     mensaje = obtener_mensaje(update)
-    if not mensaje or not getattr(mensaje, "document", None):
-        return
-
     user_id = update.effective_user.id
     archivo = mensaje.document
+
     if not archivo.file_name.lower().endswith(".docx"):
         await responder_registrando(mensaje, user_id, archivo.file_name, "El archivo debe ser .docx.", "informe_sla")
         return
@@ -193,7 +188,7 @@ async def actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT
     await responder_registrando(mensaje, user_id, archivo.file_name, texto, "informe_sla")
 
 
-# ─────────────────────── FUNCIÓN GENERADORA DE WORD ───────────────────
+# ─────────────────── FUNCIÓN GENERADORA DE WORD ──────────────────────
 def _generar_documento_sla(
     reclamos_xlsx: str,
     servicios_xlsx: str,
@@ -203,21 +198,12 @@ def _generar_documento_sla(
     *,
     exportar_pdf: bool = False,
 ) -> str:
-    """Combina datos y genera el documento SLA usando la plantilla personalizada."""
+    """Combina datos y genera el documento SLA; opcionalmente exporta a PDF."""
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
 
-    columnas_extra = [
-        "SLA Entregado",
-        "Dirección",
-        "Horas Netas Reclamo",
-    ]
-    columnas_presentes = []
-    for col in columnas_extra:
-        if col in servicios_df.columns:
-            columnas_presentes.append(col)
-        else:
-            logger.warning("Columna faltante en servicios.xlsx: %s", col)
+    # Columnas opcionales a incluir si existen
+    columnas_extra = [col for col in ("SLA Entregado", "Dirección", "Horas Netas Reclamo") if col in servicios_df]
 
     # Normaliza nombres de columna
     if "Servicio" not in reclamos_df.columns:
@@ -257,19 +243,18 @@ def _generar_documento_sla(
 
     try:
         doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
-    except KeyError:
+    except KeyError:  # Plantillas sin estilo 'Title'
         doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
 
     # Tabla de resumen
-    encabezados = ["Servicio", *columnas_presentes, "Reclamos"]
-    tabla = doc.add_table(rows=1, cols=len(encabezados), style="Table Grid")
-    hdr = tabla.rows[0].cells
-    for i, col in enumerate(encabezados):
-        hdr[i].text = col
+    headers = ["Servicio", *columnas_extra, "Reclamos"]
+    tabla = doc.add_table(rows=1, cols=len(headers), style="Table Grid")
+    for i, col in enumerate(headers):
+        tabla.rows[0].cells[i].text = col
 
     for _, fila in df.iterrows():
         celdas = tabla.add_row().cells
-        for i, col in enumerate(encabezados):
+        for i, col in enumerate(headers):
             celdas[i].text = str(fila.get(col, ""))
 
     # Insertar textos personalizados
@@ -280,9 +265,9 @@ def _generar_documento_sla(
     }
     encontrados = set()
     for p in doc.paragraphs:
-        texto = p.text.strip()
+        pref = p.text.strip()
         for etiqueta, contenido in etiquetas.items():
-            if texto.startswith(etiqueta):
+            if pref.startswith(etiqueta):
                 p.text = f"{etiqueta} {contenido}"
                 encontrados.add(etiqueta)
                 break
@@ -291,18 +276,37 @@ def _generar_documento_sla(
             doc.add_paragraph(f"{etiqueta} {contenido}")
 
     # Guardado temporal
-    nombre_archivo = "InformeSLA.docx"
-    ruta_salida = os.path.join(tempfile.gettempdir(), nombre_archivo)
-    doc.save(ruta_salida)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+        ruta_docx = tmp.name
+    doc.save(ruta_docx)
 
+    # Exportar a PDF (Windows + win32) o intentar con docx2pdf
     if exportar_pdf:
-        ruta_pdf = ruta_salida.replace(".docx", ".pdf")
-        try:
-            from docx2pdf import convert  # type: ignore
+        ruta_pdf = os.path.splitext(ruta_docx)[0] + ".pdf"
+        convertido = False
 
-            convert(ruta_salida, ruta_pdf)
-            ruta_salida = ruta_pdf
-        except Exception:  # pragma: no cover - conversión opcional
-            logger.warning("No fue posible convertir a PDF")
+        if win32 and os.name == "nt":
+            try:
+                word = win32.Dispatch("Word.Application")
+                word_doc = word.Documents.Open(ruta_docx)
+                word_doc.SaveAs(ruta_pdf, FileFormat=17)
+                word_doc.Close()
+                word.Quit()
+                convertido = True
+            except Exception as e:  # pragma: no cover
+                logger.error("Error exportando PDF con win32: %s", e)
 
-    return ruta_salida
+        if not convertido:
+            try:
+                from docx2pdf import convert  # type: ignore
+
+                convert(ruta_docx, ruta_pdf)
+                converted = True
+            except Exception:  # pragma: no cover
+                logger.warning("No fue posible convertir a PDF con docx2pdf")
+
+        if converted:
+            os.remove(ruta_docx)
+            return ruta_pdf
+
+    return ruta_docx

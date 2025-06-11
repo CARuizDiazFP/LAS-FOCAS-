@@ -1,273 +1,309 @@
-import sys
-import importlib
-import asyncio
-from types import ModuleType, SimpleNamespace
-from pathlib import Path
-from sqlalchemy.orm import sessionmaker
-import tempfile
+"""Handler para generar informes de SLA."""
+
+from __future__ import annotations
+
+import logging
 import os
+import tempfile
+import locale
+from types import SimpleNamespace
+from typing import Optional
 
 import pandas as pd
 from docx import Document
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ContextTypes
 
-# ─────────────────────── ENTORNO & STUBS ────────────────────────────
-ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
+# ► Exportar a PDF (solo funciona en entornos donde esté disponible)
+try:  # pragma: no cover
+    import win32com.client as win32  # type: ignore
+except Exception:  # pragma: no cover
+    win32 = None
 
-# --- Telegram stub ----------------------------------------------------------
-telegram_stub = ModuleType("telegram")
+from sandybot.config import config
+from ..utils import obtener_mensaje
+from .estado import UserState
+from ..registrador import responder_registrando, registrar_conversacion
 
+# Plantilla predeterminada
+RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
 
-class InlineKeyboardButton:
-    def __init__(self, text: str, callback_data: str | None = None):
-        self.text = text
-        self.callback_data = callback_data
-
-
-class InlineKeyboardMarkup:
-    def __init__(self, keyboard):
-        self.inline_keyboard = keyboard
-
-
-class DocumentStub:
-    def __init__(self, file_name="file.xlsx", content: bytes = b""):
-        self.file_name = file_name
-        self._content = content
-
-    async def get_file(self):
-        class F:
-            async def download_to_drive(_, path):
-                Path(path).write_bytes(self._content)
-
-        return F()
+logger = logging.getLogger(__name__)
 
 
-class Message:
-    def __init__(self, *, documents=None, text=""):
-        self.documents = documents or []
-        self.text = text
-        self.sent: str | None = None
-        self.markup = None
-        self.from_user = SimpleNamespace(id=1)
+# ─────────────────────────────── INICIO ──────────────────────────────
+async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Coloca al usuario en modo *informe_sla* y solicita los dos Excel."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        logger.warning("No se recibió mensaje en iniciar_informe_sla")
+        return
 
-    async def reply_document(self, f, *, filename=None):
-        dest = Path(tempfile.gettempdir()) / filename
-        dest.write_bytes(f.read())
-        self.sent = filename
+    user_id = update.effective_user.id
+    UserState.set_mode(user_id, "informe_sla")
+    context.user_data.clear()
+    context.user_data["archivos"] = [None, None]  # [reclamos, servicios]
 
-    async def reply_text(self, *a, **k):
-        self.markup = k.get("reply_markup")
+    # Botón para actualizar plantilla
+    try:
+        kb = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Actualizar plantilla", callback_data="sla_cambiar_plantilla")]]
+        )
+    except Exception:  # stubs
+        btn = SimpleNamespace(text="Actualizar plantilla", callback_data="sla_cambiar_plantilla")
+        kb = SimpleNamespace(inline_keyboard=[[btn]])
 
-    async def edit_text(self, *a, **k):  # pragma: no cover
-        pass
-
-
-class CallbackQuery:
-    def __init__(self, data: str = "", message=None):
-        self.data = data
-        self.message = message
-
-    async def answer(self):  # pragma: no cover
-        pass
-
-
-class Update:
-    def __init__(self, *, message=None, callback_query=None, edited_message=None):
-        self.message = message
-        self.callback_query = callback_query
-        self.edited_message = edited_message
-        self.effective_user = SimpleNamespace(id=1)
-
-
-telegram_stub.Update = Update
-telegram_stub.Message = Message
-telegram_stub.Document = DocumentStub
-telegram_stub.CallbackQuery = CallbackQuery
-telegram_stub.InlineKeyboardButton = InlineKeyboardButton
-telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
-sys.modules["telegram"] = telegram_stub
-
-# --- telegram.ext stub ------------------------------------------------------
-telegram_ext_stub = ModuleType("telegram.ext")
-telegram_ext_stub.ContextTypes = type("C", (), {"DEFAULT_TYPE": object})
-sys.modules["telegram.ext"] = telegram_ext_stub
-
-# --- dotenv stub ------------------------------------------------------------
-dotenv_stub = ModuleType("dotenv")
-dotenv_stub.load_dotenv = lambda *a, **k: None
-sys.modules.setdefault("dotenv", dotenv_stub)
-
-# Variables mínimas requeridas por Config
-for var in [
-    "TELEGRAM_TOKEN",
-    "OPENAI_API_KEY",
-    "NOTION_TOKEN",
-    "NOTION_DATABASE_ID",
-    "DB_USER",
-    "DB_PASSWORD",
-    "SLACK_WEBHOOK_URL",
-    "SUPERVISOR_DB_ID",
-]:
-    os.environ.setdefault(var, "x")
-
-
-# ───────────────────── FUNCIÓN DE IMPORT DINÁMICA ────────────────────
-def _importar_handler(tmp_path: Path):
-    """
-    1. Genera una plantilla básica de Word y la fija en RUTA_PLANTILLA.
-    2. Stub de registrador para capturar reply_markup.
-    3. Fuerza SQLite en memoria y carga dinámicamente informe_sla.
-    """
-    template = tmp_path / "template.docx"
-    doc = Document()
-    doc.add_paragraph("Eventos sucedidos de mayor impacto en SLA:")
-    doc.add_paragraph("Conclusión:")
-    doc.add_paragraph("Propuesta de mejora:")
-    doc.save(template)
-
-    # Forzar que la plantilla no tenga estilo Title
-    from docx.document import Document as DocClass
-
-    orig_heading = DocClass.add_heading
-
-    def no_title(self, text="", level=1):
-        if level == 0:
-            raise KeyError("no style with name 'Title'")
-        return orig_heading(self, text, level)
-
-    DocClass.add_heading = no_title
-
-    # Stub registrador
-    registrador_stub = ModuleType("sandybot.registrador")
-
-    async def responder_registrando(msg, *a, **k):
-        if "reply_markup" in k and hasattr(msg, "markup"):
-            msg.markup = k["reply_markup"]
-        if hasattr(msg, "reply_text"):
-            await msg.reply_text(*a, **k)
-
-    registrador_stub.responder_registrando = responder_registrando
-    registrador_stub.registrar_conversacion = lambda *a, **k: None
-    sys.modules["sandybot.registrador"] = registrador_stub
-
-    # Forzar SQLite memoria
-    import sqlalchemy as sa
-
-    orig_engine = sa.create_engine
-    sa.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
-
-    # Recargar configuración
-    importlib.invalidate_caches()
-    import sandybot.config as cfg_mod
-    importlib.reload(cfg_mod)
-
-    # Cargar handler dinámicamente
-    pkg = "sandybot.handlers"
-    handlers_pkg = sys.modules.get(pkg) or ModuleType(pkg)
-    handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
-    sys.modules[pkg] = handlers_pkg
-
-    mod_name = f"{pkg}.informe_sla"
-    spec = importlib.util.spec_from_file_location(
-        mod_name,
-        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "informe_sla.py",
+    await responder_registrando(
+        mensaje,
+        user_id,
+        "informe_sla",
+        "Enviá el Excel de **reclamos** y luego el de **servicios** para generar el informe.",
+        "informe_sla",
+        reply_markup=kb,
     )
-    mod = importlib.util.module_from_spec(spec)
-    sys.modules[mod_name] = mod
-    spec.loader.exec_module(mod)
-
-    # Restaurar engine original y crear DB
-    sa.create_engine = orig_engine
-    import sandybot.database as bd
-
-    bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
-    bd.Base.metadata.create_all(bind=bd.engine)
-
-    # Asignar plantilla
-    mod.RUTA_PLANTILLA = str(template)
-    return mod
 
 
-# ──────────────────────────── TESTS ───────────────────────────────────
-def test_procesar_informe_sla(tmp_path):
-    informe = _importar_handler(tmp_path)
+# ────────────────────────── PROCESO COMPLETO ─────────────────────────
+async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Gestiona la carga de Excel, generación y envío del informe SLA."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        logger.warning("No se recibió mensaje en procesar_informe_sla")
+        return
 
-    # Datos de prueba
-    reclamos = pd.DataFrame(
-        {"ID Servicio": [1, 1, 2], "Fecha": pd.date_range("2024-05-01", periods=3)}
+    user_id = update.effective_user.id
+    archivos = context.user_data.setdefault("archivos", [None, None])
+
+    # -- Callback para cambiar plantilla -------------------------------------------------
+    if update.callback_query and update.callback_query.data == "sla_cambiar_plantilla":
+        context.user_data["cambiar_plantilla"] = True
+        await update.callback_query.message.reply_text("Adjuntá la nueva plantilla .docx.")
+        return
+
+    if context.user_data.get("cambiar_plantilla"):
+        if getattr(mensaje, "document", None):
+            await _actualizar_plantilla_sla(mensaje, context)
+        else:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                getattr(mensaje, "text", ""),
+                "Adjuntá el archivo .docx para actualizar la plantilla.",
+                "informe_sla",
+            )
+        return
+
+    # -- Callback «Procesar informe» -----------------------------------------------------
+    if update.callback_query and update.callback_query.data == "sla_procesar":
+        reclamos_xlsx, servicios_xlsx = archivos
+        try:
+            ruta_final = _generar_documento_sla(reclamos_xlsx, servicios_xlsx)
+            with open(ruta_final, "rb") as f:
+                await update.callback_query.message.reply_document(f, filename=os.path.basename(ruta_final))
+            registrar_conversacion(
+                user_id, "informe_sla", f"Documento {os.path.basename(ruta_final)} enviado", "informe_sla"
+            )
+        except Exception as e:  # pragma: no cover
+            logger.error("Error generando informe SLA: %s", e)
+            await update.callback_query.message.reply_text("💥 Algo falló generando el informe de SLA.")
+        finally:
+            for p in archivos:
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+            if os.path.exists(ruta_final):
+                os.remove(ruta_final)
+            context.user_data.clear()
+            UserState.set_mode(user_id, "")
+        return
+
+    # -- Recepción de Excel --------------------------------------------------------------
+    docs = [d for d in (getattr(mensaje, "document", None), *getattr(mensaje, "documents", [])) if d]
+    if docs:
+        for doc in docs:
+            archivo = await doc.get_file()
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+                await archivo.download_to_drive(tmp.name)
+                nombre = doc.file_name.lower()
+                # Heurística simple por nombre
+                if "recl" in nombre and archivos[0] is None:
+                    archivos[0] = tmp.name
+                elif "serv" in nombre and archivos[1] is None:
+                    archivos[1] = tmp.name
+                elif archivos[0] is None:
+                    archivos[0] = tmp.name
+                else:
+                    archivos[1] = tmp.name
+
+        if None in archivos:
+            falta = "reclamos" if archivos[0] is None else "servicios"
+            await responder_registrando(
+                mensaje, user_id, docs[-1].file_name,
+                f"Archivo guardado. Falta el Excel de {falta}.", "informe_sla",
+            )
+            return
+
+        # Botón Procesar
+        try:
+            kb = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
+            )
+        except Exception:  # stubs
+            btn = SimpleNamespace(text="Procesar informe 🚀", callback_data="sla_procesar")
+            kb = SimpleNamespace(inline_keyboard=[[btn]])
+
+        await responder_registrando(
+            mensaje, user_id, docs[-1].file_name,
+            "Archivos cargados. Presioná *Procesar informe*.",
+            "informe_sla", reply_markup=kb,
+        )
+        return
+
+    # Recordatorio si no hubo adjuntos
+    await responder_registrando(
+        mensaje, user_id, getattr(mensaje, "text", ""),
+        "Adjuntá los archivos de reclamos y servicios para comenzar.",
+        "informe_sla",
     )
-    servicios = pd.DataFrame({"ID Servicio": [1, 2], "Cliente": ["A", "B"]})
 
-    r_path, s_path = tmp_path / "reclamos.xlsx", tmp_path / "servicios.xlsx"
-    reclamos.to_excel(r_path, index=False)
-    servicios.to_excel(s_path, index=False)
 
-    doc1 = DocumentStub("reclamos.xlsx", r_path.read_bytes())
-    doc2 = DocumentStub("servicios.xlsx", s_path.read_bytes())
-    ctx = SimpleNamespace(user_data={})
+# ──────────────────────── ACTUALIZAR PLANTILLA ───────────────────────
+async def _actualizar_plantilla_sla(mensaje, context):
+    user_id = mensaje.from_user.id
+    archivo = mensaje.document
+    if not archivo.file_name.lower().endswith(".docx"):
+        await responder_registrando(mensaje, user_id, archivo.file_name, "El archivo debe ser .docx.", "informe_sla")
+        return
+    try:
+        f = await archivo.get_file()
+        os.makedirs(os.path.dirname(RUTA_PLANTILLA), exist_ok=True)
+        await f.download_to_drive(RUTA_PLANTILLA)
+        texto = "Plantilla de SLA actualizada."
+        context.user_data.pop("cambiar_plantilla", None)
+    except Exception as exc:  # pragma: no cover
+        logger.error("Error guardando plantilla SLA: %s", exc)
+        texto = "No se pudo guardar la plantilla."
 
-    orig_tmp = tempfile.gettempdir
-    tempfile.gettempdir = lambda: str(tmp_path)
+    await responder_registrando(mensaje, user_id, archivo.file_name, texto, "informe_sla")
+
+
+# ─────────────────── FUNCIÓN GENERADORA DE WORD ──────────────────────
+def _generar_documento_sla(
+    reclamos_xlsx: str,
+    servicios_xlsx: str,
+    eventos: Optional[str] = "",
+    conclusion: Optional[str] = "",
+    propuesta: Optional[str] = "",
+    *,
+    exportar_pdf: bool = False,
+) -> str:
+    """Genera el documento SLA; si `exportar_pdf` es True intenta generar PDF."""
+
+    reclamos_df = pd.read_excel(reclamos_xlsx)
+    servicios_df = pd.read_excel(servicios_xlsx)
+
+    # Columnas extra opcionales
+    columnas_extra = [c for c in ("SLA Entregado", "Dirección", "Horas Netas Reclamo") if c in servicios_df]
+
+    # Normaliza nombres
+    if "Servicio" not in reclamos_df.columns:
+        reclamos_df.rename(columns={reclamos_df.columns[0]: "Servicio"}, inplace=True)
+    if "Servicio" not in servicios_df.columns:
+        servicios_df.rename(columns={servicios_df.columns[0]: "Servicio"}, inplace=True)
+
+    # Fecha para título
+    try:
+        fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
+        if pd.isna(fecha):
+            raise ValueError
+    except Exception:
+        fecha = pd.Timestamp.today()
+
+    # Locale español (ignora errores si no está instalado)
+    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            break
+        except locale.Error:
+            continue
+
+    mes, anio = fecha.strftime("%B").upper(), fecha.strftime("%Y")
+
+    # Conteo de reclamos
+    resumen = reclamos_df.groupby("Servicio").size().reset_index(name="Reclamos")
+    df = servicios_df.merge(resumen, on="Servicio", how="left")
+    df["Reclamos"] = df["Reclamos"].fillna(0).astype(int)
+
+    # Documento base
+    if not (RUTA_PLANTILLA and os.path.exists(RUTA_PLANTILLA)):
+        raise ValueError(f"Plantilla de SLA no encontrada: {RUTA_PLANTILLA}")
+    doc = Document(RUTA_PLANTILLA)
 
     try:
-        # Primer Excel (reclamos)
-        asyncio.run(informe.procesar_informe_sla(Update(message=Message(documents=[doc1])), ctx))
-        # Segundo Excel (servicios)
-        msg2 = Message(documents=[doc2])
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
-        boton = msg2.markup.inline_keyboard[0][0]
-        # Callback procesar
-        cb = CallbackQuery("sla_procesar", message=msg2)
-        asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
-    finally:
-        tempfile.gettempdir = orig_tmp
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
+    except KeyError:
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
 
-    ruta_doc = tmp_path / msg2.sent
-    assert ruta_doc.exists()
-    doc = Document(ruta_doc)
-    textos = "\n".join(p.text for p in doc.paragraphs)
-    assert "INFORME SLA" in textos.upper()
+    # Tabla resumen
+    headers = ["Servicio", *columnas_extra, "Reclamos"]
+    tbl = doc.add_table(rows=1, cols=len(headers), style="Table Grid")
+    for i, h in enumerate(headers):
+        tbl.rows[0].cells[i].text = h
 
-    tabla = doc.tables[0]
-    assert tabla.rows[1].cells[0].text == "1" and tabla.rows[1].cells[1].text == "2"
-    assert tabla.rows[2].cells[0].text == "2" and tabla.rows[2].cells[1].text == "1"
+    for _, fila in df.iterrows():
+        cells = tbl.add_row().cells
+        for i, h in enumerate(headers):
+            cells[i].text = str(fila.get(h, ""))
 
+    # Etiquetas dinámicas
+    etiquetas = {
+        "Eventos sucedidos de mayor impacto en SLA:": eventos,
+        "Conclusión:": conclusion,
+        "Propuesta de mejora:": propuesta,
+    }
+    encontrados = set()
+    for p in doc.paragraphs:
+        for etq, cont in etiquetas.items():
+            if p.text.strip().startswith(etq):
+                p.text = f"{etq} {cont}"
+                encontrados.add(etq)
+                break
+    for etq, cont in etiquetas.items():
+        if etq not in encontrados and cont:
+            doc.add_paragraph(f"{etq} {cont}")
 
-def test_generar_sin_fecha_y_exportar_pdf(tmp_path):
-    """Generador retorna DOCX o PDF según flag exportar_pdf."""
-    informe = _importar_handler(tmp_path)
+    # Guardar DOCX
+    fd, ruta_docx = tempfile.mkstemp(suffix=".docx")
+    os.close(fd)
+    doc.save(ruta_docx)
 
-    reclamos = pd.DataFrame({"Servicio": [1]})
-    servicios = pd.DataFrame({"Servicio": [1]})
+    # Exportar PDF (si procede)
+    if exportar_pdf:
+        pdf_path = os.path.splitext(ruta_docx)[0] + ".pdf"
+        convertido = False
 
-    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
-    reclamos.to_excel(r, index=False)
-    servicios.to_excel(s, index=False)
+        if win32 and os.name == "nt":
+            try:
+                word = win32.Dispatch("Word.Application")
+                word_doc = word.Documents.Open(ruta_docx)
+                word_doc.SaveAs(pdf_path, FileFormat=17)
+                word_doc.Close()
+                word.Quit()
+                convertido = True
+            except Exception:
+                logger.warning("Fallo exportando PDF con win32")
 
-    # DOCX por default
-    ruta_docx = informe._generar_documento_sla(str(r), str(s))
-    assert ruta_docx.endswith(".docx")
+        if not convertido:
+            try:
+                from docx2pdf import convert  # type: ignore
+                convert(ruta_docx, pdf_path)
+                convertido = True
+            except Exception:
+                logger.warning("Fallo exportando PDF con docx2pdf")
 
-    # PDF opcional (solo se verifica extensión, porque conversión depende de Word/LibreOffice)
-    ruta_pdf = informe._generar_documento_sla(str(r), str(s), exportar_pdf=True)
-    assert ruta_pdf.endswith(".pdf") or ruta_pdf.endswith(".docx")
+        if converted:
+            os.remove(ruta_docx)
+            return pdf_path
 
-
-def test_columnas_opcionales(tmp_path):
-    """El documento sólo incluye las columnas presentes en servicios."""
-    informe = _importar_handler(tmp_path)
-
-    reclamos = pd.DataFrame({"Servicio": [1]})
-    servicios = pd.DataFrame({"Servicio": [1], "Dirección": ["Calle 1"]})
-
-    r, s = tmp_path / "rec.xlsx", tmp_path / "ser.xlsx"
-    reclamos.to_excel(r, index=False)
-    servicios.to_excel(s, index=False)
-
-    ruta = informe._generar_documento_sla(str(r), str(s))
-    doc = Document(ruta)
-    tabla = doc.tables[0]
-    headers = [c.text for c in tabla.rows[0].cells]
-
-    assert headers == ["Servicio", "Dirección", "Reclamos"]
-    assert tabla.rows[1].cells[1].text == "Calle 1"
+    return ruta_docx

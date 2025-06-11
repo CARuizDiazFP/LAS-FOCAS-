@@ -4,8 +4,8 @@ Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `Sandy bot/requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
 API utilizada en `sandybot`. Es obligatorio instalar `extract-msg` para leer los
-adjuntos `.msg` y opcionalmente `pywin32`, que permite insertar la firma y
-generar un `.MSG` real desde Outlook. Desde esta versión el bot también acepta
+adjuntos `.msg` y opcionalmente `pywin32`, que permite insertar la firma,
+generar un `.MSG` real desde Outlook y exportar informes a PDF. Desde esta versión el bot también acepta
 mensajes de voz, los descarga y los transcribe automáticamente utilizando la API
 de OpenAI.
 
@@ -296,7 +296,7 @@ pip install -r requirements.txt
 Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `C:\Metrotel\Sandy`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
 Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `C:\Metrotel\Sandy\Template Informe SLA.docx`.
 El archivo debe existir en formato `.docx`.
-El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecerá el botón **Procesar**, que genera el informe utilizando la plantilla configurada en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
+El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecerá el botón **Procesar**, que genera el informe utilizando la plantilla configurada en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco. Si ejecutás la función `_generar_documento_sla` con `exportar_pdf=True` y contás con `pywin32` en Windows, también se guardará una versión PDF.
 
 ```env
 SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
