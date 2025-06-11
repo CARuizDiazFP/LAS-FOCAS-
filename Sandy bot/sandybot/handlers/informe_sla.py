@@ -60,11 +60,36 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # ───── Callback «Procesar informe» ─────
     if update.callback_query and update.callback_query.data == "sla_procesar":
-        context.user_data["esperando_eventos"] = True
-        registrar_conversacion(user_id, "sla_procesar", "Solicitar eventos", "informe_sla")
-        await update.callback_query.message.edit_text(
-            "Escribí los eventos sucedidos de mayor impacto en SLA."
-        )
+        rec, serv = context.user_data.get("archivos", [None, None])
+        try:
+            ruta_final = _generar_documento_sla(rec, serv, "", "", "")
+            with open(ruta_final, "rb") as f:
+                await update.callback_query.message.reply_document(
+                    f, filename=os.path.basename(ruta_final)
+                )
+            registrar_conversacion(
+                user_id,
+                "informe_sla",
+                f"Documento {os.path.basename(ruta_final)} enviado",
+                "informe_sla",
+            )
+        except Exception as e:  # pragma: no cover
+            logger.error("Error generando informe SLA: %s", e)
+            await responder_registrando(
+                update.callback_query.message,
+                user_id,
+                os.path.basename(rec or ""),
+                "💥 Algo falló generando el informe de SLA.",
+                "informe_sla",
+            )
+        finally:
+            for p in context.user_data.get("archivos", []):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+            context.user_data.clear()
+            UserState.set_mode(user_id, "")
         return
 
     # ───── Paso inicial: recepción de los 2 Excel ─────
@@ -118,73 +143,73 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     # ───── Paso eventos ─────
-    if context.user_data.get("esperando_eventos"):
-        context.user_data["eventos"] = getattr(mensaje, "text", "")
-        context.user_data["esperando_eventos"] = False
-        context.user_data["esperando_conclusion"] = True
-        await responder_registrando(
-            mensaje,
-            user_id,
-            mensaje.text,
-            "Indicá la conclusión.",
-            "informe_sla",
-        )
-        return
+    # if context.user_data.get("esperando_eventos"):
+    #     context.user_data["eventos"] = getattr(mensaje, "text", "")
+    #     context.user_data["esperando_eventos"] = False
+    #     context.user_data["esperando_conclusion"] = True
+    #     await responder_registrando(
+    #         mensaje,
+    #         user_id,
+    #         mensaje.text,
+    #         "Indicá la conclusión.",
+    #         "informe_sla",
+    #     )
+    #     return
 
     # ───── Paso conclusión ─────
-    if context.user_data.get("esperando_conclusion"):
-        context.user_data["conclusion"] = getattr(mensaje, "text", "")
-        context.user_data["esperando_conclusion"] = False
-        context.user_data["esperando_propuesta"] = True
-        await responder_registrando(
-            mensaje,
-            user_id,
-            mensaje.text,
-            "¿Cuál es la propuesta de mejora?",
-            "informe_sla",
-        )
-        return
+    # if context.user_data.get("esperando_conclusion"):
+    #     context.user_data["conclusion"] = getattr(mensaje, "text", "")
+    #     context.user_data["esperando_conclusion"] = False
+    #     context.user_data["esperando_propuesta"] = True
+    #     await responder_registrando(
+    #         mensaje,
+    #         user_id,
+    #         mensaje.text,
+    #         "¿Cuál es la propuesta de mejora?",
+    #         "informe_sla",
+    #     )
+    #     return
 
     # ───── Paso propuesta y generación final ─────
-    if context.user_data.get("esperando_propuesta"):
-        context.user_data["propuesta"] = getattr(mensaje, "text", "")
-        context.user_data["esperando_propuesta"] = False
-
-        eventos = context.user_data.get("eventos")
-        conclusion = context.user_data.get("conclusion")
-        propuesta = context.user_data.get("propuesta")
-        rec, serv = context.user_data.get("archivos", [None, None])
-
-        try:
-            ruta_final = _generar_documento_sla(rec, serv, eventos, conclusion, propuesta)
-            with open(ruta_final, "rb") as f:
-                await mensaje.reply_document(f, filename=os.path.basename(ruta_final))
-
-            registrar_conversacion(
-                user_id,
-                "informe_sla",
-                f"Documento {os.path.basename(ruta_final)} enviado",
-                "informe_sla",
-            )
-        except Exception as e:  # pragma: no cover
-            logger.error("Error generando informe SLA: %s", e)
-            await responder_registrando(
-                mensaje,
-                user_id,
-                os.path.basename(rec or ""),
-                "💥 Algo falló generando el informe de SLA.",
-                "informe_sla",
-            )
-        finally:
-            # Limpieza de temporales y restablecimiento de estado
-            for p in archivos:
-                try:
-                    os.remove(p)
-                except OSError:
-                    pass
-            context.user_data.clear()
-            UserState.set_mode(user_id, "")
-        return
+    # if context.user_data.get("esperando_propuesta"):
+    #     context.user_data["propuesta"] = getattr(mensaje, "text", "")
+    #     context.user_data["esperando_propuesta"] = False
+    #
+    #     eventos = context.user_data.get("eventos")
+    #     conclusion = context.user_data.get("conclusion")
+    #     propuesta = context.user_data.get("propuesta")
+    #     rec, serv = context.user_data.get("archivos", [None, None])
+    #
+    #     try:
+    #         ruta_final = _generar_documento_sla(rec, serv, eventos, conclusion, propuesta)
+    #         with open(ruta_final, "rb") as f:
+    #             await mensaje.reply_document(f, filename=os.path.basename(ruta_final))
+    #
+    #         registrar_conversacion(
+    #             user_id,
+    #             "informe_sla",
+    #             f"Documento {os.path.basename(ruta_final)} enviado",
+    #             "informe_sla",
+    #         )
+    #     except Exception as e:  # pragma: no cover
+    #         logger.error("Error generando informe SLA: %s", e)
+    #         await responder_registrando(
+    #             mensaje,
+    #             user_id,
+    #             os.path.basename(rec or ""),
+    #             "💥 Algo falló generando el informe de SLA.",
+    #             "informe_sla",
+    #         )
+    #     finally:
+    #         # Limpieza de temporales y restablecimiento de estado
+    #         for p in archivos:
+    #             try:
+    #                 os.remove(p)
+    #             except OSError:
+    #                 pass
+    #         context.user_data.clear()
+    #         UserState.set_mode(user_id, "")
+    #     return
 
     # Estado no reconocido
     await responder_registrando(
