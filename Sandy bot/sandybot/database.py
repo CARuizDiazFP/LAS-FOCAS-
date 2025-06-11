@@ -136,6 +136,29 @@ class Ingreso(Base):
         return f"<Ingreso(id={self.id}, camara={self.camara}, fecha={self.fecha})>"
 
 
+class TareaProgramada(Base):
+    """Tareas programadas que informan los carriers."""
+
+    __tablename__ = "tareas_programadas"
+
+    id = Column(Integer, primary_key=True)
+    fecha_inicio = Column(DateTime, index=True)
+    fecha_fin = Column(DateTime, index=True)
+    tipo_tarea = Column(String)
+    tiempo_afectacion = Column(String)
+    descripcion = Column(String)
+
+
+class TareaServicio(Base):
+    """Servicios afectados por cada :class:`TareaProgramada`."""
+
+    __tablename__ = "tareas_servicio"
+
+    id = Column(Integer, primary_key=True)
+    tarea_id = Column(Integer, ForeignKey("tareas_programadas.id"), index=True)
+    servicio_id = Column(Integer, ForeignKey("servicios.id"), index=True)
+
+
 def ensure_servicio_columns() -> None:
     """Comprueba que la tabla ``servicios`` posea todas las columnas del modelo.
 
@@ -463,6 +486,47 @@ def crear_ingreso(
         session.commit()
         session.refresh(ingreso)
         return ingreso
+
+
+def crear_tarea_programada(
+    fecha_inicio: datetime,
+    fecha_fin: datetime,
+    tipo_tarea: str,
+    servicios: list[int],
+    tiempo_afectacion: str | None = None,
+    descripcion: str | None = None,
+) -> TareaProgramada:
+    """Registra una tarea programada y la vincula a los servicios indicados."""
+
+    with SessionLocal() as session:
+        tarea = TareaProgramada(
+            fecha_inicio=fecha_inicio,
+            fecha_fin=fecha_fin,
+            tipo_tarea=tipo_tarea,
+            tiempo_afectacion=tiempo_afectacion,
+            descripcion=descripcion,
+        )
+        session.add(tarea)
+        session.commit()
+        session.refresh(tarea)
+
+        for sid in servicios:
+            session.add(TareaServicio(tarea_id=tarea.id, servicio_id=sid))
+
+        session.commit()
+        return tarea
+
+
+def obtener_tareas_servicio(servicio_id: int) -> list[TareaProgramada]:
+    """Devuelve las tareas programadas que afectan al servicio indicado."""
+
+    with SessionLocal() as session:
+        return (
+            session.query(TareaProgramada)
+            .join(TareaServicio, TareaProgramada.id == TareaServicio.tarea_id)
+            .filter(TareaServicio.servicio_id == servicio_id)
+            .all()
+        )
 
 
 

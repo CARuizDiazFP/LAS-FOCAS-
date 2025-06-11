@@ -9,7 +9,7 @@ from datetime import datetime
 from email.message import EmailMessage
 
 from .config import config
-from .database import SessionLocal, Cliente
+from .database import SessionLocal, Cliente, Servicio, TareaProgramada
 from .utils import (
     cargar_destinatarios as utils_cargar_dest,
     guardar_destinatarios as utils_guardar,
@@ -228,3 +228,31 @@ def enviar_tracking_reciente_por_correo(
     from .correo import enviar_email
 
     return enviar_email([destinatario], asunto, cuerpo, ruta, nombre)
+
+
+def generar_archivo_msg(
+    tarea: TareaProgramada,
+    cliente: Cliente,
+    servicios: list[Servicio],
+    ruta: str,
+) -> str:
+    """Crea un archivo .MSG simple con la información de la tarea."""
+
+    lineas = [
+        "Estimado Cliente, nuestro partner nos da aviso de la siguiente tarea programada:",
+        f"Inicio: {tarea.fecha_inicio}",
+        f"Fin: {tarea.fecha_fin}",
+        f"Tipo de tarea: {tarea.tipo_tarea}",
+    ]
+    if tarea.tiempo_afectacion:
+        lineas.append(f"Tiempo de afectaci\u00f3n: {tarea.tiempo_afectacion}")
+    if tarea.descripcion:
+        lineas.append(f"Descripci\u00f3n: {tarea.descripcion}")
+
+    lista_servicios = ", ".join(str(s.id) for s in servicios)
+    lineas.append(f"Servicios afectados: {lista_servicios}")
+
+    contenido = "\n".join(lineas)
+    with open(ruta, "w", encoding="utf-8") as f:
+        f.write(contenido)
+    return ruta

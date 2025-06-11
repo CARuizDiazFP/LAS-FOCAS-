@@ -185,3 +185,25 @@ def test_enviar_correo_a_cliente(monkeypatch):
     ok = email_utils.enviar_correo("Aviso", "Hola", cli.id, host="h", port=25)
     assert ok is True
     assert reg["sent"] == ["m@x.com"]
+
+
+def test_generar_archivo_msg(tmp_path):
+    cli = bd.Cliente(nombre="AcmeX", destinatarios=["x@y.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    srv = bd.crear_servicio(nombre="S1", cliente="AcmeX", cliente_id=cli.id)
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8),
+        datetime(2024, 1, 2, 10),
+        "Mantenimiento",
+        [srv.id],
+    )
+
+    ruta = tmp_path / "aviso.msg"
+    email_utils.generar_archivo_msg(tarea, cli, [srv], str(ruta))
+    assert ruta.exists()
+    contenido = ruta.read_text(encoding="utf-8")
+    assert "Mantenimiento" in contenido

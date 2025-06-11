@@ -24,6 +24,7 @@ from .destinatarios import (
     eliminar_destinatario,
     listar_destinatarios,
 )
+from .tarea_programada import registrar_tarea_programada
 
 __all__ = [
     'start_handler',
@@ -54,4 +55,5 @@ __all__ = [
     'agregar_destinatario',
     'eliminar_destinatario',
     'listar_destinatarios'
+    , 'registrar_tarea_programada'
 ]
