@@ -90,7 +90,7 @@ async def procesar_informe_sla(
     # Guardar nueva plantilla
     if context.user_data.get("cambiar_plantilla"):
         if getattr(mensaje, "document", None):
-            await _actualizar_plantilla_sla(update, context)
+            await actualizar_plantilla_sla(update, context)
         else:
             await responder_registrando(
                 mensaje,
@@ -182,7 +182,7 @@ async def procesar_informe_sla(
 
 
 # ──────────────────── ACTUALIZAR PLANTILLA SLA ───────────────────────
-async def _actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Guarda la plantilla enviada reemplazando la configuración actual."""
     mensaje = obtener_mensaje(update)
     user_id = update.effective_user.id
