@@ -18,13 +18,8 @@ except Exception:                     # pragma: no cover - entornos sin win32
 
 from .config import config
 
-try:
-    import win32com.client as win32
-except ImportError:  # pragma: no cover - depende del sistema
-    win32 = None
-
 SIGNATURE_PATH = (
-    Path(os.getenv("SIGNATURE_PATH")) if os.getenv("SIGNATURE_PATH") else None
+    Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
 )
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada
 from .utils import (
@@ -253,36 +248,6 @@ def generar_archivo_msg(
     servicios: list[Servicio],
     ruta: str,
 ) -> str:
-
-    """Crea un archivo ``.msg`` con la información de la tarea.
-
-    Si ``win32`` y ``pythoncom`` están disponibles (Windows), utiliza Outlook
-    para generar el mensaje. En otros entornos crea un archivo de texto plano.
-
-    """
-
-    lineas = [
-        "Estimado Cliente, nuestro partner nos da aviso de la siguiente tarea programada:",
-        f"Inicio: {tarea.fecha_inicio}",
-        f"Fin: {tarea.fecha_fin}",
-        f"Tipo de tarea: {tarea.tipo_tarea}",
-    ]
-    if tarea.tiempo_afectacion:
-        lineas.append(f"Tiempo de afectaci\u00f3n: {tarea.tiempo_afectacion}")
-    if tarea.descripcion:
-        lineas.append(f"Descripci\u00f3n: {tarea.descripcion}")
-
-    lista_servicios = ", ".join(str(s.id) for s in servicios)
-    lineas.append(f"Servicios afectados: {lista_servicios}")
-
-    contenido = "\n".join(lineas)
-
-def generar_archivo_msg(
-    tarea: TareaProgramada,
-    cliente: Cliente,
-    servicios: list[Servicio],
-    ruta: str,
-) -> str:
     """Genera un archivo *.msg* (Outlook) o texto plano con la tarea programada.
 
     - Con ``win32`` + ``pythoncom`` disponibles → se crea un verdadero **MSG**,
@@ -341,5 +306,4 @@ def generar_archivo_msg(
     # 📝 Fallback a texto plano
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
-    return ruta
     return ruta
