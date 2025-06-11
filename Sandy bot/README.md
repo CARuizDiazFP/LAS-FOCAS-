@@ -72,6 +72,7 @@ DB_NAME=sandybot
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 PLANTILLA_PATH=C:\Metrotel\Sandy\plantilla_informe.docx
+SLA_TEMPLATE_PATH=C:\Metrotel\Sandy\Template Informe SLA.docx
 ```
 
 ## Uso
@@ -175,14 +176,38 @@ adicional.
    - Nota: la modificación automática del documento usa `win32com` y solo
      funciona en Windows. En otros sistemas puede generarse el archivo .docx
      sin esta modificación o realizar los cambios de forma manual.
+7. Informe de SLA
+   - Genera un resumen de nivel de servicio usando `Template Informe SLA.docx`
+   - Podés iniciarlo desde el botón **Informe de SLA** o con `/informe_sla`
 
-7. Consultas generales
+
+8. Consultas generales
    - Respuestas técnicas con GPT
    - Tono adaptado según interacciones (de cordial a muy malhumorado)
    - Registro de conversaciones
 
-## Contribuir
+## Informe de SLA
 
+Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`.
+Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla`.
+La variable `SLA_TEMPLATE_PATH` permite indicar la ruta exacta de la plantilla y debe apuntar a un archivo `.docx`.
+
+```env
+SLA_TEMPLATE_PATH=/ruta/al/Template Informe SLA.docx
+```
+
+## Pruebas
+
+Para ejecutar la suite de tests primero corré `setup_env.sh`.
+Ese script instala las dependencias en `.venv` y configura `PYTHONPATH`.
+Luego podés lanzar `pytest` normalmente.
+
+```bash
+./setup_env.sh
+pytest
+```
+
+## Contribuir
 1. Fork del repositorio
 2. Crear rama (`git checkout -b feature/nombre`)
 3. Commit cambios (`git commit -am 'Add: descripción'`)
