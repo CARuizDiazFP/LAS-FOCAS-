@@ -240,10 +240,9 @@ def test_crear_tarea_y_relacion():
     assert len(tareas) == 1
     assert tareas[0].id == tarea.id
 
-
 def test_ensure_servicio_columns_indice_tarea_programada():
-    """La función crea el índice combinado de fechas."""
-
+    """La función crea el índice combinado de fechas en tareas_programadas."""
+    # 1️⃣  El índice se elimina si existe para garantizar la prueba
     with bd.engine.begin() as conn:
         conn.execute(
             text(
@@ -257,6 +256,7 @@ def test_ensure_servicio_columns_indice_tarea_programada():
         for i in insp.get_indexes("tareas_programadas")
     )
 
+    # 2️⃣  Se vuelve a invocar la función; debe crear el índice
     bd.ensure_servicio_columns()
 
     insp = sqlalchemy.inspect(bd.engine)
@@ -265,3 +265,19 @@ def test_ensure_servicio_columns_indice_tarea_programada():
         for i in insp.get_indexes("tareas_programadas")
     )
 
+
+def test_tarea_servicio_unica():
+    """La relación tarea-servicio no debe duplicarse (restricción única)."""
+    s = bd.crear_servicio(nombre="SrvU", cliente="CliU")
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8),
+        datetime(2024, 1, 2, 10),
+        "Mantenimiento",
+        [s.id],
+    )
+
+    # 1️⃣  El primer insert manual debe violar la restricción UNIQUE
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        with bd.SessionLocal() as session:
+            session.add(bd.TareaServicio(tarea_id=tarea.id, servicio_id=s.id))
+            session.commit()

@@ -1,8 +1,3 @@
-"""
-Configuración y modelos de la base de datos
-"""
-
-
 from sqlalchemy import (
     create_engine,
     Column,
@@ -14,7 +9,8 @@ from sqlalchemy import (
     func,
     JSON,
     ForeignKey,
-    Index,
+    Index,              # (+) Necesario para definir y recrear índices de forma explícita
+    UniqueConstraint,    # (+) Mantiene la restricción única de tareas_servicio
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
@@ -166,6 +162,12 @@ class TareaServicio(Base):
     tarea_id = Column(Integer, ForeignKey("tareas_programadas.id"), index=True)
     servicio_id = Column(Integer, ForeignKey("servicios.id"), index=True)
 
+    __table_args__ = (
+        UniqueConstraint(
+            "tarea_id", "servicio_id", name="uix_tarea_servicio"
+        ),
+    )
+
 
 def ensure_servicio_columns() -> None:
     """Comprueba que la tabla ``servicios`` posea todas las columnas del modelo.
@@ -212,15 +214,33 @@ def ensure_servicio_columns() -> None:
                 )
             )
 
-    indices_tareas = {idx["name"] for idx in inspector.get_indexes("tareas_programadas")}
+    indices_tareas = {
+        idx["name"]
+        for idx in inspector.get_indexes("tareas_programadas")
+    }
     if "ix_tareas_programadas_fecha_inicio_fecha_fin" not in indices_tareas:
         with engine.begin() as conn:
             conn.execute(
                 text(
-                    "CREATE INDEX ix_tareas_programadas_fecha_inicio_fecha_fin"
-                    " ON tareas_programadas (fecha_inicio, fecha_fin)"
+                    "CREATE INDEX ix_tareas_programadas_fecha_inicio_fecha_fin "
+                    "ON tareas_programadas (fecha_inicio, fecha_fin)"
                 )
             )
+
+    # 2️⃣ Restricción única (tarea_id, servicio_id) en tareas_servicio
+    if "tareas_servicio" in inspector.get_table_names():
+        uniques = {
+            u["name"] for u in inspector.get_unique_constraints("tareas_servicio")
+        }
+        if "uix_tarea_servicio" not in uniques:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE tareas_servicio "
+                        "ADD CONSTRAINT uix_tarea_servicio "
+                        "UNIQUE (tarea_id, servicio_id)"
+                    )
+                )
 
 
 def init_db():
