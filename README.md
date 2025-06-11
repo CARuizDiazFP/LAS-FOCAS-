@@ -50,12 +50,27 @@ EMAIL_FROM=tu_correo@gmail.com
 ```
 Nota: si copiás la contraseña de aplicación de Gmail, asegurate de quitar los espacios que se muestran por legibilidad.
 
+Para la suite de pruebas se pueden definir variables mínimas en un `.env` o en la consola antes de ejecutar `pytest`:
+
+```bash
+export TELEGRAM_TOKEN=dummy
+export OPENAI_API_KEY=dummy
+export NOTION_TOKEN=dummy
+export NOTION_DATABASE_ID=dummy
+export DB_USER=postgres
+export DB_PASSWORD=postgres
+```
+
 ## Plantilla de informes de repetitividad
 
 El documento base para generar los reportes de repetitividad se indica
 mediante la variable de entorno `PLANTILLA_PATH`. Si no se define, el
 código toma la ruta por defecto `C:\Metrotel\Sandy\plantilla_informe.docx`
 tal como se especifica en `config.py`.
+El título del documento se ajusta al mes actual en español y, si la plantilla
+no cuenta con el estilo `Title`, se utiliza `Heading 1` como alternativa.
+En el menú del bot existe un botón para reemplazar la plantilla de
+repetitividad y otro que permite exportar el informe final a PDF.
 
 ## Plantilla del informe de SLA
 
