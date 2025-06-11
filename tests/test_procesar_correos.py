@@ -166,14 +166,15 @@ def test_procesar_correos(tmp_path):
 
     servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
 
-    class GPTStub(tarea_mod.gpt.__class__):
+    import sandybot.email_utils as email_utils
+    class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
                 '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + "]}"
             )
 
-    tarea_mod.gpt = GPTStub()
+    email_utils.gpt = GPTStub()
 
     doc = Document(content="dummy")
     msg = Message(document=doc)
@@ -243,14 +244,15 @@ def test_procesar_correos_varios(tmp_path):
 
     servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
 
-    class GPTStub(tarea_mod.gpt.__class__):
+    import sandybot.email_utils as email_utils
+    class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
                 '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + "]}"
             )
 
-    tarea_mod.gpt = GPTStub()
+    email_utils.gpt = GPTStub()
 
     doc1 = Document(file_name="uno.msg", content="dummy")
     doc2 = Document(file_name="dos.msg", content="dummy")
