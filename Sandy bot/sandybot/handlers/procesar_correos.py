@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-from pathlib import Path
 
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -96,8 +95,6 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             # Eliminamos el .msg original descargado
             if os.path.exists(ruta_tmp):
                 os.remove(ruta_tmp)
-
-        # ``cuerpo`` ya contiene el texto del aviso generado
 
         # Envía aviso a destinatarios del cliente
         enviar_correo(
