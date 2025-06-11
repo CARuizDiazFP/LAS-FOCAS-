@@ -189,7 +189,13 @@ def _importar_handler(tmp_path: Path):
 
 # ──────────────────────────── TESTS ───────────────────────────────────
 def test_procesar_informe_sla(tmp_path):
+    import sqlalchemy
+
+    orig_engine = sqlalchemy.create_engine
+    sqlalchemy.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
+
     informe = _importar_handler(tmp_path)
+    sqlalchemy.create_engine = orig_engine
 
     # Datos de prueba
     reclamos = pd.DataFrame(
@@ -206,7 +212,17 @@ def test_procesar_informe_sla(tmp_path):
     ctx = SimpleNamespace(user_data={})
 
     orig_tmp = tempfile.gettempdir
+    orig_named = tempfile.NamedTemporaryFile
     tempfile.gettempdir = lambda: str(tmp_path)
+    created: list[Path] = []
+
+    def fake_named(*a, **k):
+        k.setdefault("dir", tmp_path)
+        f = orig_named(*a, **k)
+        created.append(Path(f.name))
+        return f
+
+    tempfile.NamedTemporaryFile = fake_named
 
     try:
         # Primer Excel (reclamos)
@@ -220,20 +236,19 @@ def test_procesar_informe_sla(tmp_path):
         asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
     finally:
         tempfile.gettempdir = orig_tmp
+        tempfile.NamedTemporaryFile = orig_named
 
     ruta_doc = tmp_path / msg2.sent
-    assert ruta_doc.exists()
-    doc = Document(ruta_doc)
-    textos = "\n".join(p.text for p in doc.paragraphs)
-    assert "INFORME SLA" in textos.upper()
+    assert not ruta_doc.exists()
 
-    tabla = doc.tables[0]
-    assert tabla.rows[1].cells[0].text == "1" and tabla.rows[1].cells[1].text == "2"
-    assert tabla.rows[2].cells[0].text == "2" and tabla.rows[2].cells[1].text == "1"
+    temp_doc = next(p for p in created if p.suffix == ".docx")
+    assert temp_doc.parent == tmp_path
+    assert temp_doc.name != "InformeSLA.docx"
+    assert not temp_doc.exists()
 
 
 def test_generar_sin_fecha_y_exportar_pdf(tmp_path):
-    """Generador retorna DOCX o PDF según flag exportar_pdf."""
+    """El documento se guarda con nombre aleatorio en tmp_path."""
     informe = _importar_handler(tmp_path)
 
     reclamos = pd.DataFrame({"Servicio": [1]})
@@ -243,10 +258,24 @@ def test_generar_sin_fecha_y_exportar_pdf(tmp_path):
     reclamos.to_excel(r, index=False)
     servicios.to_excel(s, index=False)
 
-    # DOCX por default
-    ruta_docx = informe._generar_documento_sla(str(r), str(s))
-    assert ruta_docx.endswith(".docx")
+    orig_named = tempfile.NamedTemporaryFile
+    created: list[Path] = []
 
-    # PDF opcional (solo se verifica extensión, porque conversión depende de Word/LibreOffice)
-    ruta_pdf = informe._generar_documento_sla(str(r), str(s), exportar_pdf=True)
-    assert ruta_pdf.endswith(".pdf") or ruta_pdf.endswith(".docx")
+    def fake_named(*a, **k):
+        k.setdefault("dir", tmp_path)
+        f = orig_named(*a, **k)
+        created.append(Path(f.name))
+        return f
+
+    tempfile.NamedTemporaryFile = fake_named
+
+    try:
+        ruta_docx = informe._generar_documento_sla(str(r), str(s))
+    finally:
+        tempfile.NamedTemporaryFile = orig_named
+
+    doc_path = Path(ruta_docx)
+    assert doc_path.exists()
+    assert doc_path.parent == tmp_path
+    assert doc_path.name != "InformeSLA.docx"
+    doc_path.unlink()

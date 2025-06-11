@@ -98,9 +98,15 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         try:
             ruta_final = _generar_documento_sla(reclamos_xlsx, servicios_xlsx)
             with open(ruta_final, "rb") as f:
-                await update.callback_query.message.reply_document(f, filename=os.path.basename(ruta_final))
+                await update.callback_query.message.reply_document(
+                    f, filename=os.path.basename(ruta_final)
+                )
+            os.remove(ruta_final)
             registrar_conversacion(
-                user_id, "informe_sla", f"Documento {os.path.basename(ruta_final)} enviado", "informe_sla"
+                user_id,
+                "informe_sla",
+                f"Documento {os.path.basename(ruta_final)} enviado",
+                "informe_sla",
             )
         except Exception as e:   # pragma: no cover
             logger.error("Error generando informe SLA: %s", e)
@@ -283,8 +289,8 @@ def _generar_documento_sla(
             doc.add_paragraph(f"{etiqueta} {contenido}")
 
     # Guardado temporal
-    nombre_archivo = "InformeSLA.docx"
-    ruta_salida = os.path.join(tempfile.gettempdir(), nombre_archivo)
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+        ruta_salida = tmp.name
     doc.save(ruta_salida)
 
     # Conversión opcional a PDF solo en Windows
