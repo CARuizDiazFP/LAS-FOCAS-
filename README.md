@@ -112,6 +112,12 @@ tarea = crear_tarea_programada(
 )
 ```
 
+### Detectar tareas desde un correo
+
+Con `/detectar_tarea <cliente>` podés pegar el mail o adjuntar el archivo.
+Sandy utiliza GPT para extraer inicio, fin, tipo y los IDs de servicio.
+Al crear la tarea genera también un `.MSG` con el texto listo para enviar.
+
 ## Carga de tracking
 
 Utilizá el comando `/cargar_tracking` y enviá el archivo `.txt`.
