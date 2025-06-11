@@ -14,22 +14,7 @@ from sqlalchemy.orm import sessionmaker
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
-# Crear stub del módulo telegram para las utilidades
-telegram_stub = importlib.util.module_from_spec(importlib.machinery.ModuleSpec("telegram", None))
-class Message:
-    def __init__(self, text=""):
-        self.text = text
-class CallbackQuery:
-    def __init__(self, message=None):
-        self.message = message
-class Update:
-    def __init__(self, message=None, edited_message=None, callback_query=None):
-        self.message = message
-        self.edited_message = edited_message
-        self.callback_query = callback_query
-telegram_stub.Update = Update
-telegram_stub.Message = Message
-sys.modules.setdefault("telegram", telegram_stub)
+import tests.telegram_stub  # Registra las clases fake de telegram
 
 # Stub de dotenv requerido por config
 dotenv_stub = importlib.util.module_from_spec(importlib.machinery.ModuleSpec("dotenv", None))

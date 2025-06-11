@@ -228,8 +228,8 @@ del sistema para corregir el problema.
 ## Pruebas automatizadas
 
 Para validar el funcionamiento del proyecto se incluye una suite de pruebas basada en `pytest`.
-Es necesario contar con las bibliotecas `openpyxl`, `python-docx` y `pandas` para que todas las
-pruebas puedan ejecutarse correctamente.
+Las dependencias externas como `openpyxl`, `python-docx` y `pandas` se utilizan en algunas pruebas,
+pero no son obligatorias gracias a los stubs incluidos.
 
 Antes de ejecutar `pytest` es recomendable preparar el entorno con `setup_env.sh`.
 Este script crea el virtualenv en `.venv` y realiza la instalación de

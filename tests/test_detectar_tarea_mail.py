@@ -11,55 +11,7 @@ import tempfile
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
-# Stubs de telegram
-telegram_stub = ModuleType("telegram")
-
-class Message:
-    def __init__(self, text="", document=None):
-        self.text = text
-        self.document = document
-        self.sent = None
-
-    async def reply_document(self, f, filename=None):
-        self.sent = filename
-
-    async def reply_text(self, *a, **k):
-        pass
-
-
-class Document:
-    def __init__(self, file_name="mail.txt", content=""):
-        self.file_name = file_name
-        self._content = content
-
-    async def get_file(self):
-        class F:
-            async def download_to_drive(_, path):
-                Path(path).write_text(self._content)
-
-        return F()
-
-
-class Update:
-    def __init__(self, message=None, edited_message=None, callback_query=None):
-        self.message = message
-        self.edited_message = edited_message
-        self.callback_query = callback_query
-        self.effective_user = SimpleNamespace(id=1)
-
-
-telegram_stub.Update = Update
-telegram_stub.Message = Message
-telegram_stub.CallbackQuery = SimpleNamespace
-telegram_stub.Document = Document
-sys.modules.setdefault("telegram", telegram_stub)
-
-telegram_ext_stub = ModuleType("telegram.ext")
-class ContextTypes:
-    DEFAULT_TYPE = object
-
-telegram_ext_stub.ContextTypes = ContextTypes
-sys.modules.setdefault("telegram.ext", telegram_ext_stub)
+from tests.telegram_stub import Message, Update  # Registra las clases fake de telegram
 
 # Stubs de openai y jsonschema
 openai_stub = ModuleType("openai")

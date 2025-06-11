@@ -12,43 +12,7 @@ import tempfile
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
-# Stub de telegram similar al usado en otros tests
-telegram_stub = ModuleType("telegram")
-class Message:
-    def __init__(self, text=""):
-        self.text = text
-        self.documento = None
-    async def reply_document(self, f, filename=None):
-        self.documento = filename
-    async def reply_text(self, *a, **k):
-        pass
-class CallbackQuery:
-    def __init__(self, message=None):
-        self.message = message
-class Update:
-    def __init__(self, message=None, edited_message=None, callback_query=None):
-        self.message = message
-        self.edited_message = edited_message
-        self.callback_query = callback_query
-        self.effective_user = SimpleNamespace(id=1)
-class InlineKeyboardButton:
-    def __init__(self, *a, **k):
-        pass
-class InlineKeyboardMarkup:
-    def __init__(self, *a, **k):
-        pass
-telegram_stub.Update = Update
-telegram_stub.Message = Message
-telegram_stub.CallbackQuery = CallbackQuery
-telegram_stub.InlineKeyboardButton = InlineKeyboardButton
-telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
-telegram_ext_stub = ModuleType("telegram.ext")
-class ContextTypes:
-    DEFAULT_TYPE = object
-telegram_ext_stub.ContextTypes = ContextTypes
-telegram_stub.ext = telegram_ext_stub
-sys.modules.setdefault("telegram", telegram_stub)
-sys.modules.setdefault("telegram.ext", telegram_ext_stub)
+from tests.telegram_stub import Message, Update  # Registra las clases fake de telegram
 
 # Stubs de openai y jsonschema para importar gpt_handler sin dependencias
 openai_stub = ModuleType("openai")
