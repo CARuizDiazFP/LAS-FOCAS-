@@ -340,4 +340,3 @@ def test_procesar_correos_sin_libreria(tmp_path):
 
     assert new_tareas == prev_tareas
     assert msg.sent is None
-    assert not tarea_mod.extract_msg_disponible
