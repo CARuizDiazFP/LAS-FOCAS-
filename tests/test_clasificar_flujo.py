@@ -165,3 +165,7 @@ def test_variantes_diccionario():
     for texto, esperado in ejemplos.items():
         assert detectar(texto) == esperado
 
+
+def test_sla_diccionario():
+    assert _detectar("informe de sla") == "informe_sla"
+
