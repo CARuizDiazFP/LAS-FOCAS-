@@ -377,8 +377,14 @@ def generar_archivo_msg(
 
 async def procesar_correo_a_tarea(
     texto: str, cliente_nombre: str, carrier_nombre: str | None = None
-) -> tuple[TareaProgramada, Cliente, Path]:
-    """Analiza ``texto`` con GPT y registra la tarea programada."""
+) -> tuple[TareaProgramada, Cliente, Path, str]:
+
+    """Analiza ``texto`` con GPT y registra la tarea programada.
+
+    Devuelve la tarea creada, el cliente asociado, la ruta al archivo generado
+    y el cuerpo del aviso resultante.
+    """
+
 
     prompt = (
         "Extraé del siguiente correo los datos de la ventana de mantenimiento y "
@@ -456,7 +462,13 @@ async def procesar_correo_a_tarea(
 
         nombre_arch = f"tarea_{tarea.id}.msg"
         ruta = Path(tempfile.gettempdir()) / nombre_arch
-        generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta))
 
-        return tarea, cliente, ruta
-    return ruta, contenido
+        ruta_str, cuerpo = generar_archivo_msg(
+            tarea,
+            cliente,
+            [s for s in servicios if s],
+            str(ruta),
+        )
+        ruta_msg = Path(ruta_str)
+
+        return tarea, cliente, ruta_msg, cuerpo

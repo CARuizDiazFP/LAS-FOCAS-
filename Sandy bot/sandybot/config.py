@@ -80,6 +80,12 @@ class Config:
             "PLANTILLA_PATH",
             r"C:\\Metrotel\\Sandy\\plantilla_informe.docx"
         )
+        # Plantilla para informes de SLA
+        # "SLA_TEMPLATE_PATH" permite ajustar la ubicación sin tocar el código
+        self.SLA_PLANTILLA_PATH = os.getenv(
+            "SLA_TEMPLATE_PATH",
+            r"C:\\Metrotel\\Sandy\\Template Informe SLA.docx",
+        )
         # Firma opcional en correos
         self.SIGNATURE_PATH = os.getenv("SIGNATURE_PATH")
 

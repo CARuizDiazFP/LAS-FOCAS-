@@ -1,5 +1,7 @@
 """Procesamiento masivo de correos .msg para registrar tareas."""
 
+from __future__ import annotations
+
 import logging
 import os
 import tempfile
@@ -12,7 +14,7 @@ try:
     import extract_msg
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
-        "No se encontró la librería 'extract-msg'. Instalala para usar 'procesar_correos'."
+        "No se encontró la librería 'extract-msg'. Instalala para usar /procesar_correos."
     ) from exc
 
 from ..utils import obtener_mensaje
@@ -22,8 +24,9 @@ from ..registrador import responder_registrando
 logger = logging.getLogger(__name__)
 
 
+# ────────────────────────── UTILIDAD LOCAL ──────────────────────────
 def _leer_msg(ruta: str) -> str:
-    """Devuelve el asunto y cuerpo de un archivo MSG."""
+    """Devuelve el `asunto + cuerpo` de un archivo MSG."""
     try:
         msg = extract_msg.Message(ruta)
         asunto = msg.subject or ""
@@ -31,19 +34,21 @@ def _leer_msg(ruta: str) -> str:
         if hasattr(msg, "close"):
             msg.close()
         return f"{asunto}\n{cuerpo}".strip()
-    except Exception as exc:  # pragma: no cover - depende del archivo
+    except Exception as exc:  # pragma: no cover
         logger.error("Error leyendo MSG %s: %s", ruta, exc)
         return ""
 
 
+# ────────────────────────── HANDLER PRINCIPAL ───────────────────────
 async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Analiza uno o varios archivos `.msg` adjuntos y crea las tareas."""
+    """Analiza uno o varios `.msg` adjuntos y registra las tareas encontradas."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         return
 
     user_id = update.effective_user.id
 
+    # Parámetros: /procesar_correos <cliente> [carrier]
     if not context.args:
         await responder_registrando(
             mensaje,
@@ -57,7 +62,8 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     cliente_nombre = context.args[0]
     carrier_nombre = context.args[1] if len(context.args) > 1 else None
 
-    docs = []
+    # Recolectamos documentos adjuntos
+    docs: list = []
     if getattr(mensaje, "document", None):
         docs.append(mensaje.document)
     docs.extend(getattr(mensaje, "documents", []))
@@ -65,47 +71,40 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
     first_name = getattr(docs[0], "file_name", "")
 
-    tareas = []
+    tareas: list[str] = []
 
     for doc in docs:
         archivo = await doc.get_file()
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             await archivo.download_to_drive(tmp.name)
-            ruta = tmp.name
-        contenido = _leer_msg(ruta)
-        if not contenido:
-            raise ValueError("Sin contenido")
-        prompt = (
-            "Extraé del siguiente correo los datos de la ventana de mantenimiento "
-            "y devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
-            "'afectacion' e 'ids' (lista de servicios).\n\n"
-            f"Correo:\n{contenido}"
-        )
-        esquema = {
-            "type": "object",
-            "properties": {},
-        }
+            ruta_tmp = tmp.name
 
         try:
-            contenido = _leer_msg(ruta)
+            contenido = _leer_msg(ruta_tmp)
             if not contenido:
                 raise ValueError("Sin contenido")
+
+            # Procesa correo → registra tarea y genera .msg
             tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
                 contenido, cliente_nombre, carrier_nombre
             )
-        except Exception as e:  # pragma: no cover - manejo simple
-            logger.error("Fallo procesando correo: %s", e)
-            os.remove(ruta)
+        except Exception as e:  # pragma: no cover
+            logger.error("Fallo procesando correo %s: %s", doc.file_name, e)
+            os.remove(ruta_tmp)
             continue
-        os.remove(ruta)
+        finally:
+            # Eliminamos el .msg original descargado
+            if os.path.exists(ruta_tmp):
+                os.remove(ruta_tmp)
 
-        # Leer el cuerpo del .msg recién generado para enviarlo por correo
+        # Leemos cuerpo para reenviar por mail
         cuerpo = ""
         try:
             cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
         except Exception:
             pass
 
+        # Envía aviso a destinatarios del cliente
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
             cuerpo,
@@ -113,12 +112,14 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             carrier_nombre,
         )
 
+        # Adjunta el .msg generado al chat
         if ruta_msg.exists():
             with open(ruta_msg, "rb") as f:
                 await mensaje.reply_document(f, filename=ruta_msg.name)
 
         tareas.append(str(tarea.id))
 
+    # Resumen final al usuario
     if tareas:
         await responder_registrando(
             mensaje,
@@ -127,4 +128,3 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             f"Tareas registradas: {', '.join(tareas)}",
             "tareas",
         )
-

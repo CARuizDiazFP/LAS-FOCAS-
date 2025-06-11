@@ -46,6 +46,10 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if mode == "incidencias":
             await procesar_incidencias(update, context)
             return
+        if mode == "informe_sla":
+            from .informe_sla import procesar_informe_sla
+            await procesar_informe_sla(update, context)
+            return
 
         # Lógica para el procesamiento de documentos
         await update.message.reply_text("Procesamiento de documentos en desarrollo.")
