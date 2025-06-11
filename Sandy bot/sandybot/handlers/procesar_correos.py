@@ -103,16 +103,9 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 raise ValueError("El archivo no contiene texto legible.")
 
             # Procesar correo → registrar tarea → generar .msg final
-            tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
+            tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
                 contenido, cliente_nombre, carrier_nombre
             )
-
-            # Obtener cuerpo desde el .msg generado para el mail
-            cuerpo = ""
-            try:
-                cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                pass
 
         except Exception as e:  # pragma: no cover
             logger.error("Fallo procesando correo %s: %s", doc.file_name, e)
