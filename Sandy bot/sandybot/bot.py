@@ -1,6 +1,7 @@
 """
 Módulo principal del bot Sandy
 """
+
 import logging
 import asyncio
 from typing import Dict, Any
@@ -10,7 +11,7 @@ from telegram.ext import (
     CommandHandler,
     CallbackQueryHandler,
     MessageHandler,
-    filters
+    filters,
 )
 
 from .config import config
@@ -25,12 +26,14 @@ from .handlers import (
     procesar_comparacion,
     iniciar_carga_tracking,
     iniciar_descarga_tracking,
-    iniciar_envio_camaras_mail
+    iniciar_envio_camaras_mail,
 )
 from .handlers import (
     agregar_destinatario,
     eliminar_destinatario,
     listar_destinatarios,
+    listar_carriers,
+    agregar_carrier,
     registrar_tarea_programada,
     listar_tareas,
     detectar_tarea_mail,
@@ -42,6 +45,7 @@ logger = logging.getLogger(__name__)
 
 class SandyBot:
     """Clase principal del bot"""
+
     def __init__(self):
         """Inicializa el bot y sus handlers"""
         self.app = Application.builder().token(config.TELEGRAM_TOKEN).build()
@@ -51,15 +55,9 @@ class SandyBot:
         """Configura los handlers del bot"""
         # Comandos básicos
         self.app.add_handler(CommandHandler("start", start_handler))
-        self.app.add_handler(
-            CommandHandler("comparar_fo", iniciar_comparador)
-        )
-        self.app.add_handler(
-            CommandHandler("procesar", procesar_comparacion)
-        )
-        self.app.add_handler(
-            CommandHandler("cargar_tracking", iniciar_carga_tracking)
-        )
+        self.app.add_handler(CommandHandler("comparar_fo", iniciar_comparador))
+        self.app.add_handler(CommandHandler("procesar", procesar_comparacion))
+        self.app.add_handler(CommandHandler("cargar_tracking", iniciar_carga_tracking))
         self.app.add_handler(
             CommandHandler("descargar_tracking", iniciar_descarga_tracking)
         )
@@ -76,36 +74,25 @@ class SandyBot:
         self.app.add_handler(
             CommandHandler("registrar_tarea", registrar_tarea_programada)
         )
-        self.app.add_handler(
-            CommandHandler("listar_tareas", listar_tareas)
-        )
-        self.app.add_handler(
-            CommandHandler("detectar_tarea", detectar_tarea_mail)
-        )
-        self.app.add_handler(
-            CommandHandler("procesar_correos", procesar_correos)
-        )
+        self.app.add_handler(CommandHandler("listar_carriers", listar_carriers))
+        self.app.add_handler(CommandHandler("agregar_carrier", agregar_carrier))
+        self.app.add_handler(CommandHandler("listar_tareas", listar_tareas))
+        self.app.add_handler(CommandHandler("detectar_tarea", detectar_tarea_mail))
+        self.app.add_handler(CommandHandler("procesar_correos", procesar_correos))
 
         # Callbacks de botones
         self.app.add_handler(CallbackQueryHandler(callback_handler))
 
         # Mensajes de texto
-        self.app.add_handler(MessageHandler(
-            filters.TEXT & ~filters.COMMAND,
-            message_handler
-        ))
+        self.app.add_handler(
+            MessageHandler(filters.TEXT & ~filters.COMMAND, message_handler)
+        )
 
         # Documentos
-        self.app.add_handler(MessageHandler(
-            filters.Document.ALL,
-            document_handler
-        ))
+        self.app.add_handler(MessageHandler(filters.Document.ALL, document_handler))
 
         # Mensajes de voz
-        self.app.add_handler(MessageHandler(
-            filters.VOICE,
-            voice_handler
-        ))
+        self.app.add_handler(MessageHandler(filters.VOICE, voice_handler))
 
         # Error handler
         self.app.add_error_handler(self._error_handler)

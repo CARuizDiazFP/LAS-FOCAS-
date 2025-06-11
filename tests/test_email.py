@@ -29,10 +29,12 @@ for var in [
 
 # Preparar base de datos en memoria
 import sqlalchemy
+
 orig_engine = sqlalchemy.create_engine
 sqlalchemy.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
 
 import sandybot.database as bd
+
 sqlalchemy.create_engine = orig_engine
 bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
 bd.Base.metadata.create_all(bind=bd.engine)
@@ -53,11 +55,13 @@ def test_operaciones_destinatarios():
     assert email_utils.agregar_destinatario("a@x.com", cli.id) is True
     assert email_utils.cargar_destinatarios(cli.id) == ["a@x.com"]
 
-    assert email_utils.agregar_destinatario("b@x.com", cli.id) is True
-    assert set(email_utils.cargar_destinatarios(cli.id)) == {"a@x.com", "b@x.com"}
+    assert email_utils.agregar_destinatario("b@x.com", cli.id, carrier="Telco") is True
+    assert email_utils.cargar_destinatarios(cli.id, carrier="Telco") == ["b@x.com"]
 
-    assert email_utils.eliminar_destinatario("a@x.com", cli.id) is True
-    assert email_utils.cargar_destinatarios(cli.id) == ["b@x.com"]
+    assert set(email_utils.cargar_destinatarios(cli.id)) == {"a@x.com"}
+
+    assert email_utils.eliminar_destinatario("b@x.com", cli.id, carrier="Telco") is True
+    assert email_utils.cargar_destinatarios(cli.id, carrier="Telco") == []
 
 
 def test_enviar_correo(monkeypatch):
@@ -110,6 +114,7 @@ def test_enviar_correo(monkeypatch):
         "Alerta",
         "Prueba",
         cli.id,
+        None,
         host="localhost",
         port=1025,
     )
@@ -128,6 +133,7 @@ def test_enviar_correo(monkeypatch):
         "Alerta",
         "Prueba",
         cli.id,
+        None,
         host="localhost",
         port=1025,
     )
@@ -183,6 +189,7 @@ def test_enviar_correo_ssl(monkeypatch):
         "Alerta",
         "SSL",
         cli.id,
+        None,
         host="mail",  # host
         port=465,
     )
