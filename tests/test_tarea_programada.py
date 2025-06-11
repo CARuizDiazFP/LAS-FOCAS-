@@ -156,7 +156,7 @@ def test_registrar_tarea_programada(tmp_path):
     assert rels[-1].tarea_id == tareas[-1].id
     assert rels[-1].servicio_id == servicio.id
     ruta = tmp_path / f"tarea_{tareas[-1].id}.msg"
-    assert ruta.exists()
+    assert not ruta.exists()
     assert msg.documento == ruta.name
     assert enviados["cid"] == cli.id
     assert "Mantenimiento" in enviados["cuerpo"]
@@ -214,7 +214,7 @@ def test_reenviar_aviso(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     ruta = tmp_path / f"tarea_{tarea.id}.msg"
-    assert ruta.exists()
+    assert not ruta.exists()
     assert msg.documento == ruta.name
     assert enviados["cid"] == cli.id
     assert "Mantenimiento" in enviados["cuerpo"]

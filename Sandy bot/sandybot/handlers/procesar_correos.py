@@ -130,6 +130,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         if ruta_msg.exists():
             with open(ruta_msg, "rb") as f:
                 await mensaje.reply_document(f, filename=ruta_msg.name)
+            os.remove(ruta_msg)
 
         tareas.append(str(tarea.id))
 
