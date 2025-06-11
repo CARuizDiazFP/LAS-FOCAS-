@@ -181,7 +181,11 @@ def _generar_documento_sla(
         raise ValueError("Plantilla de SLA no encontrada")
     doc = Document(RUTA_PLANTILLA)
 
-    doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
+    try:
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
+    except KeyError:
+        # Si la plantilla no incluye el estilo "Title" se usa Heading 1
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
 
     # Tabla de resumen
     tabla = doc.add_table(rows=1, cols=2, style="Table Grid")

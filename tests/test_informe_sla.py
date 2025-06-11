@@ -126,6 +126,17 @@ def _importar_handler(tmp_path: Path):
     doc.add_paragraph("Propuesta de mejora:")
     doc.save(template)
 
+    # Parche para simular que la plantilla no incluye el estilo "Title"
+    from docx.document import Document as DocClass
+    orig_add_heading = DocClass.add_heading
+
+    def sin_title(self, text="", level=1):
+        if level == 0:
+            raise KeyError("no style with name 'Title'")
+        return orig_add_heading(self, text, level)
+
+    DocClass.add_heading = sin_title
+
     # Stub registrador
     registrador_stub = ModuleType("sandybot.registrador")
 
@@ -164,11 +175,14 @@ def _importar_handler(tmp_path: Path):
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
+    # Asegurar que los stubs de Telegram tengan las clases correctas
+    telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+    telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
+    sys.modules["telegram"] = telegram_stub
     spec.loader.exec_module(mod)
 
-    # Restaurar engine
-    sa.create_engine = orig_engine
     import sandybot.database as bd
+    sa.create_engine = orig_engine
 
     bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
     bd.Base.metadata.create_all(bind=bd.engine)
@@ -254,3 +268,18 @@ def test_generar_sin_fecha(tmp_path):
 
     ruta = informe._generar_documento_sla(str(r_path), str(s_path))
     assert Path(ruta).exists()
+
+
+def test_falta_estilo_title(tmp_path):
+    """Debe usar Heading 1 cuando la plantilla no tiene estilo Title."""
+    informe = _importar_handler(tmp_path)
+
+    datos = pd.DataFrame({"Servicio": [1]})
+    r_path = tmp_path / "reclamos.xlsx"
+    s_path = tmp_path / "servicios.xlsx"
+    datos.to_excel(r_path, index=False)
+    datos.to_excel(s_path, index=False)
+
+    ruta = informe._generar_documento_sla(str(r_path), str(s_path))
+    doc = Document(ruta)
+    assert doc.paragraphs[-1].style.name == "Heading 1"
