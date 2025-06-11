@@ -595,9 +595,10 @@ def crear_tarea_programada(
         session.commit()
         session.refresh(tarea)
 
-        for sid in servicios:
-            session.add(TareaServicio(tarea_id=tarea.id, servicio_id=sid))
-
+        relaciones = [
+            TareaServicio(tarea_id=tarea.id, servicio_id=sid) for sid in servicios
+        ]
+        session.bulk_save_objects(relaciones)
         session.commit()
         return tarea
 
