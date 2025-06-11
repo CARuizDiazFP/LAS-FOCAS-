@@ -55,8 +55,8 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = update.effective_user.id
 
-    # Callback «Procesar informe»
-    if update.callback_query:
+    # ───── Callback «Procesar informe» ─────
+    if update.callback_query and update.callback_query.data == "sla_procesar":
         context.user_data["esperando_eventos"] = True
         registrar_conversacion(user_id, "sla_procesar", "Solicitar eventos", "informe_sla")
         await update.callback_query.message.edit_text(
@@ -77,6 +77,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
                 await archivo.download_to_drive(tmp.name)
                 nombre = doc.file_name.lower()
+                # Detección básica por nombre
                 if "recl" in nombre and archivos[0] is None:
                     archivos[0] = tmp.name
                 elif "serv" in nombre and archivos[1] is None:
@@ -86,7 +87,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
                 else:
                     archivos[1] = tmp.name
 
-        context.user_data["archivos"] = archivos
+        # Verificamos si faltan archivos
         if None in archivos:
             falta = "reclamos" if archivos[0] is None else "servicios"
             await responder_registrando(
@@ -98,8 +99,9 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
 
+        # Ambos archivos listos → ofrecer botón procesar
         keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Procesar informe", callback_data="sla_procesar")]]
+            [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
         )
         await responder_registrando(
             mensaje,
@@ -119,7 +121,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         await responder_registrando(
             mensaje,
             user_id,
-            getattr(mensaje, "text", ""),
+            mensaje.text,
             "Indicá la conclusión.",
             "informe_sla",
         )
@@ -133,7 +135,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         await responder_registrando(
             mensaje,
             user_id,
-            getattr(mensaje, "text", ""),
+            mensaje.text,
             "¿Cuál es la propuesta de mejora?",
             "informe_sla",
         )
@@ -171,7 +173,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
         finally:
             # Limpieza de temporales y restablecimiento de estado
-            for p in context.user_data.get("archivos", []):
+            for p in archivos:
                 try:
                     os.remove(p)
                 except OSError:
@@ -186,25 +188,6 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         user_id,
         getattr(mensaje, "text", ""),
         "Adjuntá los archivos de reclamos y servicios para comenzar.",
-        "informe_sla",
-    )
-
-
-# ──────────────────────── CONTINUACIÓN VIA CALLBACK ───────────────────
-async def preguntar_eventos_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Inicia la etapa de descripción de eventos tras presionar “Procesar informe”."""
-    mensaje = obtener_mensaje(update)
-    if not mensaje:
-        logger.warning("No se recibió mensaje en preguntar_eventos_sla")
-        return
-
-    user_id = update.effective_user.id
-    context.user_data["esperando_eventos"] = True
-    await responder_registrando(
-        mensaje,
-        user_id,
-        "sla_procesar",
-        "Escribí los eventos sucedidos de mayor impacto en SLA.",
         "informe_sla",
     )
 
