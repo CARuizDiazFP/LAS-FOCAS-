@@ -17,7 +17,9 @@ from ..database import (
 from ..email_utils import generar_archivo_msg, enviar_correo
 
 
-async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def registrar_tarea_programada(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Registra una tarea programada de forma sencilla."""
 
     mensaje = obtener_mensaje(update)
@@ -49,7 +51,7 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
         )
         return
     tipo_tarea = context.args[3]
-    ids = [int(i) for i in context.args[4].split(',') if i.isdigit()]
+    ids = [int(i) for i in context.args[4].split(",") if i.isdigit()]
     carrier_nombre = context.args[5] if len(context.args) > 5 else None
 
     with SessionLocal() as session:
@@ -62,9 +64,7 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
         carrier = None
         if carrier_nombre:
             carrier = (
-                session.query(Carrier)
-                .filter(Carrier.nombre == carrier_nombre)
-                .first()
+                session.query(Carrier).filter(Carrier.nombre == carrier_nombre).first()
             )
             if not carrier:
                 carrier = Carrier(nombre=carrier_nombre)
@@ -100,6 +100,7 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
             f"Aviso de tarea programada - {cliente.nombre}",
             cuerpo,
             cliente.id,
+            carrier.nombre if carrier else None,
         )
 
         if ruta.exists():

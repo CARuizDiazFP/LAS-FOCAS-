@@ -13,8 +13,8 @@ try:
     import extract_msg
 except ModuleNotFoundError as exc:
     raise ModuleNotFoundError(
-        "No se encontró la librería 'extract-msg'. Instalala para usar "/
-        "procesar_correos'."
+        "No se encontró la librería 'extract-msg'. Instalala para usar "
+        / "procesar_correos'."
     ) from exc
 
 from ..utils import obtener_mensaje
@@ -156,7 +156,9 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
             nombre_arch = f"tarea_{tarea.id}.msg"
             ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
-            generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta_msg))
+            generar_archivo_msg(
+                tarea, cliente, [s for s in servicios if s], str(ruta_msg)
+            )
 
             cuerpo = ""
             try:
@@ -167,6 +169,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 f"Aviso de tarea programada - {cliente.nombre}",
                 cuerpo,
                 cliente.id,
+                carrier.nombre if carrier else None,
             )
 
             if ruta_msg.exists():

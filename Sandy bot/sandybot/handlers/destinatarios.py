@@ -8,7 +8,10 @@ from ..database import SessionLocal, Cliente, obtener_cliente_por_nombre
 
 ARCH_KEY = "destinatarios"
 
-async def agregar_destinatario(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def agregar_destinatario(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Agrega un destinatario para un cliente en la base"""
     mensaje = obtener_mensaje(update)
     if not mensaje:
@@ -25,27 +28,39 @@ async def agregar_destinatario(update: Update, context: ContextTypes.DEFAULT_TYP
         return
     cliente = context.args[0]
     correo = context.args[1]
-    _ = context.args[2] if len(context.args) > 2 else None  # compatibilidad
+    carrier = context.args[2] if len(context.args) > 2 else None
     with SessionLocal() as session:
         cli = obtener_cliente_por_nombre(cliente)
         if not cli:
-            cli = Cliente(nombre=cliente, destinatarios=[correo])
+            cli = Cliente(nombre=cliente)
             session.add(cli)
             session.commit()
+            session.refresh(cli)
+        if carrier:
+            lista = (
+                cli.destinatarios_carrier.get(carrier, [])
+                if cli.destinatarios_carrier
+                else []
+            )
         else:
             lista = cli.destinatarios or []
-            if correo in lista:
-                await responder_registrando(
-                    mensaje,
-                    user_id,
-                    mensaje.text,
-                    f"{correo} ya está registrado para {cliente}.",
-                    "destinatarios",
-                )
-                return
-            lista.append(correo)
+        if correo in lista:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                mensaje.text,
+                f"{correo} ya está registrado para {cliente}.",
+                "destinatarios",
+            )
+            return
+        lista.append(correo)
+        if carrier:
+            mapa = cli.destinatarios_carrier or {}
+            mapa[carrier] = lista
+            cli.destinatarios_carrier = mapa
+        else:
             cli.destinatarios = lista
-            session.commit()
+        session.commit()
     await responder_registrando(
         mensaje,
         user_id,
@@ -54,7 +69,10 @@ async def agregar_destinatario(update: Update, context: ContextTypes.DEFAULT_TYP
         "destinatarios",
     )
 
-async def eliminar_destinatario(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def eliminar_destinatario(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Elimina un destinatario de un cliente"""
     mensaje = obtener_mensaje(update)
     if not mensaje:
@@ -71,10 +89,27 @@ async def eliminar_destinatario(update: Update, context: ContextTypes.DEFAULT_TY
         return
     cliente = context.args[0]
     correo = context.args[1]
-    _ = context.args[2] if len(context.args) > 2 else None
+    carrier = context.args[2] if len(context.args) > 2 else None
     with SessionLocal() as session:
         cli = obtener_cliente_por_nombre(cliente)
-        if not cli or correo not in (cli.destinatarios or []):
+        if not cli:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                mensaje.text,
+                f"{cliente} no existe.",
+                "destinatarios",
+            )
+            return
+        if carrier:
+            lista = (
+                cli.destinatarios_carrier.get(carrier, [])
+                if cli.destinatarios_carrier
+                else []
+            )
+        else:
+            lista = cli.destinatarios or []
+        if correo not in lista:
             await responder_registrando(
                 mensaje,
                 user_id,
@@ -83,9 +118,14 @@ async def eliminar_destinatario(update: Update, context: ContextTypes.DEFAULT_TY
                 "destinatarios",
             )
             return
-        lista = cli.destinatarios or []
+        lista = list(lista)
         lista.remove(correo)
-        cli.destinatarios = lista
+        if carrier:
+            mapa = cli.destinatarios_carrier or {}
+            mapa[carrier] = lista
+            cli.destinatarios_carrier = mapa
+        else:
+            cli.destinatarios = lista
         session.commit()
     await responder_registrando(
         mensaje,
@@ -95,7 +135,10 @@ async def eliminar_destinatario(update: Update, context: ContextTypes.DEFAULT_TY
         "destinatarios",
     )
 
-async def listar_destinatarios(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+
+async def listar_destinatarios(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Muestra los destinatarios guardados"""
     mensaje = obtener_mensaje(update)
     if not mensaje:
@@ -111,14 +154,19 @@ async def listar_destinatarios(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return
     cliente = context.args[0]
-    _ = context.args[1] if len(context.args) > 1 else None
+    carrier = context.args[1] if len(context.args) > 1 else None
     with SessionLocal() as session:
         cli = obtener_cliente_por_nombre(cliente)
-        lista = cli.destinatarios if cli and cli.destinatarios else []
+        if carrier and cli and cli.destinatarios_carrier:
+            lista = cli.destinatarios_carrier.get(carrier, [])
+        else:
+            lista = cli.destinatarios if cli and cli.destinatarios else []
     if not lista:
         respuesta = f"No hay destinatarios registrados para {cliente}."
     else:
-        respuesta = f"Destinatarios de {cliente}:\n" + "\n".join(f"- {d}" for d in lista)
+        respuesta = f"Destinatarios de {cliente}:\n" + "\n".join(
+            f"- {d}" for d in lista
+        )
     await responder_registrando(
         mensaje,
         user_id,
