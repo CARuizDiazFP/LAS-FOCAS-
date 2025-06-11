@@ -310,6 +310,7 @@ def generar_archivo_msg(
 
             mail.Body = contenido + ("\n\n" + firma if firma else "")
             mail.SaveAs(ruta, 3)  # 3 = olMSGUnicode
+  # Guardamos además una copia de texto plano para facilitar pruebas unitarias
             try:
                 with open(f"{ruta}.txt", "w", encoding="utf-8") as txt:
                     txt.write(mail.Body)
