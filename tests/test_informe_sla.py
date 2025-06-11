@@ -176,9 +176,8 @@ def _importar_handler(tmp_path: Path):
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
 
-    # Restaurar engine original y crear DB
-    sa.create_engine = orig_engine
     import sandybot.database as bd
+    sa.create_engine = orig_engine
 
     bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
     bd.Base.metadata.create_all(bind=bd.engine)

@@ -14,6 +14,12 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from types import SimpleNamespace        # fallback para stubs de test
 
+# Dependencia opcional para exportar PDF en Windows
+try:  # pragma: no cover - sólo disponible en Windows
+    import win32com.client as win32
+except Exception:  # pragma: no cover - si falta la librería
+    win32 = None
+
 from sandybot.config import config
 from ..utils import obtener_mensaje
 from .estado import UserState
@@ -197,6 +203,7 @@ async def actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT
 def _generar_documento_sla(
     reclamos_xlsx: str,
     servicios_xlsx: str,
+    exportar_pdf: bool = False,
     eventos: Optional[str] = "",
     conclusion: Optional[str] = "",
     propuesta: Optional[str] = "",
@@ -279,4 +286,18 @@ def _generar_documento_sla(
     nombre_archivo = "InformeSLA.docx"
     ruta_salida = os.path.join(tempfile.gettempdir(), nombre_archivo)
     doc.save(ruta_salida)
+
+    # Conversión opcional a PDF solo en Windows
+    if exportar_pdf and os.name == "nt" and win32 is not None:
+        try:
+            pdf_path = os.path.splitext(ruta_salida)[0] + ".pdf"
+            word_app = win32.Dispatch("Word.Application")
+            word_doc = word_app.Documents.Open(ruta_salida)
+            word_doc.SaveAs(pdf_path, FileFormat=17)
+            word_doc.Close()
+            word_app.Quit()
+            ruta_salida = pdf_path
+        except Exception as e:  # pragma: no cover - depende de Windows
+            logger.error("Error exportando a PDF: %s", e)
+
     return ruta_salida
