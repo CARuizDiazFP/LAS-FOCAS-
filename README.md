@@ -296,7 +296,7 @@ pip install -r requirements.txt
 Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `C:\Metrotel\Sandy`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
 Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `C:\Metrotel\Sandy\Template Informe SLA.docx`.
 El archivo debe existir en formato `.docx`.
-El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecerá el botón **Procesar**, que genera el informe utilizando la plantilla configurada en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco. Si ejecutás la función `_generar_documento_sla` con `exportar_pdf=True` y contás con `pywin32` en Windows, también se guardará una versión PDF.
+El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecerá el botón **Procesar**, que genera el informe utilizando la plantilla configurada en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
 
 ```env
 SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
@@ -312,6 +312,15 @@ Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" 
    Si se llama a `_generar_documento_sla(exportar_pdf=True)` en Windows, también se guarda la versión PDF.
 4. Finalmente el archivo se envía por Telegram y se elimina automáticamente del sistema para evitar residuos.
 5. En cualquier momento se puede usar el botón **Actualizar plantilla** para cargar una nueva base en formato `.docx`.
+
+### Exportar informe a PDF
+
+Para obtener una versión en PDF instalá `docx2pdf` o, si usás Windows, el paquete opcional `pywin32`.
+Una vez generada la plantilla podés presionar el botón **Exportar PDF** o llamar a
+`_generar_documento_sla(exportar_pdf=True)` para producir el archivo.
+El flujo consiste en enviar primero el Excel de **reclamos**, luego el de **servicios**,
+presionar **Procesar** y finalmente optar por **Exportar PDF**.
+Recordá que la plantilla se puede reemplazar en cualquier momento con el botón **Actualizar plantilla**.
 
 
 ## Enviar Excel por correo
@@ -360,11 +369,10 @@ Para validar el funcionamiento del proyecto se incluye una suite de pruebas basa
 Las dependencias externas como `openpyxl`, `python-docx` y `pandas` se utilizan en algunas pruebas,
 pero no son obligatorias gracias a los stubs incluidos.
 
-Antes de ejecutar `pytest` es recomendable preparar el entorno con `setup_env.sh`.
-Este script crea el virtualenv en `.venv` y realiza la instalación de
-`Sandy bot/requirements.txt` automáticamente. Además exporta la ruta
-`Sandy bot` en `PYTHONPATH` para que las importaciones funcionen sin ajustes
-manuales.
+Antes de ejecutar `pytest` es **necesario** preparar el entorno con `setup_env.sh`.
+El script crea el virtualenv en `.venv`, instala las dependencias de
+`Sandy bot/requirements.txt` y exporta la ruta `Sandy bot` en `PYTHONPATH`
+para que las importaciones funcionen sin ajustes manuales.
 
 ```bash
 ./setup_env.sh
