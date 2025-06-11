@@ -251,3 +251,23 @@ def test_generar_sin_fecha_y_exportar_pdf(tmp_path):
     # PDF opcional (solo se verifica extensión, porque conversión depende de Word/LibreOffice)
     ruta_pdf = informe._generar_documento_sla(str(r), str(s), exportar_pdf=True)
     assert ruta_pdf.endswith(".pdf") or ruta_pdf.endswith(".docx")
+
+
+def test_columnas_opcionales(tmp_path):
+    """El documento sólo incluye las columnas presentes en servicios."""
+    informe = _importar_handler(tmp_path)
+
+    reclamos = pd.DataFrame({"Servicio": [1]})
+    servicios = pd.DataFrame({"Servicio": [1], "Dirección": ["Calle 1"]})
+
+    r, s = tmp_path / "rec.xlsx", tmp_path / "ser.xlsx"
+    reclamos.to_excel(r, index=False)
+    servicios.to_excel(s, index=False)
+
+    ruta = informe._generar_documento_sla(str(r), str(s))
+    doc = Document(ruta)
+    tabla = doc.tables[0]
+    headers = [c.text for c in tabla.rows[0].cells]
+
+    assert headers == ["Servicio", "Dirección", "Reclamos"]
+    assert tabla.rows[1].cells[1].text == "Calle 1"

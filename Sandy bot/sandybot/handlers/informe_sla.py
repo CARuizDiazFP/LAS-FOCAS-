@@ -200,10 +200,24 @@ def _generar_documento_sla(
     eventos: Optional[str] = "",
     conclusion: Optional[str] = "",
     propuesta: Optional[str] = "",
+    *,
+    exportar_pdf: bool = False,
 ) -> str:
     """Combina datos y genera el documento SLA usando la plantilla personalizada."""
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
+
+    columnas_extra = [
+        "SLA Entregado",
+        "Dirección",
+        "Horas Netas Reclamo",
+    ]
+    columnas_presentes = []
+    for col in columnas_extra:
+        if col in servicios_df.columns:
+            columnas_presentes.append(col)
+        else:
+            logger.warning("Columna faltante en servicios.xlsx: %s", col)
 
     # Normaliza nombres de columna
     if "Servicio" not in reclamos_df.columns:
@@ -247,15 +261,16 @@ def _generar_documento_sla(
         doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
 
     # Tabla de resumen
-    tabla = doc.add_table(rows=1, cols=2, style="Table Grid")
+    encabezados = ["Servicio", *columnas_presentes, "Reclamos"]
+    tabla = doc.add_table(rows=1, cols=len(encabezados), style="Table Grid")
     hdr = tabla.rows[0].cells
-    hdr[0].text = "Servicio"
-    hdr[1].text = "Reclamos"
+    for i, col in enumerate(encabezados):
+        hdr[i].text = col
 
     for _, fila in df.iterrows():
-        row = tabla.add_row().cells
-        row[0].text = str(fila["Servicio"])
-        row[1].text = str(fila["Reclamos"])
+        celdas = tabla.add_row().cells
+        for i, col in enumerate(encabezados):
+            celdas[i].text = str(fila.get(col, ""))
 
     # Insertar textos personalizados
     etiquetas = {
@@ -279,4 +294,15 @@ def _generar_documento_sla(
     nombre_archivo = "InformeSLA.docx"
     ruta_salida = os.path.join(tempfile.gettempdir(), nombre_archivo)
     doc.save(ruta_salida)
+
+    if exportar_pdf:
+        ruta_pdf = ruta_salida.replace(".docx", ".pdf")
+        try:
+            from docx2pdf import convert  # type: ignore
+
+            convert(ruta_salida, ruta_pdf)
+            ruta_salida = ruta_pdf
+        except Exception:  # pragma: no cover - conversión opcional
+            logger.warning("No fue posible convertir a PDF")
+
     return ruta_salida
