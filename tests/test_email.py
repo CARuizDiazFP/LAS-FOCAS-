@@ -3,6 +3,7 @@ import os
 import importlib
 from types import ModuleType
 from pathlib import Path
+from sqlalchemy.orm import sessionmaker
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
@@ -42,30 +43,47 @@ for var in [
 ]:
     os.environ.setdefault(var, "x")
 
+# Preparar base de datos en memoria
+import sqlalchemy
+orig_engine = sqlalchemy.create_engine
+sqlalchemy.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
+
+import sandybot.database as bd
+sqlalchemy.create_engine = orig_engine
+bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
+bd.Base.metadata.create_all(bind=bd.engine)
+
 email_utils = importlib.import_module("sandybot.email_utils")
 
 
-def test_operaciones_destinatarios(tmp_path):
-    json_path = tmp_path / "dest.json"
+def test_operaciones_destinatarios():
+    cli = bd.Cliente(nombre="Cli")
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
 
     # Inicialmente la lista esta vacia
-    assert email_utils.cargar_destinatarios(json_path) == []
+    assert email_utils.cargar_destinatarios(cli.id) == []
 
-    # Agregar correos
-    assert email_utils.agregar_destinatario("a@x.com", json_path) is True
-    assert email_utils.cargar_destinatarios(json_path) == ["a@x.com"]
+    assert email_utils.agregar_destinatario("a@x.com", cli.id) is True
+    assert email_utils.cargar_destinatarios(cli.id) == ["a@x.com"]
 
-    assert email_utils.agregar_destinatario("b@x.com", json_path) is True
-    assert set(email_utils.cargar_destinatarios(json_path)) == {"a@x.com", "b@x.com"}
+    assert email_utils.agregar_destinatario("b@x.com", cli.id) is True
+    assert set(email_utils.cargar_destinatarios(cli.id)) == {"a@x.com", "b@x.com"}
 
-    # Eliminar un correo
-    assert email_utils.eliminar_destinatario("a@x.com", json_path) is True
-    assert email_utils.cargar_destinatarios(json_path) == ["b@x.com"]
+    assert email_utils.eliminar_destinatario("a@x.com", cli.id) is True
+    assert email_utils.cargar_destinatarios(cli.id) == ["b@x.com"]
 
 
-def test_enviar_correo(monkeypatch, tmp_path):
-    json_path = tmp_path / "dest.json"
-    email_utils.agregar_destinatario("c@x.com", json_path)
+def test_enviar_correo(monkeypatch):
+    cli = bd.Cliente(nombre="Env")
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    email_utils.agregar_destinatario("c@x.com", cli.id)
 
     registros = {}
 
@@ -107,7 +125,7 @@ def test_enviar_correo(monkeypatch, tmp_path):
     ok = email_utils.enviar_correo(
         "Alerta",
         "Prueba",
-        json_path,
+        cli.id,
         host="localhost",
         port=1025,
     )
@@ -125,7 +143,7 @@ def test_enviar_correo(monkeypatch, tmp_path):
     ok = email_utils.enviar_correo(
         "Alerta",
         "Prueba",
-        json_path,
+        cli.id,
         host="localhost",
         port=1025,
     )
@@ -135,9 +153,14 @@ def test_enviar_correo(monkeypatch, tmp_path):
     os.environ.pop("SMTP_DEBUG", None)
 
 
-def test_enviar_correo_ssl(monkeypatch, tmp_path):
-    json_path = tmp_path / "dest.json"
-    email_utils.agregar_destinatario("d@x.com", json_path)
+def test_enviar_correo_ssl(monkeypatch):
+    cli = bd.Cliente(nombre="SSL")
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    email_utils.agregar_destinatario("d@x.com", cli.id)
 
     registros = {}
 
@@ -175,7 +198,7 @@ def test_enviar_correo_ssl(monkeypatch, tmp_path):
     ok = email_utils.enviar_correo(
         "Alerta",
         "SSL",
-        json_path,
+        cli.id,
         host="mail",  # host
         port=465,
     )

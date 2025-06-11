@@ -3,6 +3,7 @@ import types
 import os
 import importlib
 from pathlib import Path
+from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 
 # Preparar rutas
@@ -67,6 +68,15 @@ os.environ.update(
         "SMTP_USE_TLS": "true",
     }
 )
+
+# Base de datos en memoria para las pruebas
+import sqlalchemy
+orig = sqlalchemy.create_engine
+sqlalchemy.create_engine = lambda *a, **k: orig("sqlite:///:memory:")
+import sandybot.database as bd
+sqlalchemy.create_engine = orig
+bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
+bd.Base.metadata.create_all(bind=bd.engine)
 
 from sandybot import config as config_mod
 config_mod.Config._instance = None
@@ -139,3 +149,39 @@ def test_enviar_tracking_reciente_por_correo(tmp_path):
     ok = email_utils.enviar_tracking_reciente_por_correo("d@x.com", 7)
     assert ok is True
     assert reg["sent"] is True
+
+
+def test_enviar_correo_a_cliente(monkeypatch):
+    cli = bd.Cliente(nombre="Mail", destinatarios=["m@x.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    class DebugSMTP:
+        def __init__(self, host, port):
+            reg["host"] = host
+            reg["port"] = port
+
+        def starttls(self):
+            reg["tls"] = True
+
+        def login(self, u, p):
+            reg["login"] = (u, p)
+
+        def sendmail(self, f, to, msg):
+            reg["sent"] = to
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            pass
+
+    monkeypatch.setattr(email_utils.smtplib, "SMTP", DebugSMTP)
+    monkeypatch.setattr(email_utils.smtplib, "SMTP_SSL", DebugSMTP)
+
+    reg.clear()
+    ok = email_utils.enviar_correo("Aviso", "Hola", cli.id, host="h", port=25)
+    assert ok is True
+    assert reg["sent"] == ["m@x.com"]

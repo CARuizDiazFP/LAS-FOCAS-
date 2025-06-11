@@ -91,15 +91,24 @@ def obtener_mensaje(update: Update) -> Optional[Message]:
         return update.callback_query.message
     return None
 
-def cargar_destinatarios() -> Dict[str, Any]:
-    """Carga el archivo de destinatarios definido en :class:`Config`."""
-    from .config import config
+def cargar_destinatarios(cliente: str) -> list[str]:
+    """Obtiene los destinatarios asociados a ``cliente``."""
+    from .database import obtener_cliente_por_nombre
 
-    return cargar_json(config.ARCHIVO_DESTINATARIOS)
+    cli = obtener_cliente_por_nombre(cliente)
+    return cli.destinatarios if cli and cli.destinatarios else []
 
 
-def guardar_destinatarios(destinatarios: Dict[str, Any]) -> bool:
-    """Guarda la lista de destinatarios en el archivo configurado."""
-    from .config import config
+def guardar_destinatarios(cliente: str, destinatarios: list[str]) -> bool:
+    """Actualiza los correos del cliente indicado."""
+    from .database import obtener_cliente_por_nombre, Cliente, SessionLocal
 
-    return guardar_json(destinatarios, config.ARCHIVO_DESTINATARIOS)
+    with SessionLocal() as session:
+        cli = obtener_cliente_por_nombre(cliente)
+        if not cli:
+            cli = Cliente(nombre=cliente, destinatarios=destinatarios)
+            session.add(cli)
+        else:
+            cli.destinatarios = destinatarios
+        session.commit()
+        return True
