@@ -18,13 +18,8 @@ except Exception:                     # pragma: no cover - entornos sin win32
 
 from .config import config
 
-try:
-    import win32com.client as win32
-except ImportError:  # pragma: no cover - depende del sistema
-    win32 = None
-
 SIGNATURE_PATH = (
-    Path(os.getenv("SIGNATURE_PATH")) if os.getenv("SIGNATURE_PATH") else None
+    Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
 )
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada, Carrier
 from .utils import (
