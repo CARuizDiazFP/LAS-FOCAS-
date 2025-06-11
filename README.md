@@ -143,10 +143,7 @@ Además Sandy envía el aviso por correo a los destinatarios configurados para e
 
 ### Procesar correos y registrar tareas
 
-Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el
-
-evita cargar la información de forma manual. El aviso generado se envía
-automáticamente por correo a los contactos del cliente.
+Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el bot y evitar cargar la información de forma manual. El aviso generado se envía automáticamente por correo a los contactos del cliente.
 
 Por ejemplo:
 ```bash
