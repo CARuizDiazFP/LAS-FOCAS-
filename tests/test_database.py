@@ -240,3 +240,19 @@ def test_crear_tarea_y_relacion():
     assert len(tareas) == 1
     assert tareas[0].id == tarea.id
 
+
+def test_tarea_servicio_unica():
+    """La relación tarea-servicio no debe duplicarse."""
+
+    s = bd.crear_servicio(nombre="SrvU", cliente="CliU")
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8),
+        datetime(2024, 1, 2, 10),
+        "Mantenimiento",
+        [s.id],
+    )
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        with bd.SessionLocal() as session:
+            session.add(bd.TareaServicio(tarea_id=tarea.id, servicio_id=s.id))
+            session.commit()
+
