@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-from pathlib import Path
 
 import pandas as pd
 from docx import Document
@@ -47,7 +46,7 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # ────────────────────────── FLUJO DE PROCESO ─────────────────────────
 async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Gestiona la generación del informe SLA en múltiples pasos."""
+    """Gestiona la generación del informe SLA paso a paso."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en procesar_informe_sla")
@@ -55,7 +54,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = update.effective_user.id
 
-    # ───── Paso inicial: recepción de archivos Excel ─────
+    # ───── Paso inicial: recepción de los 2 Excel ─────
     if not context.user_data.get("archivos"):
         docs: list = []
         if getattr(mensaje, "document", None):
@@ -149,6 +148,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
                 "informe_sla",
             )
         finally:
+            # Limpieza de temporales y restablecimiento de estado
             for p in context.user_data.get("archivos", []):
                 try:
                     os.remove(p)
@@ -176,11 +176,7 @@ def _generar_documento_sla(
     conclusion: str | None = None,
     propuesta: str | None = None,
 ) -> str:
-    """Combina reclamos y servicios en un documento Word.
-
-    Si ``eventos``, ``conclusion`` o ``propuesta`` se indican, se insertan en
-    los párrafos correspondientes de la plantilla.
-    """
+    """Combina datos y genera el documento SLA usando la plantilla personalizada."""
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
 
@@ -190,7 +186,7 @@ def _generar_documento_sla(
     if "Servicio" not in servicios_df.columns:
         servicios_df.rename(columns={servicios_df.columns[0]: "Servicio"}, inplace=True)
 
-    # Título: mes y año del primer reclamo
+    # Título Mes/Año
     try:
         fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
     except Exception:
@@ -204,10 +200,10 @@ def _generar_documento_sla(
     df["Reclamos"] = df["Reclamos"].fillna(0).astype(int)
 
     # Documento base
-    if RUTA_PLANTILLA and os.path.exists(RUTA_PLANTILLA):
-        doc = Document(RUTA_PLANTILLA)
-    else:
-        doc = Document()
+    if not (RUTA_PLANTILLA and os.path.exists(RUTA_PLANTILLA)):
+        logger.error("Plantilla de SLA no encontrada: %s", RUTA_PLANTILLA)
+        raise ValueError("Plantilla de SLA no encontrada")
+    doc = Document(RUTA_PLANTILLA)
 
     doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
 
@@ -222,7 +218,7 @@ def _generar_documento_sla(
         row[0].text = str(fila["Servicio"])
         row[1].text = str(fila["Reclamos"])
 
-    # Insertar textos personalizados si la plantilla tiene las etiquetas
+    # Insertar textos personalizados
     etiquetas = {
         "Eventos sucedidos de mayor impacto en SLA:": eventos,
         "Conclusión:": conclusion,
@@ -236,7 +232,6 @@ def _generar_documento_sla(
                 p.text = f"{etiqueta} {contenido or ''}"
                 encontrados.add(etiqueta)
                 break
-    # Si alguna etiqueta no existe en la plantilla, la agregamos al final
     for etiqueta, contenido in etiquetas.items():
         if etiqueta not in encontrados and contenido:
             doc.add_paragraph(f"{etiqueta} {contenido}")
