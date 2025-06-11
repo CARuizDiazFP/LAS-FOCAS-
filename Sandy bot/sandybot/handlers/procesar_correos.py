@@ -76,21 +76,24 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             contenido = _leer_msg(ruta)
             if not contenido:
                 raise ValueError("Sin contenido")
-            tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
-                contenido, cliente_nombre, carrier_nombre
+        # --- Procesamos el correo y registramos la tarea -----------------
+        tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
+            contenido, cliente_nombre, carrier_nombre
+        )
+
+        # Obtenemos el cuerpo del mensaje (.msg) para enviarlo por mail
+        cuerpo = ""
+        try:
+            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+
             )
         except Exception as e:  # pragma: no cover - manejo simple
             logger.error("Fallo procesando correo: %s", e)
             os.remove(ruta)
             continue
         os.remove(ruta)
-
-        # Leer el cuerpo del .msg recién generado para enviarlo por correo
-        cuerpo = ""
-        try:
-            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
 
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
