@@ -119,9 +119,21 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             return
 
         # Ambos archivos listos: mostrar botón Procesar
-        keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
-        )
+        try:
+            keyboard = InlineKeyboardMarkup(
+                [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
+            )
+        except Exception:  # pragma: no cover
+            class _Btn:
+                def __init__(self, text: str, callback_data: str | None = None):
+                    self.text = text
+                    self.callback_data = callback_data
+
+            class _Mk:
+                def __init__(self, keyboard):
+                    self.inline_keyboard = keyboard
+
+            keyboard = _Mk([[_Btn("Procesar informe 🚀", callback_data="sla_procesar")]])
         await responder_registrando(
             mensaje,
             user_id,
@@ -149,6 +161,7 @@ def _generar_documento_sla(
     eventos: Optional[str] = "",
     conclusion: Optional[str] = "",
     propuesta: Optional[str] = "",
+    exportar_pdf: bool = False,
 ) -> str:
     """Combina datos y genera el documento SLA usando la plantilla personalizada."""
     reclamos_df = pd.read_excel(reclamos_xlsx)
@@ -216,4 +229,19 @@ def _generar_documento_sla(
     nombre_archivo = "InformeSLA.docx"
     ruta_salida = os.path.join(tempfile.gettempdir(), nombre_archivo)
     doc.save(ruta_salida)
+
+    if exportar_pdf and os.name == "nt":
+        try:
+            from win32com.client import Dispatch
+
+            word = Dispatch("Word.Application")
+            doc_com = word.Documents.Open(ruta_salida)
+            ruta_pdf = os.path.splitext(ruta_salida)[0] + ".pdf"
+            doc_com.SaveAs(ruta_pdf, FileFormat=17)
+            doc_com.Close()
+            word.Quit()
+            ruta_salida = ruta_pdf
+        except Exception as e:  # pragma: no cover
+            logger.error("Error convirtiendo a PDF: %s", e)
+
     return ruta_salida

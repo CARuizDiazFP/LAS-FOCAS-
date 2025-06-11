@@ -3,6 +3,7 @@ import importlib
 import asyncio
 from types import ModuleType, SimpleNamespace
 from pathlib import Path
+import os
 from sqlalchemy.orm import sessionmaker
 import tempfile
 import os
@@ -252,5 +253,6 @@ def test_generar_sin_fecha(tmp_path):
     reclamos.to_excel(r_path, index=False)
     servicios.to_excel(s_path, index=False)
 
-    ruta = informe._generar_documento_sla(str(r_path), str(s_path))
+    ruta = informe._generar_documento_sla(str(r_path), str(s_path), exportar_pdf=True)
     assert Path(ruta).exists()
+    assert ruta.endswith(".pdf") if os.name == "nt" else ruta.endswith(".docx")
