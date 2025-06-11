@@ -32,6 +32,7 @@ Para adjuntar archivos por email se utilizan las siguientes variables opcionales
 - `SMTP_HOST` y `SMTP_PORT`: servidor y puerto del servicio SMTP.
 - `SMTP_USER` y `SMTP_PASSWORD`: credenciales si el servidor las requiere.
 - `EMAIL_FROM`: dirección remitente utilizada en los mensajes.
+- `SIGNATURE_PATH`: archivo de firma que se adjunta al final de cada aviso.
 
 Si vas a usar Gmail en desarrollo, activá la verificación en dos pasos y generá
 una **contraseña de aplicación**. Definí las variables así:
@@ -112,11 +113,27 @@ tarea = crear_tarea_programada(
 )
 ```
 
+
+### Avisos en formato `.MSG`
+
+Al registrar una tarea se genera un archivo `.MSG` con los datos
+principales. Este aviso puede abrirse con Outlook y reenviarse o
+ajustarse antes de enviarlo. Si `pywin32` está presente, el sistema
+aplica la firma ubicada en `SIGNATURE_PATH` y aprovecha Outlook para
+formatear el mensaje.
+
+### Procesar correos y registrar tareas
+
+Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el
+bot y crear automáticamente cada tarea programada. De esta manera se
+evita cargar la información de forma manual.
+
 ### Detectar tareas desde un correo
 
 Con `/detectar_tarea <cliente>` podés pegar el mail o adjuntar el archivo.
 Sandy utiliza GPT para extraer inicio, fin, tipo y los IDs de servicio.
 Al crear la tarea genera también un `.MSG` con el texto listo para enviar.
+
 
 ## Carga de tracking
 
