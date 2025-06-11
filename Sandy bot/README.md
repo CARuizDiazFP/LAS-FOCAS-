@@ -196,7 +196,7 @@ Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla
 El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Podés enviarlos por separado sin importar el orden.
 Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`.
 Después solicitará escribir los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora**.
-La variable `SLA_TEMPLATE_PATH` permite indicar la ruta exacta de la plantilla y debe apuntar a un archivo `.docx`.
+
 
 ```env
 SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx

@@ -3,6 +3,7 @@ import importlib
 import asyncio
 from types import ModuleType, SimpleNamespace
 from pathlib import Path
+from sqlalchemy.orm import sessionmaker
 import tempfile
 import os
 
@@ -13,8 +14,19 @@ from docx import Document
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
-# --- Telegram stub (mínimo) -------------------------------------------------
+# --- Telegram stub ----------------------------------------------------------
 telegram_stub = ModuleType("telegram")
+
+
+class InlineKeyboardButton:
+    def __init__(self, text: str, callback_data: str | None = None):
+        self.text = text
+        self.callback_data = callback_data
+
+
+class InlineKeyboardMarkup:
+    def __init__(self, keyboard):
+        self.inline_keyboard = keyboard
 
 
 class DocumentStub:
@@ -35,6 +47,7 @@ class Message:
         self.documents = documents or []
         self.text = text
         self.sent: str | None = None
+        self.markup = None
         self.from_user = SimpleNamespace(id=1)
 
     async def reply_document(self, f, *, filename=None):
@@ -43,24 +56,42 @@ class Message:
         self.sent = filename
 
     async def reply_text(self, *a, **k):
+        # Captura de reply_markup para los asserts
+        self.markup = k.get("reply_markup")
+
+    async def edit_text(self, *a, **k):  # pragma: no cover
+        pass
+
+
+class CallbackQuery:
+    def __init__(self, data: str = "", message=None):
+        self.data = data
+        self.message = message
+
+    async def answer(self):  # pragma: no cover
         pass
 
 
 class Update:
-    def __init__(self, *, message=None):
+    def __init__(self, *, message=None, callback_query=None, edited_message=None):
         self.message = message
+        self.callback_query = callback_query
+        self.edited_message = edited_message
         self.effective_user = SimpleNamespace(id=1)
 
 
 telegram_stub.Update = Update
 telegram_stub.Message = Message
 telegram_stub.Document = DocumentStub
-sys.modules.setdefault("telegram", telegram_stub)
+telegram_stub.CallbackQuery = CallbackQuery
+telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
+sys.modules["telegram"] = telegram_stub
 
 # --- telegram.ext stub ------------------------------------------------------
 telegram_ext_stub = ModuleType("telegram.ext")
 telegram_ext_stub.ContextTypes = type("C", (), {"DEFAULT_TYPE": object})
-sys.modules.setdefault("telegram.ext", telegram_ext_stub)
+sys.modules["telegram.ext"] = telegram_ext_stub
 
 # --- dotenv stub ------------------------------------------------------------
 dotenv_stub = ModuleType("dotenv")
@@ -84,35 +115,62 @@ for var in [
 # ───────────────────── FUNCIÓN DE IMPORT DINÁMICA ────────────────────
 def _importar_handler(tmp_path: Path):
     """
-    - Genera una plantilla vacía de Word.
-    - Carga / recarga sandybot.config (lo necesita informe_sla).
-    - Importa dinámicamente el módulo `informe_sla.py` y devuelve la referencia.
+    1. Crea una plantilla vacía de Word y la fija en RUTA_PLANTILLA.
+    2. Stub de registrador para capturar reply_markup.
+    3. Fuerza SQLite en memoria.
+    4. Carga dinámicamente sandybot.handlers.informe_sla y devuelve el módulo.
     """
     template = tmp_path / "template.docx"
     Document().save(template)
 
-    # Recargar config para que cualquier acceso posterior tome valores frescos
+    # Stub registrador
+    registrador_stub = ModuleType("sandybot.registrador")
+
+    async def responder_registrando(msg, *a, **k):
+        if "reply_markup" in k and hasattr(msg, "markup"):
+            msg.markup = k["reply_markup"]
+        if hasattr(msg, "reply_text"):
+            await msg.reply_text(*a, **k)
+
+    registrador_stub.responder_registrando = responder_registrando
+    registrador_stub.registrar_conversacion = lambda *a, **k: None
+    sys.modules["sandybot.registrador"] = registrador_stub
+
+    # Forzar engine SQLite memoria
+    import sqlalchemy as sa
+
+    orig_engine = sa.create_engine
+    sa.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
+
+    # (Re)cargar config
     if "sandybot.config" in sys.modules:
         importlib.reload(sys.modules["sandybot.config"])
     else:
         importlib.import_module("sandybot.config")
 
-    # Cargar dinámicamente el handler
+    # Asegurar paquete handlers
     pkg = "sandybot.handlers"
     handlers_pkg = sys.modules.get(pkg) or ModuleType(pkg)
     handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
     sys.modules[pkg] = handlers_pkg
 
+    # Import dinámico del handler
     mod_name = f"{pkg}.informe_sla"
     spec = importlib.util.spec_from_file_location(
-        mod_name,
-        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "informe_sla.py",
+        mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "informe_sla.py"
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
 
-    # Forzamos la plantilla a la recién creada
+    # Restaurar engine
+    sa.create_engine = orig_engine
+    import sandybot.database as bd
+
+    bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
+    bd.Base.metadata.create_all(bind=bd.engine)
+
+    # Fijar plantilla
     mod.RUTA_PLANTILLA = str(template)
     return mod
 
@@ -121,7 +179,7 @@ def _importar_handler(tmp_path: Path):
 def test_procesar_informe_sla(tmp_path):
     informe = _importar_handler(tmp_path)
 
-    # Datos de prueba
+    # -------- Datos de prueba --------
     reclamos = pd.DataFrame(
         {
             "ID Servicio": [1, 1, 2],
@@ -139,40 +197,52 @@ def test_procesar_informe_sla(tmp_path):
     reclamos.to_excel(r_path, index=False)
     servicios.to_excel(s_path, index=False)
 
-    # Stub documentos Telegram
     doc1 = DocumentStub("reclamos.xlsx", r_path.read_bytes())
     doc2 = DocumentStub("servicios.xlsx", s_path.read_bytes())
     ctx = SimpleNamespace(user_data={})
 
-    # Redirigir carpeta temporal para capturar archivos generados
+    # Redirigir tempdir para capturar outputs
     orig_tmp = tempfile.gettempdir
     tempfile.gettempdir = lambda: str(tmp_path)
 
     try:
-        # Paso 1: envío de ambos Excel
-        msg1 = Message(documents=[doc1, doc2])
+        # Paso 1: primer Excel (reclamos)
+        msg1 = Message(documents=[doc1])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg1), ctx))
-        assert ctx.user_data.get("esperando_eventos")
-        assert msg1.sent is None
+        assert ctx.user_data["archivos"][0] and ctx.user_data["archivos"][1] is None
 
-        # Paso 2: eventos
-        msg2 = Message(text="Evento crítico")
+        # Paso 2: segundo Excel (servicios)
+        msg2 = Message(documents=[doc2])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
+        assert all(ctx.user_data["archivos"])
+        assert ctx.user_data["esperando_eventos"] is False
+        # Confirmamos botón procesar
+        boton = msg2.markup.inline_keyboard[0][0]
+        assert boton.callback_data == "sla_procesar"
+
+        # Paso 3: activamos callback
+        cb = CallbackQuery("sla_procesar", message=msg2)
+        asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
+        assert ctx.user_data.get("esperando_eventos")
+
+        # Paso 4: eventos
+        msg3 = Message(text="Evento crítico")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
         assert ctx.user_data.get("esperando_conclusion")
 
-        # Paso 3: conclusión
-        msg3 = Message(text="Conclusión X")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
+        # Paso 5: conclusión
+        msg4 = Message(text="Conclusión X")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
         assert ctx.user_data.get("esperando_propuesta")
 
-        # Paso 4: propuesta y generación final
-        msg4 = Message(text="Propuesta Y")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
+        # Paso 6: propuesta y generación final
+        msg5 = Message(text="Propuesta Y")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg5), ctx))
     finally:
         tempfile.gettempdir = orig_tmp  # Restaurar tempdir
 
-    # Verifica documento generado
-    ruta_generada = tmp_path / msg4.sent
+    # -------- Verificaciones de resultado --------
+    ruta_generada = tmp_path / msg5.sent
     assert ruta_generada.exists()
     doc = Document(ruta_generada)
 
@@ -183,6 +253,5 @@ def test_procesar_informe_sla(tmp_path):
     assert "Propuesta Y" in textos
 
     tabla = doc.tables[0]
-    # Primera fila es encabezado
     assert tabla.rows[1].cells[0].text == "1" and tabla.rows[1].cells[1].text == "2"
     assert tabla.rows[2].cells[0].text == "2" and tabla.rows[2].cells[1].text == "1"
