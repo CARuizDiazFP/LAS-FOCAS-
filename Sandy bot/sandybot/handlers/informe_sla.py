@@ -244,6 +244,12 @@ def _generar_documento_sla(
         fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
     except Exception:
         fecha = pd.Timestamp.today()
+
+    # Validación de la fecha obtenida
+    if pd.isna(fecha) or not hasattr(fecha, "strftime"):
+        logger.warning("Fecha de reclamo inválida: %s. Se usa la fecha actual.", fecha)
+        fecha = pd.Timestamp.today()
+
     mes = fecha.strftime("%B")
     anio = fecha.strftime("%Y")
 
