@@ -65,24 +65,32 @@ for var in [
 ]:
     os.environ.setdefault(var, "x")
 
-importlib.import_module("sandybot.config")
+def _importar(tmp_path):
+    template = tmp_path / "template.docx"
+    Document().save(template)
+    os.environ["SLA_TEMPLATE_PATH"] = str(template)
 
-pkg = "sandybot.handlers"
-handlers_pkg = ModuleType(pkg)
-handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
-sys.modules.setdefault(pkg, handlers_pkg)
+    importlib.reload(importlib.import_module("sandybot.config"))
 
-mod_name = f"{pkg}.informe_sla"
-spec = importlib.util.spec_from_file_location(
-    mod_name,
-    ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "informe_sla.py",
-)
-informe = importlib.util.module_from_spec(spec)
-sys.modules[mod_name] = informe
-spec.loader.exec_module(informe)
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
 
+    mod_name = f"{pkg}.informe_sla"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "informe_sla.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
 def test_procesar_informe_sla(tmp_path):
+    informe = _importar(tmp_path)
+
     reclamos = pd.DataFrame({
         "ID Servicio": [1, 1, 2],
         "Fecha": pd.to_datetime(["2024-05-01", "2024-05-02", "2024-05-03"]),
@@ -114,5 +122,9 @@ def test_procesar_informe_sla(tmp_path):
     doc = Document(ruta)
     titulo = doc.paragraphs[0].text
     assert "Informe SLA" in titulo
-    assert "Servicio 1" in doc.paragraphs[1].text
-    assert "Servicio 2" in doc.paragraphs[3].text
+    assert len(doc.tables) > 0
+    tabla = doc.tables[0]
+    celdas = [c.text for c in tabla.column_cells(0)]
+    assert "Servicio" in celdas[0]
+    assert "1" in celdas[1]
+    assert "2" in celdas[2]
