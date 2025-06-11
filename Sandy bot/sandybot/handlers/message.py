@@ -116,6 +116,11 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             await _manejar_comparador(update, context, mensaje_usuario)
             return
 
+        if mode == "informe_sla":
+            from .informe_sla import procesar_informe_sla
+            await procesar_informe_sla(update, context)
+            return
+
         if mode == "ingresos":
             if context.user_data.get("esperando_opcion"):
                 await _manejar_opcion_ingresos(update, context, mensaje_usuario)
