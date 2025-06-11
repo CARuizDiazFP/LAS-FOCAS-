@@ -509,13 +509,8 @@ async def _ejecutar_accion_natural(
         await iniciar_incidencias(update, context)
         return True
     elif accion == "informe_sla":
-        await responder_registrando(
-            update.message,
-            update.effective_user.id,
-            accion,
-            "🔧 Función 'Informe de SLA' aún no implementada.",
-            "informe_sla",
-        )
+        from .informe_sla import iniciar_informe_sla
+        await iniciar_informe_sla(update, context)
         return True
     elif accion == "start":
         from .start import start_handler

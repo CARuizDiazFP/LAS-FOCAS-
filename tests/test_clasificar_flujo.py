@@ -70,6 +70,7 @@ def test_flujos_nuevos():
         "enviar_camaras_mail",
         "analizar_incidencias",
         "nueva_solicitud",
+        "informe_sla",
     ]
     for flujo in nuevos:
         assert _clasificar(flujo) == flujo
@@ -94,6 +95,7 @@ def _detectar(texto: str) -> str:
         "sandybot.handlers.cargar_tracking": ModuleType("sandybot.handlers.cargar_tracking"),
         "sandybot.handlers.repetitividad": ModuleType("sandybot.handlers.repetitividad"),
         "sandybot.handlers.id_carrier": ModuleType("sandybot.handlers.id_carrier"),
+        "sandybot.handlers.informe_sla": ModuleType("sandybot.handlers.informe_sla"),
     }
 
     stubs["telegram"].Update = object
@@ -116,6 +118,7 @@ def _detectar(texto: str) -> str:
     stubs["sandybot.handlers.cargar_tracking"].iniciar_carga_tracking = _a
     stubs["sandybot.handlers.repetitividad"].iniciar_repetitividad = _a
     stubs["sandybot.handlers.id_carrier"].iniciar_identificador_carrier = _a
+    stubs["sandybot.handlers.informe_sla"].iniciar_informe_sla = _a
 
     class CT:
         DEFAULT_TYPE = object()
@@ -156,8 +159,13 @@ def test_variantes_diccionario():
         "desc trk": "descargar_tracking",
         "env cams mail": "enviar_camaras_mail",
         "verfiar ingrsos": "verificar_ingresos",
+        "inf sla": "informe_sla",
     }
 
     for texto, esperado in ejemplos.items():
         assert detectar(texto) == esperado
+
+
+def test_sla_diccionario():
+    assert _detectar("informe de sla") == "informe_sla"
 

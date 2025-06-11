@@ -3,18 +3,20 @@
 Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `Sandy bot/requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
-API utilizada en `sandybot`. También se necesita `extract-msg` para leer los
-archivos `.msg` con el comando `/procesar_correos`.
-Desde esta versión el bot también acepta mensajes de voz, los descarga y
-transcribe automáticamente utilizando la API de OpenAI.
+API utilizada en `sandybot`. Es obligatorio instalar `extract-msg` para leer los
+adjuntos `.msg` y opcionalmente `pywin32`, que permite insertar la firma y
+generar un `.MSG` real desde Outlook. Desde esta versión el bot también acepta
+mensajes de voz, los descarga y los transcribe automáticamente utilizando la API
+de OpenAI.
 
 ## Variables de entorno
 
 El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
-  no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
+
 - `SLA_TEMPLATE_PATH`: ruta de la plantilla para el Informe de SLA. Si no se define, se usa `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+
 - `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
@@ -54,6 +56,12 @@ El documento base para generar los reportes de repetitividad se indica
 mediante la variable de entorno `PLANTILLA_PATH`. Si no se define, el
 código toma la ruta por defecto `C:\Metrotel\Sandy\plantilla_informe.docx`
 tal como se especifica en `config.py`.
+
+## Plantilla del informe de SLA
+
+Para los reportes de nivel de servicio se utiliza un archivo Word
+configurable por `SLA_TEMPLATE_PATH`. Si la variable no está presente,
+se recurre a `C:\Metrotel\Sandy\Template Informe SLA.docx`.
 
 ## Base de datos
 
@@ -151,7 +159,9 @@ Al registrar una tarea se genera un archivo `.MSG` con los datos
 principales. Este aviso puede abrirse con Outlook y reenviarse o
 ajustarse antes de enviarlo. Si `pywin32` está presente, el sistema
 aplica la firma ubicada en `SIGNATURE_PATH` y aprovecha Outlook para
-formatear el mensaje.
+formatear el mensaje. Para leer los adjuntos es necesario instalar
+`extract-msg`; `pywin32` es opcional, pero permite crear un `.MSG`
+real con la firma incluida.
 Además Sandy envía el aviso por correo a los destinatarios configurados para el cliente o para el par (cliente, carrier) cuando corresponde.
 
 ### Reenviar un aviso de tarea
@@ -168,13 +178,23 @@ Además adjuntará el archivo `.MSG` en el chat para facilitar el reenvío manua
 
 ### Procesar correos y registrar tareas
 
-Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el bot y evitar cargar la información de forma manual. El aviso generado se envía automáticamente por correo a los contactos del cliente.
+Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el bot y evitar cargar la información de forma manual. El comando extrae los datos mediante GPT y reenvía automáticamente el aviso a los destinatarios configurados.
+
+Si `pywin32` está instalado los `.MSG` se crean con Outlook, por lo que podés abrirlos y editar el cuerpo antes de enviarlos. Sin esas librerías el bot genera un texto plano.
 
 Por ejemplo:
 ```bash
 /procesar_correos Cliente
 ```
-Luego adjuntá uno o varios archivos `.msg` con las ventanas de mantenimiento.
+Luego adjuntá uno o varios archivos `.msg` con las ventanas de mantenimiento. Un aviso típico luce así:
+
+```
+Estimado Cliente, nuestro partner nos da aviso de la siguiente tarea programada:
+Inicio: 2024-01-02 08:00
+Fin: 2024-01-02 10:00
+Tipo de tarea: Mantenimiento
+Servicios afectados: 42
+```
 
 ### Detectar tareas desde un correo
 
@@ -315,6 +335,13 @@ manuales.
 ./setup_env.sh
 pytest
 ```
+
+Si preferís no ejecutar el script, asegurate de instalar manualmente las dependencias con:
+
+```bash
+pip install -r "Sandy bot/requirements.txt"
+```
+Antes de lanzar `pytest` para evitar errores de importación.
 
 Algunas pruebas relacionadas con la base de datos se omiten de forma automática si `SQLAlchemy`
 no está presente en el entorno.
