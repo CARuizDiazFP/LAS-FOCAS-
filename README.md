@@ -60,6 +60,14 @@ Se incluyen dos modelos principales:
    También guarda la ruta del informe de comparación, los trackings
    asociados y las cámaras involucradas en cada servicio.
 
+3. **Cliente**: guarda el nombre de cada cliente y los correos
+   utilizados para enviar notificaciones.
+4. **TareaProgramada**: representa las ventanas de mantenimiento que
+   informan los carriers. Registra `fecha_inicio`, `fecha_fin`,
+   `tipo_tarea`, `tiempo_afectacion` y una breve `descripcion`.
+5. **TareaServicio**: vincula cada tarea programada con los servicios
+   afectados mediante sus IDs.
+
 Antes de crear la instancia del bot se ejecuta `init_db()` desde
 `main.py`. Esta función crea las tablas y ejecuta
 `ensure_servicio_columns()` para garantizar que la tabla `servicios`
@@ -79,6 +87,29 @@ nativa. Ya no es necesario convertir los datos a texto con
 Si durante el envío de cámaras ocurre un error de conexión con la base,
 Sandy mostrará el mensaje:
 "No pude conectarme a la base de datos. Verificá la configuración.".
+
+### Registrar tareas programadas
+
+Para crear una tarea desde el bot se utiliza el comando:
+`/registrar_tarea <cliente> <inicio> <fin> <tipo> <id1,id2>`.
+El sistema guarda la ventana de mantenimiento en `tareas_programadas`
+y vincula los servicios indicados en `tareas_servicio`. Los datos
+almacenados incluyen inicio, fin, tipo de tarea, tiempo de afectación
+y una descripción opcional.
+
+```python
+from datetime import datetime
+from sandybot.database import crear_tarea_programada
+
+tarea = crear_tarea_programada(
+    datetime(2024, 1, 2, 8),
+    datetime(2024, 1, 2, 10),
+    "Mantenimiento",
+    [42],
+    tiempo_afectacion="2h",
+    descripcion="Pruebas de red",
+)
+```
 
 ## Carga de tracking
 
