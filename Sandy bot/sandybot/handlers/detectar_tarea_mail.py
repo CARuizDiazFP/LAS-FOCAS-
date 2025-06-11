@@ -70,7 +70,7 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
         contenido = partes[2]
 
     try:
-        tarea, cliente, ruta = await procesar_correo_a_tarea(
+        tarea, cliente, ruta, _ = await procesar_correo_a_tarea(
             contenido, cliente_nombre, carrier_nombre
         )
     except Exception as e:
