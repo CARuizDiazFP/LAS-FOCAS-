@@ -8,6 +8,14 @@ import re
 from datetime import datetime
 from email.message import EmailMessage
 
+# Para exportar mensajes .msg en Windows se usan estos módulos opcionales
+try:
+    import win32com.client as win32  # pragma: no cover - solo disponible en Windows
+    import pythoncom  # pragma: no cover - solo disponible en Windows
+except Exception:  # pragma: no cover - entorno sin win32
+    win32 = None
+    pythoncom = None
+
 from .config import config
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada
 from .utils import (
@@ -236,7 +244,11 @@ def generar_archivo_msg(
     servicios: list[Servicio],
     ruta: str,
 ) -> str:
-    """Crea un archivo .MSG simple con la información de la tarea."""
+    """Crea un archivo ``.msg`` con la información de la tarea.
+
+    Si ``win32`` y ``pythoncom`` están disponibles (Windows), utiliza Outlook
+    para generar el mensaje. En otros entornos crea un archivo de texto plano.
+    """
 
     lineas = [
         "Estimado Cliente, nuestro partner nos da aviso de la siguiente tarea programada:",
@@ -253,6 +265,18 @@ def generar_archivo_msg(
     lineas.append(f"Servicios afectados: {lista_servicios}")
 
     contenido = "\n".join(lineas)
-    with open(ruta, "w", encoding="utf-8") as f:
-        f.write(contenido)
+
+    if win32 and pythoncom:
+        pythoncom.CoInitialize()
+        try:
+            outlook = win32.Dispatch("Outlook.Application")
+            mail = outlook.CreateItem(0)
+            mail.Body = contenido
+            mail.SaveAs(ruta, 3)
+        finally:
+            pythoncom.CoUninitialize()
+    else:
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write(contenido)
+
     return ruta
