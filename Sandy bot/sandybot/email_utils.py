@@ -23,8 +23,6 @@ SIGNATURE_PATH = (
 )
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada, Carrier
 from .utils import (
-    cargar_destinatarios as utils_cargar_dest,
-    guardar_destinatarios as utils_guardar,
     cargar_json,
     guardar_json,
 )
