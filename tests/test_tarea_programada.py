@@ -91,6 +91,14 @@ def test_registrar_tarea_programada(tmp_path):
     sys.modules[mod_name] = tarea_mod
     spec.loader.exec_module(tarea_mod)
 
+    enviados = {}
+    def fake_enviar(asunto, cuerpo, cid, **k):
+        enviados["asunto"] = asunto
+        enviados["cuerpo"] = cuerpo
+        enviados["cid"] = cid
+        return True
+    tarea_mod.enviar_correo = fake_enviar
+
     # Crear servicio previo
     servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
 
@@ -113,6 +121,7 @@ def test_registrar_tarea_programada(tmp_path):
     with bd.SessionLocal() as s:
         tareas = s.query(bd.TareaProgramada).all()
         rels = s.query(bd.TareaServicio).all()
+        cli = s.query(bd.Cliente).filter_by(nombre="Cli").first()
 
     tempfile.gettempdir = orig_tmp
 
@@ -124,3 +133,5 @@ def test_registrar_tarea_programada(tmp_path):
     ruta = tmp_path / f"tarea_{tareas[-1].id}.msg"
     assert ruta.exists()
     assert msg.documento == ruta.name
+    assert enviados["cid"] == cli.id
+    assert "Mantenimiento" in enviados["cuerpo"]

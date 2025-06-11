@@ -3,7 +3,8 @@
 Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `Sandy bot/requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
-API utilizada en `sandybot`.
+API utilizada en `sandybot`. También se necesita `extract-msg` para leer los
+archivos `.msg` con el comando `/procesar_correos`.
 Desde esta versión el bot también acepta mensajes de voz, los descarga y
 transcribe automáticamente utilizando la API de OpenAI.
 
@@ -120,12 +121,14 @@ tarea = crear_tarea_programada(
 
 Con `/listar_tareas` podés consultar las ventanas ya registradas.
 Los parámetros `cliente`, `servicio` e intervalo de fechas son opcionales
-y se pueden combinar libremente.
+y se pueden combinar libremente. También se acepta `carrier=<nombre>`
+para filtrar por carrier.
 Ejemplos:
 
 ```bash
 /listar_tareas ClienteA
 /listar_tareas 7 2024-01-01 2024-01-05
+/listar_tareas carrier=Telecom
 ```
 El bot muestra inicio, fin, tipo y los servicios afectados.
 
@@ -136,14 +139,17 @@ principales. Este aviso puede abrirse con Outlook y reenviarse o
 ajustarse antes de enviarlo. Si `pywin32` está presente, el sistema
 aplica la firma ubicada en `SIGNATURE_PATH` y aprovecha Outlook para
 formatear el mensaje.
+
 Si el cliente tiene destinatarios configurados, Sandy envía ese mismo
 archivo por correo de forma automática.
 
+Además Sandy envía el aviso por correo a los destinatarios configurados para el cliente.
+
+
 ### Procesar correos y registrar tareas
 
-Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el
-bot y crear automáticamente cada tarea programada. De esta manera se
-evita cargar la información de forma manual.
+Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el bot y evitar cargar la información de forma manual. El aviso generado se envía automáticamente por correo a los contactos del cliente.
+
 Por ejemplo:
 ```bash
 /procesar_correos Cliente

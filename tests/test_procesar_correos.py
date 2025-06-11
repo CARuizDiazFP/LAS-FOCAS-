@@ -14,9 +14,10 @@ sys.path.append(str(ROOT_DIR / "Sandy bot"))
 telegram_stub = ModuleType("telegram")
 
 class Message:
-    def __init__(self, text="", document=None):
+    def __init__(self, text="", document=None, documents=None):
         self.text = text
         self.document = document
+        self.documents = documents or []
         self.sent = None
 
     async def reply_document(self, f, filename=None):
@@ -124,6 +125,14 @@ def test_procesar_correos(tmp_path):
     sys.modules[mod_name] = tarea_mod
     spec.loader.exec_module(tarea_mod)
 
+    enviados = {}
+    def fake_enviar(asunto, cuerpo, cid, **k):
+        enviados["cid"] = cid
+        enviados["asunto"] = asunto
+        enviados["cuerpo"] = cuerpo
+        return True
+    tarea_mod.enviar_correo = fake_enviar
+
     servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
 
     class GPTStub(tarea_mod.gpt.__class__):
@@ -149,6 +158,7 @@ def test_procesar_correos(tmp_path):
     with bd.SessionLocal() as s:
         tareas = s.query(bd.TareaProgramada).all()
         rels = s.query(bd.TareaServicio).all()
+        cli = s.query(bd.Cliente).filter_by(nombre="Cliente").first()
 
     tempfile.gettempdir = orig_tmp
 
@@ -161,3 +171,74 @@ def test_procesar_correos(tmp_path):
     ruta = tmp_path / f"tarea_{tarea.id}.msg"
     assert ruta.exists()
     assert msg.sent == ruta.name
+    assert enviados["cid"] == cli.id
+    assert "Mant" in enviados["cuerpo"]
+
+
+def test_procesar_correos_varios(tmp_path):
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+
+    def _tmpdir():
+        return str(TEMP_DIR)
+
+    tempfile.gettempdir = _tmpdir
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.procesar_correos"
+    spec = importlib.util.spec_from_file_location(mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "procesar_correos.py")
+    tarea_mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = tarea_mod
+    spec.loader.exec_module(tarea_mod)
+
+    enviados = {}
+
+    def fake_enviar(asunto, cuerpo, cid, **k):
+        enviados["cid"] = cid
+        enviados["asunto"] = asunto
+        enviados["cuerpo"] = cuerpo
+        return True
+
+    tarea_mod.enviar_correo = fake_enviar
+
+    servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
+
+    class GPTStub(tarea_mod.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + ']}'
+            )
+
+    tarea_mod.gpt = GPTStub()
+
+    doc1 = Document(file_name="uno.msg", content="dummy")
+    doc2 = Document(file_name="dos.msg", content="dummy")
+    msg = Message(documents=[doc1, doc2])
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=["Cliente"])
+
+    with bd.SessionLocal() as s:
+        prev_tareas = s.query(bd.TareaProgramada).count()
+        prev_rels = s.query(bd.TareaServicio).count()
+
+    asyncio.run(tarea_mod.procesar_correos(update, ctx))
+
+    with bd.SessionLocal() as s:
+        tareas = s.query(bd.TareaProgramada).all()
+        rels = s.query(bd.TareaServicio).all()
+        cli = s.query(bd.Cliente).filter_by(nombre="Cliente").first()
+
+    tempfile.gettempdir = orig_tmp
+
+    assert len(tareas) == prev_tareas + 2
+    assert len(rels) == prev_rels + 2
+    assert msg.sent == f"tarea_{tareas[-1].id}.msg"
+    assert enviados["cid"] == cli.id
+

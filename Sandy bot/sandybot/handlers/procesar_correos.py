@@ -9,7 +9,13 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
-import extract_msg
+try:
+    import extract_msg
+except ModuleNotFoundError as exc:
+    raise ModuleNotFoundError(
+        "No se encontró la librería 'extract-msg'. Instalala para usar "/
+        "procesar_correos'."
+    ) from exc
 
 from ..utils import obtener_mensaje
 from ..gpt_handler import gpt
@@ -42,7 +48,7 @@ def _leer_msg(ruta: str) -> str:
 async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Analiza uno o varios archivos `.msg` adjuntos y crea las tareas."""
     mensaje = obtener_mensaje(update)
-    if not mensaje or not mensaje.document:
+    if not mensaje:
         return
 
     user_id = update.effective_user.id
@@ -59,7 +65,15 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     cliente_nombre = context.args[0]
     carrier_nombre = context.args[1] if len(context.args) > 1 else None
-    docs = [mensaje.document]
+
+    docs = []
+    if getattr(mensaje, "document", None):
+        docs.append(mensaje.document)
+    docs.extend(getattr(mensaje, "documents", []))
+    if not docs:
+        return
+    first_name = getattr(docs[0], "file_name", "")
+
     tareas = []
 
     for doc in docs:
@@ -143,6 +157,18 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             nombre_arch = f"tarea_{tarea.id}.msg"
             ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
             generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta_msg))
+
+            cuerpo = ""
+            try:
+                cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                pass
+            enviar_correo(
+                f"Aviso de tarea programada - {cliente.nombre}",
+                cuerpo,
+                cliente.id,
+            )
+
             if ruta_msg.exists():
                 with open(ruta_msg, "rb") as f:
                     await mensaje.reply_document(f, filename=nombre_arch)
@@ -158,7 +184,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         await responder_registrando(
             mensaje,
             user_id,
-            getattr(mensaje.document, "file_name", ""),
+            first_name,
             f"Tareas registradas: {', '.join(tareas)}",
             "tareas",
         )

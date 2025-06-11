@@ -91,6 +91,17 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
         ruta = Path(tempfile.gettempdir()) / nombre_arch
         generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta))
 
+        cuerpo = ""
+        try:
+            cuerpo = Path(ruta).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+        enviar_correo(
+            f"Aviso de tarea programada - {cliente.nombre}",
+            cuerpo,
+            cliente.id,
+        )
+
         if ruta.exists():
             with open(ruta, "rb") as f:
                 await mensaje.reply_document(f, filename=nombre_arch)
