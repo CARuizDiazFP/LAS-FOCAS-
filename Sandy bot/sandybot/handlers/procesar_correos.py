@@ -9,7 +9,13 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
-import extract_msg
+try:
+    import extract_msg
+except ModuleNotFoundError as exc:
+    raise ModuleNotFoundError(
+        "No se encontró la librería 'extract-msg'. Instalala para usar "/
+        "procesar_correos'."
+    ) from exc
 
 from ..utils import obtener_mensaje
 from ..gpt_handler import gpt
