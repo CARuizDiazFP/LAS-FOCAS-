@@ -20,6 +20,7 @@ fi
 # Actualizar pip e instalar dependencias
 pip install --upgrade pip
 pip install --cache-dir "$PIP_CACHE_DIR" -r "Sandy bot/requirements.txt"
+pip install docx2pdf
 
 # Herramientas de pruebas
 pip install pytest pytest-cov
