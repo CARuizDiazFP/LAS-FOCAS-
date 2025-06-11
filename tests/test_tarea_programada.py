@@ -157,3 +157,61 @@ def test_registrar_tarea_programada(tmp_path):
     assert msg.documento == ruta.name
     assert enviados["cid"] == cli.id
     assert "Mantenimiento" in enviados["cuerpo"]
+
+def test_reenviar_aviso(tmp_path):
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = _tmpdir
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+    mod_name = f"{pkg}.reenviar_aviso"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "reenviar_aviso.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+
+    enviados = {}
+
+    def fake_enviar(asunto, cuerpo, cid, carrier=None, **k):
+        enviados["asunto"] = asunto
+        enviados["cuerpo"] = cuerpo
+        enviados["cid"] = cid
+        return True
+
+    mod.enviar_correo = fake_enviar
+
+    cli = bd.Cliente(nombre="Cli2", destinatarios=["d@x.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    servicio = bd.crear_servicio(nombre="Srv", cliente="Cli2", cliente_id=cli.id)
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8),
+        datetime(2024, 1, 2, 10),
+        "Mantenimiento",
+        [servicio.id],
+    )
+
+    msg = Message("/reenviar_aviso")
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=[str(tarea.id)])
+
+    asyncio.run(mod.reenviar_aviso(update, ctx))
+
+    tempfile.gettempdir = orig_tmp
+
+    ruta = tmp_path / f"tarea_{tarea.id}.msg"
+    assert ruta.exists()
+    assert msg.documento == ruta.name
+    assert enviados["cid"] == cli.id
+    assert "Mantenimiento" in enviados["cuerpo"]

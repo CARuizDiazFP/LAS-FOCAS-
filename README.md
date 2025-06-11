@@ -141,6 +141,18 @@ aplica la firma ubicada en `SIGNATURE_PATH` y aprovecha Outlook para
 formatear el mensaje.
 Además Sandy envía el aviso por correo a los destinatarios configurados para el cliente o para el par (cliente, carrier) cuando corresponde.
 
+### Reenviar un aviso de tarea
+
+Si necesitás volver a compartir una ventana ya registrada, ejecutá:
+
+```bash
+/reenviar_aviso <id_tarea> [carrier]
+```
+
+El bot reconstruirá el mensaje y lo enviará a los contactos del cliente.
+Además adjuntará el archivo `.MSG` en el chat para facilitar el reenvío manual.
+
+
 ### Procesar correos y registrar tareas
 
 Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el bot y evitar cargar la información de forma manual. El aviso generado se envía automáticamente por correo a los contactos del cliente.
