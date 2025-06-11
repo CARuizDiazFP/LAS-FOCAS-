@@ -5,7 +5,6 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
-from pathlib import Path
 
 import pandas as pd
 from docx import Document
@@ -112,95 +111,6 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
                 pass
         if "ruta_final" in locals() and os.path.exists(ruta_final):
             os.remove(ruta_final)
-
-        context.user_data.clear()
-        UserState.set_mode(user_id, "")
-
-
-# ─────────────────────── FUNCIÓN GENERADORA DE WORD ───────────────────
-def _generar_documento_sla(reclamos_xlsx: str, servicios_xlsx: str) -> str:
-    """Combina reclamos y servicios en un documento Word usando la plantilla."""
-    reclamos_df = pd.read_excel(reclamos_xlsx)
-    servicios_df = pd.read_excel(servicios_xlsx)
-
-    if "Servicio" not in reclamos_df.columns:
-        reclamos_df.rename(columns={reclamos_df.columns[0]: "Servicio"}, inplace=True)
-    if "Servicio" not in servicios_df.columns:
-        servicios_df.rename(columns={servicios_df.columns[0]: "Servicio"}, inplace=True)
-
-    resumen = reclamos_df.groupby("Servicio").size().reset_index(name="Reclamos")
-    df = servicios_df.merge(resumen, on="Servicio", how="left")
-    df["Reclamos"] = df["Reclamos"].fillna(0).astype(int)
-
-    doc = Document(RUTA_PLANTILLA)
-    tabla = doc.add_table(rows=1, cols=2, style="Table Grid")
-    hdr = tabla.rows[0].cells
-    hdr[0].text = "Servicio"
-    hdr[1].text = "Reclamos"
-
-    for _, fila in df.iterrows():
-        row = tabla.add_row().cells
-        row[0].text = str(fila["Servicio"])
-        row[1].text = str(fila["Reclamos"])
-
-    nombre_arch = "InformeSLA.docx"
-    ruta_salida = os.path.join(tempfile.gettempdir(), nombre_arch)
-    doc.save(ruta_salida)
-    return ruta_salida
-            "informe_sla",
-        )
-        return
-
-    # ⬇️ Descargamos y guardamos en user_data
-    archivo = await doc.get_file()
-    with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-        await archivo.download_to_drive(tmp.name)
-        context.user_data.setdefault("archivos", []).append(tmp.name)
-
-    # Esperamos los dos Excels
-    if len(context.user_data["archivos"]) < 2:
-        await responder_registrando(
-            mensaje,
-            user_id,
-            doc.file_name,
-            "Archivo recibido. Enviá el Excel restante para continuar.",
-            "informe_sla",
-        )
-        return
-
-    reclamos_path, servicios_path = context.user_data["archivos"][:2]
-
-    try:
-        ruta_salida = _generar_documento_sla(reclamos_path, servicios_path)
-        nombre_final = os.path.basename(ruta_salida)
-
-        with open(ruta_salida, "rb") as docx_file:
-            await mensaje.reply_document(document=docx_file, filename=nombre_final)
-
-        registrar_conversacion(
-            user_id,
-            doc.file_name,
-            f"Documento {nombre_final} enviado",
-            "informe_sla",
-        )
-    except Exception as e:  # pragma: no cover
-        logger.error("Error generando informe SLA: %s", e)
-        await responder_registrando(
-            mensaje,
-            user_id,
-            doc.file_name,
-            "💥 Algo falló generando el informe de SLA.",
-            "informe_sla",
-        )
-    finally:
-        # Limpieza de temporales y estado
-        for ruta in context.user_data.get("archivos", []):
-            try:
-                os.remove(ruta)
-            except OSError:
-                pass
-        if "ruta_salida" in locals() and os.path.exists(ruta_salida):
-            os.remove(ruta_salida)
 
         context.user_data.clear()
         UserState.set_mode(user_id, "")
