@@ -88,14 +88,15 @@ def test_detectar_tarea_mail(tmp_path, monkeypatch):
         prev_rels = s.query(bd.TareaServicio).count()
 
     # Stub GPT para devolver JSON
-    class GPTStub(tarea_mod.gpt.__class__):
+    email_mod = importlib.import_module("sandybot.email_utils")
+    class GPTStub(email_mod.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
                 '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + ']}'
             )
 
-    tarea_mod.gpt = GPTStub()
+    email_mod.gpt = GPTStub()
 
     msg = Message("/detectar_tarea Cliente ejemplo")
     update = Update(message=msg)

@@ -3,7 +3,6 @@
 import logging
 import os
 import tempfile
-from datetime import datetime
 from pathlib import Path
 
 from telegram import Update
@@ -18,16 +17,13 @@ except ModuleNotFoundError as exc:
     ) from exc
 
 from ..utils import obtener_mensaje
-from ..gpt_handler import gpt
 from ..database import (
-    crear_tarea_programada,
     obtener_cliente_por_nombre,
     Cliente,
-    Servicio,
     Carrier,
     SessionLocal,
 )
-from ..email_utils import generar_archivo_msg, enviar_correo
+from ..email_utils import generar_archivo_msg, enviar_correo, procesar_correo_a_tarea
 from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
@@ -85,32 +81,6 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             contenido = _leer_msg(ruta)
             if not contenido:
                 raise ValueError("Sin contenido")
-            prompt = (
-                "Extraé del siguiente correo los datos de la ventana de mantenimiento "
-                "y devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
-                "'afectacion' e 'ids' (lista de servicios).\n\n"
-                f"Correo:\n{contenido}"
-            )
-            esquema = {
-                "type": "object",
-                "properties": {
-                    "inicio": {"type": "string"},
-                    "fin": {"type": "string"},
-                    "tipo": {"type": "string"},
-                    "afectacion": {"type": "string"},
-                    "ids": {"type": "array", "items": {"type": "integer"}},
-                },
-                "required": ["inicio", "fin", "tipo", "ids"],
-            }
-            resp = await gpt.consultar_gpt(prompt)
-            datos = await gpt.procesar_json_response(resp, esquema)
-            if not datos:
-                raise ValueError("JSON inválido")
-            inicio = datetime.fromisoformat(str(datos["inicio"]))
-            fin = datetime.fromisoformat(str(datos["fin"]))
-            tipo = datos["tipo"]
-            ids = [int(i) for i in datos.get("ids", [])]
-            afect = datos.get("afectacion")
         except Exception as e:  # pragma: no cover - manejo simple
             logger.error("Fallo procesando correo: %s", e)
             os.remove(ruta)
@@ -138,40 +108,30 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                     session.commit()
                     session.refresh(carrier)
 
-            tarea = crear_tarea_programada(
-                inicio,
-                fin,
-                tipo,
-                ids,
-                carrier_id=carrier.id if carrier else None,
-                tiempo_afectacion=afect,
-            )
-            servicios = [session.get(Servicio, i) for i in ids]
-            if carrier:
-                for s in servicios:
-                    if s:
-                        s.carrier_id = carrier.id
-                        s.carrier = carrier.nombre
-                session.commit()
+        try:
+            tarea, servicios = await procesar_correo_a_tarea(contenido, cliente, carrier)
+        except Exception as e:  # pragma: no cover - manejo simple
+            logger.error("Fallo procesando correo: %s", e)
+            continue
 
-            nombre_arch = f"tarea_{tarea.id}.msg"
-            ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
-            generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta_msg))
+        nombre_arch = f"tarea_{tarea.id}.msg"
+        ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
+        generar_archivo_msg(tarea, cliente, servicios, str(ruta_msg))
 
-            cuerpo = ""
-            try:
-                cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                pass
-            enviar_correo(
-                f"Aviso de tarea programada - {cliente.nombre}",
-                cuerpo,
-                cliente.id,
-            )
+        cuerpo = ""
+        try:
+            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+        enviar_correo(
+            f"Aviso de tarea programada - {cliente.nombre}",
+            cuerpo,
+            cliente.id,
+        )
 
-            if ruta_msg.exists():
-                with open(ruta_msg, "rb") as f:
-                    await mensaje.reply_document(f, filename=nombre_arch)
+        if ruta_msg.exists():
+            with open(ruta_msg, "rb") as f:
+                await mensaje.reply_document(f, filename=nombre_arch)
         tareas.append(str(tarea.id))
 
     if tareas:

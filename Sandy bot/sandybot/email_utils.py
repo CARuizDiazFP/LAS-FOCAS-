@@ -22,6 +22,7 @@ SIGNATURE_PATH = (
     Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
 )
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada, Carrier
+from .gpt_handler import gpt
 from .utils import (
     cargar_destinatarios as utils_cargar_dest,
     guardar_destinatarios as utils_guardar,
@@ -338,3 +339,82 @@ def generar_archivo_msg(
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
     return ruta
+
+
+async def procesar_correo_a_tarea(
+    contenido: str,
+    cliente: Cliente,
+    carrier: Carrier | None = None,
+) -> tuple[TareaProgramada, list[Servicio]]:
+    """Analiza ``contenido`` y registra la tarea correspondiente.
+
+    Parameters
+    ----------
+    contenido:
+        Texto del correo a procesar.
+    cliente:
+        Instancia de :class:`Cliente` asociada al aviso.
+    carrier:
+        Carrier informado en el mensaje o ``None`` si no se especificó.
+
+    Returns
+    -------
+    tuple[TareaProgramada, list[Servicio]]
+        La tarea creada y la lista de servicios afectados.
+    """
+
+    prompt = (
+        "Extraé del siguiente correo los datos de la ventana de mantenimiento y "
+        "devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
+        "'afectacion' e 'ids' (lista de servicios).\n\n"
+        f"Correo:\n{contenido}"
+    )
+
+    esquema = {
+        "type": "object",
+        "properties": {
+            "inicio": {"type": "string"},
+            "fin": {"type": "string"},
+            "tipo": {"type": "string"},
+            "afectacion": {"type": "string"},
+            "ids": {"type": "array", "items": {"type": "integer"}},
+        },
+        "required": ["inicio", "fin", "tipo", "ids"],
+    }
+
+    try:
+        respuesta = await gpt.consultar_gpt(prompt)
+        datos = await gpt.procesar_json_response(respuesta, esquema)
+        if not datos:
+            raise ValueError("JSON inválido")
+    except Exception as exc:
+        raise ValueError(str(exc)) from exc
+
+    try:
+        inicio = datetime.fromisoformat(str(datos["inicio"]))
+        fin = datetime.fromisoformat(str(datos["fin"]))
+    except Exception as exc:
+        raise ValueError("Fechas con formato inválido") from exc
+
+    tipo = datos["tipo"]
+    ids = [int(i) for i in datos.get("ids", [])]
+    afectacion = datos.get("afectacion")
+
+    with SessionLocal() as session:
+        tarea = crear_tarea_programada(
+            inicio,
+            fin,
+            tipo,
+            ids,
+            carrier_id=carrier.id if carrier else None,
+            tiempo_afectacion=afectacion,
+        )
+        servicios = [session.get(Servicio, i) for i in ids]
+        if carrier:
+            for srv in servicios:
+                if srv:
+                    srv.carrier_id = carrier.id
+                    srv.carrier = carrier.nombre
+            session.commit()
+
+        return tarea, [s for s in servicios if s]

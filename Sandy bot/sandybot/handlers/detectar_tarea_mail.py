@@ -3,22 +3,18 @@
 import logging
 import os
 import tempfile
-from datetime import datetime
 from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
 from ..utils import obtener_mensaje
-from ..gpt_handler import gpt
 from ..database import (
-    crear_tarea_programada,
     obtener_cliente_por_nombre,
     Cliente,
-    Servicio,
     Carrier,
     SessionLocal,
 )
-from ..email_utils import generar_archivo_msg
+from ..email_utils import generar_archivo_msg, procesar_correo_a_tarea
 from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
@@ -79,61 +75,6 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
             return
         contenido = partes[2]
 
-    prompt = (
-        "Extraé del siguiente correo los datos de la ventana de mantenimiento y "
-        "devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
-        "'afectacion' e 'ids' (lista de servicios).\n\n"
-        f"Correo:\n{contenido}"
-    )
-
-    esquema = {
-        "type": "object",
-        "properties": {
-            "inicio": {"type": "string"},
-            "fin": {"type": "string"},
-            "tipo": {"type": "string"},
-            "afectacion": {"type": "string"},
-            "ids": {
-                "type": "array",
-                "items": {"type": "integer"},
-            },
-        },
-        "required": ["inicio", "fin", "tipo", "ids"],
-    }
-
-    try:
-        respuesta = await gpt.consultar_gpt(prompt)
-        datos = await gpt.procesar_json_response(respuesta, esquema)
-        if not datos:
-            raise ValueError("JSON inválido")
-    except Exception as e:
-        logger.error("Fallo detectando tarea: %s", e)
-        await responder_registrando(
-            mensaje,
-            user_id,
-            mensaje.text or getattr(mensaje.document, "file_name", ""),
-            "No pude identificar la tarea en el correo.",
-            "tareas",
-        )
-        return
-
-    try:
-        inicio = datetime.fromisoformat(str(datos["inicio"]))
-        fin = datetime.fromisoformat(str(datos["fin"]))
-    except Exception:
-        await responder_registrando(
-            mensaje,
-            user_id,
-            mensaje.text or getattr(mensaje.document, "file_name", ""),
-            "Fechas con formato inválido en el correo.",
-            "tareas",
-        )
-        return
-
-    tipo = datos["tipo"]
-    ids = [int(i) for i in datos.get("ids", [])]
-    afectacion = datos.get("afectacion")
-
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
         if not cliente:
@@ -155,29 +96,26 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
                 session.commit()
                 session.refresh(carrier)
 
-        tarea = crear_tarea_programada(
-            inicio,
-            fin,
-            tipo,
-            ids,
-            carrier_id=carrier.id if carrier else None,
-            tiempo_afectacion=afectacion,
+    try:
+        tarea, servicios = await procesar_correo_a_tarea(contenido, cliente, carrier)
+    except ValueError as e:
+        logger.error("Fallo detectando tarea: %s", e)
+        await responder_registrando(
+            mensaje,
+            user_id,
+            mensaje.text or getattr(mensaje.document, "file_name", ""),
+            "No pude identificar la tarea en el correo.",
+            "tareas",
         )
-        servicios = [session.get(Servicio, i) for i in ids]
-        if carrier:
-            for s in servicios:
-                if s:
-                    s.carrier_id = carrier.id
-                    s.carrier = carrier.nombre
-            session.commit()
+        return
 
-        nombre_arch = f"tarea_{tarea.id}.msg"
-        ruta = Path(tempfile.gettempdir()) / nombre_arch
-        generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta))
+    nombre_arch = f"tarea_{tarea.id}.msg"
+    ruta = Path(tempfile.gettempdir()) / nombre_arch
+    generar_archivo_msg(tarea, cliente, servicios, str(ruta))
 
-        if ruta.exists():
-            with open(ruta, "rb") as f:
-                await mensaje.reply_document(f, filename=nombre_arch)
+    if ruta.exists():
+        with open(ruta, "rb") as f:
+            await mensaje.reply_document(f, filename=nombre_arch)
 
     await responder_registrando(
         mensaje,
