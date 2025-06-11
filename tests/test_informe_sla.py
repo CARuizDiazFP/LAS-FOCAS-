@@ -20,10 +20,16 @@ try:  # pragma: no cover
 except Exception:  # pragma: no cover
     win32 = None
 
+import sys
+from pathlib import Path
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+sys.path.append(str(ROOT_DIR / "Sandy bot"))
+
 from sandybot.config import config
-from ..utils import obtener_mensaje
-from .estado import UserState
-from ..registrador import responder_registrando, registrar_conversacion
+from sandybot.utils import obtener_mensaje
+# Importaciones necesarias solo para las funciones de este test
+# Evitamos cargar todo ``sandybot.handlers`` para prevenir errores
 
 # Plantilla predeterminada
 RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
@@ -302,3 +308,56 @@ def _generar_documento_sla(
             return pdf_path
 
     return ruta_docx
+
+
+def test_documento_sla_columna_faltante(tmp_path, caplog):
+    """Genera el informe aun cuando falta una columna y muestra advertencia."""
+    import sys
+    import importlib
+    from pathlib import Path
+
+    ROOT_DIR = Path(__file__).resolve().parents[1]
+    sys.path.append(str(ROOT_DIR / "Sandy bot"))
+
+    # Plantilla de prueba
+    plantilla = tmp_path / "tpl.docx"
+    doc = Document()
+    doc.add_paragraph("Eventos sucedidos de mayor impacto en SLA:")
+    doc.add_paragraph("Conclusión:")
+    doc.add_paragraph("Propuesta de mejora:")
+    doc.save(plantilla)
+    os.environ["SLA_TEMPLATE_PATH"] = str(plantilla)
+
+    # Variables minimas para Config
+    for var in [
+        "TELEGRAM_TOKEN",
+        "OPENAI_API_KEY",
+        "NOTION_TOKEN",
+        "NOTION_DATABASE_ID",
+        "DB_USER",
+        "DB_PASSWORD",
+        "SLACK_WEBHOOK_URL",
+        "SUPERVISOR_DB_ID",
+    ]:
+        os.environ.setdefault(var, "x")
+
+    # Recargar módulos para que tomen la plantilla recién definida
+    config_mod = importlib.reload(importlib.import_module("sandybot.config"))
+    informe = importlib.reload(importlib.import_module("sandybot.handlers.informe_sla"))
+
+    reclamos = tmp_path / "reclamos.xlsx"
+    servicios = tmp_path / "servicios.xlsx"
+    pd.DataFrame({"Servicio": ["S1"], "Fecha": ["2024-01-01"]}).to_excel(reclamos, index=False)
+    pd.DataFrame({
+        "Servicio": ["S1"],
+        "SLA Entregado": [95],
+        # Falta la columna "Dirección"
+        "Horas Netas Reclamo": [2],
+    }).to_excel(servicios, index=False)
+
+    with caplog.at_level(logging.WARNING):
+        ruta = informe._generar_documento_sla(str(reclamos), str(servicios))
+
+    assert os.path.exists(ruta)
+    assert "Faltan columnas" in caplog.text
+    os.remove(ruta)
