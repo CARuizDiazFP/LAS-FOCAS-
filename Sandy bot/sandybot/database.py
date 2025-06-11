@@ -14,6 +14,7 @@ from sqlalchemy import (
     func,
     JSON,
     ForeignKey,
+    Index,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
@@ -149,6 +150,13 @@ class TareaProgramada(Base):
     descripcion = Column(String)
 
 
+Index(
+    "ix_tareas_programadas_fecha_inicio_fecha_fin",
+    TareaProgramada.fecha_inicio,
+    TareaProgramada.fecha_fin,
+)
+
+
 class TareaServicio(Base):
     """Servicios afectados por cada :class:`TareaProgramada`."""
 
@@ -201,6 +209,16 @@ def ensure_servicio_columns() -> None:
                 text(
                     "CREATE INDEX ix_servicios_cliente_id"
                     " ON servicios (cliente_id)"
+                )
+            )
+
+    indices_tareas = {idx["name"] for idx in inspector.get_indexes("tareas_programadas")}
+    if "ix_tareas_programadas_fecha_inicio_fecha_fin" not in indices_tareas:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX ix_tareas_programadas_fecha_inicio_fecha_fin"
+                    " ON tareas_programadas (fecha_inicio, fecha_fin)"
                 )
             )
 

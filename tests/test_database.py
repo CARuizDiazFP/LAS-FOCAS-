@@ -240,3 +240,28 @@ def test_crear_tarea_y_relacion():
     assert len(tareas) == 1
     assert tareas[0].id == tarea.id
 
+
+def test_ensure_servicio_columns_indice_tarea_programada():
+    """La función crea el índice combinado de fechas."""
+
+    with bd.engine.begin() as conn:
+        conn.execute(
+            text(
+                "DROP INDEX IF EXISTS ix_tareas_programadas_fecha_inicio_fecha_fin"
+            )
+        )
+
+    insp = sqlalchemy.inspect(bd.engine)
+    assert not any(
+        i["name"] == "ix_tareas_programadas_fecha_inicio_fecha_fin"
+        for i in insp.get_indexes("tareas_programadas")
+    )
+
+    bd.ensure_servicio_columns()
+
+    insp = sqlalchemy.inspect(bd.engine)
+    assert any(
+        i["name"] == "ix_tareas_programadas_fecha_inicio_fecha_fin"
+        for i in insp.get_indexes("tareas_programadas")
+    )
+
