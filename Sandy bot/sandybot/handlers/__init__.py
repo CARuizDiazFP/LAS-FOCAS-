@@ -26,6 +26,7 @@ from .destinatarios import (
 )
 from .tarea_programada import registrar_tarea_programada
 from .detectar_tarea_mail import detectar_tarea_mail
+from .procesar_correos import procesar_correos
 
 __all__ = [
     'start_handler',
@@ -58,4 +59,5 @@ __all__ = [
     'listar_destinatarios'
     , 'registrar_tarea_programada'
     , 'detectar_tarea_mail'
+    , 'procesar_correos'
 ]

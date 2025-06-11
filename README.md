@@ -130,6 +130,11 @@ formatear el mensaje.
 Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el
 bot y crear automáticamente cada tarea programada. De esta manera se
 evita cargar la información de forma manual.
+Por ejemplo:
+```bash
+/procesar_correos Cliente
+```
+Luego adjuntá uno o varios archivos `.msg` con las ventanas de mantenimiento.
 
 ### Detectar tareas desde un correo
 
