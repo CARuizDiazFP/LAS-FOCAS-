@@ -64,17 +64,20 @@ Se incluyen dos modelos principales:
 
 3. **Cliente**: guarda el nombre de cada cliente y los correos
    utilizados para enviar notificaciones.
-4. **TareaProgramada**: representa las ventanas de mantenimiento que
+4. **Carrier**: tabla con los carriers disponibles. Solo almacena `id` y
+   `nombre`.
+5. **TareaProgramada**: representa las ventanas de mantenimiento que
    informan los carriers. Registra `fecha_inicio`, `fecha_fin`,
-   `tipo_tarea`, `tiempo_afectacion` y una breve `descripcion`.
-5. **TareaServicio**: vincula cada tarea programada con los servicios
+   `tipo_tarea`, `tiempo_afectacion`, `descripcion` y `carrier_id`.
+6. **TareaServicio**: vincula cada tarea programada con los servicios
    afectados mediante sus IDs.
 
 Antes de crear la instancia del bot se ejecuta `init_db()` desde
 `main.py`. Esta función crea las tablas y ejecuta
 `ensure_servicio_columns()` para garantizar que la tabla `servicios`
-incluya las columnas `ruta_tracking`, `trackings`, `camaras`, `carrier` e
-`id_carrier`.
+incluya las columnas `ruta_tracking`, `trackings`, `camaras`, `carrier`,
+`id_carrier` y `carrier_id`. Además crea `carrier_id` en
+`tareas_programadas` y genera los índices requeridos.
 
 Para aprovechar las búsquedas acentuadas se utilizan las extensiones
 `unaccent` y `pg_trgm`.  El usuario configurado en la base debe tener
@@ -93,7 +96,7 @@ Sandy mostrará el mensaje:
 ### Registrar tareas programadas
 
 Para crear una tarea desde el bot se utiliza el comando:
-`/registrar_tarea <cliente> <inicio> <fin> <tipo> <id1,id2>`.
+`/registrar_tarea <cliente> <inicio> <fin> <tipo> <id1,id2> [carrier]`.
 El sistema guarda la ventana de mantenimiento en `tareas_programadas`
 y vincula los servicios indicados en `tareas_servicio`. Los datos
 almacenados incluyen inicio, fin, tipo de tarea, tiempo de afectación
@@ -130,7 +133,7 @@ evita cargar la información de forma manual.
 
 ### Detectar tareas desde un correo
 
-Con `/detectar_tarea <cliente>` podés pegar el mail o adjuntar el archivo.
+Con `/detectar_tarea <cliente> [carrier]` podés pegar el mail o adjuntar el archivo.
 Sandy utiliza GPT para extraer inicio, fin, tipo y los IDs de servicio.
 Al crear la tarea genera también un `.MSG` con el texto listo para enviar.
 
@@ -149,11 +152,9 @@ especificar el número de servicio.
 ## Identificador de servicio Carrier
 
 Desde el menú principal es posible seleccionar **Identificador de servicio Carrier**.
-Esta opción recibe un Excel con las columnas "ID Servicio" e "ID Carrier".
-El bot completa los valores faltantes consultando la base de datos y devuelve el archivo actualizado.
-Luego de enviar el Excel, cada fila se registra en la tabla `servicios`,
-actualizando el `id_carrier` si el servicio existe o creando una entrada nueva
-en caso contrario.
+Esta opción recibe un Excel con las columnas "ID Servicio" y "Carrier".
+El bot registra cada carrier, lo vincula al servicio mediante `carrier_id` y
+devuelve el archivo actualizado con los datos completados.
 
 ## Analizador de incidencias
 

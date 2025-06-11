@@ -62,6 +62,15 @@ class Cliente(Base):
     destinatarios = Column(JSONType)
 
 
+class Carrier(Base):
+    """Carriers asociados a los servicios y tareas."""
+
+    __tablename__ = "carriers"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, unique=True, index=True)
+
+
 class Conversacion(Base):
     """Modelo para almacenar conversaciones del bot"""
 
@@ -96,6 +105,7 @@ class Servicio(Base):
 
     carrier = Column(String)
     id_carrier = Column(String, index=True)
+    carrier_id = Column(Integer, ForeignKey("carriers.id"), index=True)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
 
     def __repr__(self):
@@ -144,6 +154,7 @@ class TareaProgramada(Base):
     tipo_tarea = Column(String)
     tiempo_afectacion = Column(String)
     descripcion = Column(String)
+    carrier_id = Column(Integer, ForeignKey("carriers.id"), index=True)
 
 
 Index(
@@ -177,9 +188,11 @@ def ensure_servicio_columns() -> None:
     """
     inspector = inspect(engine)
 
-    # Crear la tabla de clientes si no existe
+    # Crear la tabla de clientes y carriers si no existen
     if "clientes" not in inspector.get_table_names():
         Cliente.__table__.create(bind=engine)
+    if "carriers" not in inspector.get_table_names():
+        Carrier.__table__.create(bind=engine)
 
     actuales = {col["name"] for col in inspector.get_columns("servicios")}
     definidas = {c.name for c in Servicio.__table__.columns}
@@ -191,6 +204,8 @@ def ensure_servicio_columns() -> None:
         extra = ""
         if columna == "cliente_id":
             extra = " REFERENCES clientes(id)"
+        elif columna == "carrier_id":
+            extra = " REFERENCES carriers(id)"
         with engine.begin() as conn:
             conn.execute(
                 text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}{extra}")
@@ -203,6 +218,13 @@ def ensure_servicio_columns() -> None:
                 text(
                     "CREATE INDEX ix_servicios_id_carrier"
                     " ON servicios (id_carrier)"
+                )
+            )
+    if "ix_servicios_carrier_id" not in indices:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX ix_servicios_carrier_id ON servicios (carrier_id)"
                 )
             )
     if "ix_servicios_cliente_id" not in indices:
@@ -224,6 +246,23 @@ def ensure_servicio_columns() -> None:
                 text(
                     "CREATE INDEX ix_tareas_programadas_fecha_inicio_fecha_fin "
                     "ON tareas_programadas (fecha_inicio, fecha_fin)"
+                )
+            )
+
+    actuales_tarea = {c["name"] for c in inspector.get_columns("tareas_programadas")}
+    if "carrier_id" not in actuales_tarea:
+        tipo = TareaProgramada.__table__.columns["carrier_id"].type.compile(engine.dialect)
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    f"ALTER TABLE tareas_programadas ADD COLUMN carrier_id {tipo} REFERENCES carriers(id)"
+                )
+            )
+    if "ix_tareas_programadas_carrier_id" not in indices_tareas:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX ix_tareas_programadas_carrier_id ON tareas_programadas (carrier_id)"
                 )
             )
 
@@ -475,7 +514,11 @@ def exportar_camaras_servicio(id_servicio: int, ruta_excel: str) -> bool:
         return False
 
 
-def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servicio:
+def registrar_servicio(
+    id_servicio: int,
+    id_carrier: str | None = None,
+    carrier_id: int | None = None,
+) -> Servicio:
     """Inserta o actualiza un servicio utilizando ``session.merge``.
 
     Se crea un objeto :class:`Servicio` con el ID indicado y, si se
@@ -486,6 +529,8 @@ def registrar_servicio(id_servicio: int, id_carrier: str | None = None) -> Servi
         datos = {"id": id_servicio}
         if id_carrier is not None:
             datos["id_carrier"] = str(id_carrier)
+        if carrier_id is not None:
+            datos["carrier_id"] = carrier_id
 
         servicio = Servicio(**datos)
         servicio = session.merge(servicio)
@@ -531,6 +576,7 @@ def crear_tarea_programada(
     fecha_fin: datetime,
     tipo_tarea: str,
     servicios: list[int],
+    carrier_id: int | None = None,
     tiempo_afectacion: str | None = None,
     descripcion: str | None = None,
 ) -> TareaProgramada:
@@ -541,6 +587,7 @@ def crear_tarea_programada(
             fecha_inicio=fecha_inicio,
             fecha_fin=fecha_fin,
             tipo_tarea=tipo_tarea,
+            carrier_id=carrier_id,
             tiempo_afectacion=tiempo_afectacion,
             descripcion=descripcion,
         )

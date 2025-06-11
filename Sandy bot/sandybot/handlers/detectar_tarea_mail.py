@@ -15,6 +15,7 @@ from ..database import (
     obtener_cliente_por_nombre,
     Cliente,
     Servicio,
+    Carrier,
     SessionLocal,
 )
 from ..email_utils import generar_archivo_msg
@@ -42,7 +43,7 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    cliente_nombre = context.args[0]
+    cliente_nombre = context.args[0]; carrier_nombre = context.args[1] if len(context.args) > 1 else None
 
     contenido = ""
     if mensaje.document:
@@ -141,8 +142,34 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
             session.commit()
             session.refresh(cliente)
 
-        tarea = crear_tarea_programada(inicio, fin, tipo, ids, tiempo_afectacion=afectacion)
+        carrier = None
+        if carrier_nombre:
+            carrier = (
+                session.query(Carrier)
+                .filter(Carrier.nombre == carrier_nombre)
+                .first()
+            )
+            if not carrier:
+                carrier = Carrier(nombre=carrier_nombre)
+                session.add(carrier)
+                session.commit()
+                session.refresh(carrier)
+
+        tarea = crear_tarea_programada(
+            inicio,
+            fin,
+            tipo,
+            ids,
+            carrier_id=carrier.id if carrier else None,
+            tiempo_afectacion=afectacion,
+        )
         servicios = [session.get(Servicio, i) for i in ids]
+        if carrier:
+            for s in servicios:
+                if s:
+                    s.carrier_id = carrier.id
+                    s.carrier = carrier.nombre
+            session.commit()
 
         nombre_arch = f"tarea_{tarea.id}.msg"
         ruta = Path(tempfile.gettempdir()) / nombre_arch

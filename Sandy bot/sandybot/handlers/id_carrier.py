@@ -8,7 +8,7 @@ import os
 import tempfile
 
 from ..utils import obtener_mensaje
-from ..database import SessionLocal, Servicio
+from ..database import SessionLocal, Servicio, Carrier, registrar_servicio
 from .estado import UserState
 from ..registrador import responder_registrando, registrar_conversacion
 
@@ -92,24 +92,35 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
     try:
         for idx, row in df.iterrows():
             id_servicio = row.get(col_servicio)
-            id_carrier = row.get(col_carrier)
+            nombre_carrier = row.get(col_carrier)
 
-            if pd.isna(id_servicio) and pd.isna(id_carrier):
+            if pd.isna(id_servicio) and pd.isna(nombre_carrier):
                 continue
 
-            if pd.isna(id_servicio) and pd.notna(id_carrier):
-                servicio = (
-                    session.query(Servicio)
-                    .filter(Servicio.id_carrier == str(id_carrier))
+            carrier_obj = None
+            if pd.notna(nombre_carrier):
+                nombre_carrier = str(nombre_carrier)
+                carrier_obj = (
+                    session.query(Carrier)
+                    .filter(Carrier.nombre == nombre_carrier)
                     .first()
                 )
-                if servicio:
-                    df.at[idx, col_servicio] = servicio.id
+                if not carrier_obj:
+                    carrier_obj = Carrier(nombre=nombre_carrier)
+                    session.add(carrier_obj)
+                    session.commit()
+                    session.refresh(carrier_obj)
 
-            elif pd.isna(id_carrier) and pd.notna(id_servicio):
-                servicio = session.get(Servicio, int(id_servicio))
-                if servicio and servicio.id_carrier:
-                    df.at[idx, col_carrier] = servicio.id_carrier
+            if pd.notna(id_servicio):
+                try:
+                    sid = int(id_servicio)
+                except ValueError:
+                    continue
+                registrar_servicio(sid, carrier_id=carrier_obj.id if carrier_obj else None)
+                if carrier_obj:
+                    svc = session.get(Servicio, sid)
+                    svc.carrier = nombre_carrier
+                    session.commit()
 
     salida = os.path.join(
         tempfile.gettempdir(), f"identificador_carrier_{mensaje.from_user.id}.xlsx"
@@ -124,30 +135,7 @@ async def procesar_identificador_carrier(update: Update, context: ContextTypes.D
         f"Documento {os.path.basename(salida)} enviado",
         "id_carrier",
     )
-
-    # Registrar todas las filas en una única sesión
-    try:
-        for _, row in df.iterrows():
-            id_servicio = row.get(col_servicio)
-            id_carrier = row.get(col_carrier)
-            if pd.isna(id_servicio) or pd.isna(id_carrier):
-                continue
-            try:
-                id_servicio = int(id_servicio)
-            except ValueError:
-                continue
-            session.merge(Servicio(id=id_servicio, id_carrier=str(id_carrier)))
-        session.commit()
-    except Exception as e:
-        logger.error("Error al registrar servicios: %s", e)
-        registrar_conversacion(
-            mensaje.from_user.id,
-            documento.file_name,
-            f"Error al registrar servicios: {e}",
-            "id_carrier",
-        )
-    finally:
-        session.close()
+    session.close()
 
     os.remove(tmp.name)
     os.remove(salida)

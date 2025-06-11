@@ -194,12 +194,21 @@ def test_generar_archivo_msg(tmp_path):
         s.commit()
         s.refresh(cli)
 
-    srv = bd.crear_servicio(nombre="S1", cliente="AcmeWin", cliente_id=cli.id)
+    carrier = bd.Carrier(nombre="Telco")
+    with bd.SessionLocal() as s:
+        s.add(carrier)
+        s.commit()
+        s.refresh(carrier)
+
+    srv = bd.crear_servicio(
+        nombre="S1", cliente="AcmeWin", cliente_id=cli.id, carrier_id=carrier.id
+    )
     tarea = bd.crear_tarea_programada(
         datetime(2024, 1, 2, 8),
         datetime(2024, 1, 2, 10),
         "Mantenimiento",
         [srv.id],
+        carrier_id=carrier.id,
     )
 
     ruta = tmp_path / "aviso.msg"
@@ -207,6 +216,7 @@ def test_generar_archivo_msg(tmp_path):
     assert ruta.exists()
     contenido = ruta.read_text(encoding="utf-8")
     assert "Mantenimiento" in contenido
+    assert "Telco" in contenido
 
 
 def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
@@ -248,12 +258,21 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
         s.commit()
         s.refresh(cli)
 
-    srv = bd.crear_servicio(nombre="S1", cliente="AcmeWin2", cliente_id=cli.id)
+    carrier = bd.Carrier(nombre="Telco2")
+    with bd.SessionLocal() as s:
+        s.add(carrier)
+        s.commit()
+        s.refresh(carrier)
+
+    srv = bd.crear_servicio(
+        nombre="S1", cliente="AcmeWin2", cliente_id=cli.id, carrier_id=carrier.id
+    )
     tarea = bd.crear_tarea_programada(
         datetime(2024, 1, 2, 8),
         datetime(2024, 1, 2, 10),
         "Mantenimiento",
         [srv.id],
+        carrier_id=carrier.id,
     )
 
     ruta = tmp_path / "aviso.msg"
@@ -261,3 +280,4 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     assert resultado == str(ruta)
     assert outlook.saved == (str(ruta), 3)
     assert ruta.exists()
+    assert "Telco2" in ruta.read_text(encoding="utf-8")

@@ -19,12 +19,13 @@ async def agregar_destinatario(update: Update, context: ContextTypes.DEFAULT_TYP
             mensaje,
             user_id,
             mensaje.text or "agregar_destinatario",
-            "Usá: /agregar_destinatario <cliente> <correo>",
+            "Usá: /agregar_destinatario <cliente> <correo> [carrier]",
             "destinatarios",
         )
         return
     cliente = context.args[0]
     correo = context.args[1]
+    _ = context.args[2] if len(context.args) > 2 else None  # compatibilidad
     with SessionLocal() as session:
         cli = obtener_cliente_por_nombre(cliente)
         if not cli:
@@ -64,12 +65,13 @@ async def eliminar_destinatario(update: Update, context: ContextTypes.DEFAULT_TY
             mensaje,
             user_id,
             mensaje.text or "eliminar_destinatario",
-            "Usá: /eliminar_destinatario <cliente> <correo>",
+            "Usá: /eliminar_destinatario <cliente> <correo> [carrier]",
             "destinatarios",
         )
         return
     cliente = context.args[0]
     correo = context.args[1]
+    _ = context.args[2] if len(context.args) > 2 else None
     with SessionLocal() as session:
         cli = obtener_cliente_por_nombre(cliente)
         if not cli or correo not in (cli.destinatarios or []):
@@ -104,11 +106,12 @@ async def listar_destinatarios(update: Update, context: ContextTypes.DEFAULT_TYP
             mensaje,
             user_id,
             mensaje.text or "listar_destinatarios",
-            "Indicá el nombre del cliente.",
+            "Indicá el nombre del cliente y opcionalmente el carrier.",
             "destinatarios",
         )
         return
     cliente = context.args[0]
+    _ = context.args[1] if len(context.args) > 1 else None
     with SessionLocal() as session:
         cli = obtener_cliente_por_nombre(cliente)
         lista = cli.destinatarios if cli and cli.destinatarios else []
