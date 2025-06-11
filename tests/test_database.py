@@ -226,3 +226,17 @@ def test_cliente_destinatarios():
         dest = bd.obtener_destinatarios_servicio(servicio.id)
         assert dest == ["a@x.com"]
 
+
+def test_crear_tarea_y_relacion():
+    s = bd.crear_servicio(nombre="Srv", cliente="Cli")
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 1, 8),
+        datetime(2024, 1, 1, 10),
+        "Mantenimiento",
+        [s.id],
+        tiempo_afectacion="2h",
+    )
+    tareas = bd.obtener_tareas_servicio(s.id)
+    assert len(tareas) == 1
+    assert tareas[0].id == tarea.id
+
