@@ -5,12 +5,14 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
+import locale
 from typing import Optional
 
 import pandas as pd
 from docx import Document
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
+from types import SimpleNamespace        # fallback para stubs de test
 
 from sandybot.config import config
 from ..utils import obtener_mensaje
@@ -25,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 # ────────────────────────── FLUJO DE INICIO ──────────────────────────
 async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Pone al usuario en modo *informe_sla* y solicita los dos archivos Excel."""
+    """Pone al usuario en modo *informe_sla* y pide los dos archivos Excel."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en iniciar_informe_sla")
@@ -34,7 +36,15 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = update.effective_user.id
     UserState.set_mode(user_id, "informe_sla")
     context.user_data.clear()
-    context.user_data["archivos"] = [None, None]  # [reclamos, servicios]
+    context.user_data["archivos"] = [None, None]                  # [reclamos, servicios]
+
+    # Botón para permitir cambiar la plantilla
+    try:
+        boton = InlineKeyboardButton("Actualizar plantilla", callback_data="sla_cambiar_plantilla")
+        teclado = InlineKeyboardMarkup([[boton]])
+    except Exception:                                             # fallback para stubs
+        boton = SimpleNamespace(text="Actualizar plantilla", callback_data="sla_cambiar_plantilla")
+        teclado = SimpleNamespace(inline_keyboard=[[boton]])
 
     await responder_registrando(
         mensaje,
@@ -42,12 +52,13 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
         "informe_sla",
         "Enviá el Excel de **reclamos** y luego el de **servicios** para generar el informe.",
         "informe_sla",
+        reply_markup=teclado,
     )
 
 
 # ────────────────────────── FLUJO DE PROCESO ─────────────────────────
 async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Gestiona la generación del informe SLA: carga 2 Excel → botón Procesar → genera Word."""
+    """Recibe dos Excel → botón “Procesar informe” → genera Word con el SLA."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en procesar_informe_sla")
@@ -56,26 +67,38 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.effective_user.id
     archivos = context.user_data.setdefault("archivos", [None, None])
 
-    # ───── Callback «Procesar informe» ─────
+    # ─── Callback para cambiar plantilla ─────────────────────────────
+    if update.callback_query and update.callback_query.data == "sla_cambiar_plantilla":
+        context.user_data["cambiar_plantilla"] = True
+        await update.callback_query.message.reply_text("Adjuntá la nueva plantilla .docx.")
+        return
+
+    if context.user_data.get("cambiar_plantilla"):
+        if getattr(mensaje, "document", None):
+            await actualizar_plantilla_sla(update, context)
+        else:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                getattr(mensaje, "text", ""),
+                "Adjuntá el archivo .docx para actualizar la plantilla.",
+                "informe_sla",
+            )
+        return
+
+    # ─── Callback «Procesar informe» ─────────────────────────────────
     if update.callback_query and update.callback_query.data == "sla_procesar":
         reclamos_xlsx, servicios_xlsx = archivos
         try:
             ruta_final = _generar_documento_sla(reclamos_xlsx, servicios_xlsx)
             with open(ruta_final, "rb") as f:
-                await update.callback_query.message.reply_document(
-                    f, filename=os.path.basename(ruta_final)
-                )
+                await update.callback_query.message.reply_document(f, filename=os.path.basename(ruta_final))
             registrar_conversacion(
-                user_id,
-                "informe_sla",
-                f"Documento {os.path.basename(ruta_final)} enviado",
-                "informe_sla",
+                user_id, "informe_sla", f"Documento {os.path.basename(ruta_final)} enviado", "informe_sla"
             )
-        except Exception as e:  # pragma: no cover
+        except Exception as e:   # pragma: no cover
             logger.error("Error generando informe SLA: %s", e)
-            await update.callback_query.message.reply_text(
-                "💥 Algo falló generando el informe de SLA."
-            )
+            await update.callback_query.message.reply_text("💥 Algo falló generando el informe de SLA.")
         finally:
             for p in archivos:
                 try:
@@ -110,18 +133,20 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         if None in archivos:
             falta = "reclamos" if archivos[0] is None else "servicios"
             await responder_registrando(
-                mensaje,
-                user_id,
-                docs[-1].file_name,
+                mensaje, user_id, docs[-1].file_name,
                 f"Archivo guardado. Falta el Excel de {falta}.",
                 "informe_sla",
             )
             return
 
-        # Ambos archivos listos: mostrar botón Procesar
-        keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
-        )
+        # Ambos Excel listos → botón Procesar
+        try:
+            boton = InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")
+            keyboard = InlineKeyboardMarkup([[boton]])
+        except Exception:                                          # fallback stubs
+            boton = SimpleNamespace(text="Procesar informe 🚀", callback_data="sla_procesar")
+            keyboard = SimpleNamespace(inline_keyboard=[[boton]])
+
         await responder_registrando(
             mensaje,
             user_id,
@@ -132,7 +157,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return
 
-    # Si llegó aquí sin adjuntos ni callback, se recuerda al usuario qué hacer
+    # Mensaje sin adjuntos ni callbacks
     await responder_registrando(
         mensaje,
         user_id,
@@ -140,6 +165,32 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         "Adjuntá los archivos de reclamos y servicios para comenzar.",
         "informe_sla",
     )
+
+
+# ─────────────────────── ACTUALIZAR PLANTILLA ────────────────────────
+async def actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Guarda la plantilla enviada reemplazando la configuración actual."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje or not getattr(mensaje, "document", None):
+        return
+
+    user_id = update.effective_user.id
+    archivo = mensaje.document
+    if not archivo.file_name.lower().endswith(".docx"):
+        await responder_registrando(mensaje, user_id, archivo.file_name, "El archivo debe ser .docx.", "informe_sla")
+        return
+
+    try:
+        f = await archivo.get_file()
+        os.makedirs(os.path.dirname(RUTA_PLANTILLA), exist_ok=True)
+        await f.download_to_drive(RUTA_PLANTILLA)
+        texto = "Plantilla de SLA actualizada."
+        context.user_data.pop("cambiar_plantilla", None)
+    except Exception as e:  # pragma: no cover
+        logger.error("Error guardando plantilla SLA: %s", e)
+        texto = "No se pudo guardar la plantilla."
+
+    await responder_registrando(mensaje, user_id, archivo.file_name, texto, "informe_sla")
 
 
 # ─────────────────────── FUNCIÓN GENERADORA DE WORD ───────────────────
@@ -160,14 +211,23 @@ def _generar_documento_sla(
     if "Servicio" not in servicios_df.columns:
         servicios_df.rename(columns={servicios_df.columns[0]: "Servicio"}, inplace=True)
 
-    # Título Mes/Año
+    # Fecha para título
     try:
         fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
         if pd.isna(fecha):
             raise ValueError
     except Exception:
         fecha = pd.Timestamp.today()
-    mes = fecha.strftime("%B")
+
+    # Intentar locale español
+    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            break
+        except locale.Error:
+            continue
+
+    mes = fecha.strftime("%B").upper()
     anio = fecha.strftime("%Y")
 
     # Conteo de reclamos por servicio
@@ -181,7 +241,10 @@ def _generar_documento_sla(
         raise ValueError("Plantilla de SLA no encontrada")
     doc = Document(RUTA_PLANTILLA)
 
-    doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
+    try:
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
+    except KeyError:
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
 
     # Tabla de resumen
     tabla = doc.add_table(rows=1, cols=2, style="Table Grid")
@@ -194,7 +257,7 @@ def _generar_documento_sla(
         row[0].text = str(fila["Servicio"])
         row[1].text = str(fila["Reclamos"])
 
-    # Insertar textos personalizados (si se pasan)
+    # Insertar textos personalizados
     etiquetas = {
         "Eventos sucedidos de mayor impacto en SLA:": eventos,
         "Conclusión:": conclusion,
@@ -202,9 +265,9 @@ def _generar_documento_sla(
     }
     encontrados = set()
     for p in doc.paragraphs:
-        pref = p.text.strip()
+        texto = p.text.strip()
         for etiqueta, contenido in etiquetas.items():
-            if pref.startswith(etiqueta):
+            if texto.startswith(etiqueta):
                 p.text = f"{etiqueta} {contenido}"
                 encontrados.add(etiqueta)
                 break

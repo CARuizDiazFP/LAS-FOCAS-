@@ -181,6 +181,7 @@ adicional.
    - Podés iniciarlo desde el botón **Informe de SLA** o con `/informe_sla`
    - Solicita los Excel de reclamos y servicios, que pueden enviarse por separado
    - Una vez cargados los dos archivos aparece el botón **Procesar**, que genera el informe según `SLA_TEMPLATE_PATH` con los campos de eventos, conclusión y mejora en blanco
+   - En Windows podés definir `exportar_pdf=True` para obtener también la versión PDF si `pywin32` está disponible
 
 
 8. Consultas generales
@@ -196,6 +197,7 @@ El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Pod
 Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
 El título del informe se adapta al mes correspondiente en español. Si el documento de plantilla no incluye el estilo `Title`, el bot emplea `Heading 1` como respaldo.
 Además se agregó un botón para reemplazar la plantilla actual y otro para exportar el resultado directamente a PDF.
+
 
 
 ```env
