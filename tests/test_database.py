@@ -176,3 +176,22 @@ def test_registrar_servicio_merge():
         assert len(filas) == 1
         assert filas[0].id_carrier == "c1"
 
+
+def test_ensure_servicio_columns_crea_indice():
+    """Verifica que ``ensure_servicio_columns`` genere el índice."""
+
+    with bd.engine.begin() as conn:
+        conn.execute(text("DROP INDEX IF EXISTS ix_servicios_id_carrier"))
+
+    insp = sqlalchemy.inspect(bd.engine)
+    assert not any(
+        i["name"] == "ix_servicios_id_carrier" for i in insp.get_indexes("servicios")
+    )
+
+    bd.ensure_servicio_columns()
+
+    insp = sqlalchemy.inspect(bd.engine)
+    assert any(
+        i["name"] == "ix_servicios_id_carrier" for i in insp.get_indexes("servicios")
+    )
+

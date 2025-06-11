@@ -86,7 +86,7 @@ class Servicio(Base):
     camaras = Column(JSONType)
 
     carrier = Column(String)
-    id_carrier = Column(String)
+    id_carrier = Column(String, index=True)
     fecha_creacion = Column(DateTime, default=datetime.utcnow, index=True)
 
     def __repr__(self):
@@ -141,6 +141,16 @@ def ensure_servicio_columns() -> None:
         with engine.begin() as conn:
             conn.execute(
                 text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}")
+            )
+
+    indices = {idx["name"] for idx in inspector.get_indexes("servicios")}
+    if "ix_servicios_id_carrier" not in indices:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX ix_servicios_id_carrier"
+                    " ON servicios (id_carrier)"
+                )
             )
 
 
