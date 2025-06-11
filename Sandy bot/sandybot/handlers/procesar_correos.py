@@ -9,12 +9,7 @@ import tempfile
 from telegram import Update
 from telegram.ext import ContextTypes
 
-try:
-    import extract_msg
-except ModuleNotFoundError as exc:
-    raise ModuleNotFoundError(
-        "No se encontró la librería 'extract-msg'. Instalala para usar /procesar_correos."
-    ) from exc
+extract_msg_disponible = True
 
 from ..utils import obtener_mensaje
 from ..email_utils import procesar_correo_a_tarea, enviar_correo
@@ -26,7 +21,15 @@ logger = logging.getLogger(__name__)
 # ────────────────────────── UTILIDAD LOCAL ──────────────────────────
 def _leer_msg(ruta: str) -> str:
     """Devuelve el `asunto + cuerpo` de un archivo MSG."""
+    global extract_msg_disponible
     try:
+        try:
+            import extract_msg
+        except ModuleNotFoundError as exc:
+            logger.error("No se encontró la librería 'extract-msg': %s", exc)
+            extract_msg_disponible = False
+            return ""
+
         msg = extract_msg.Message(ruta)
         asunto = msg.subject or ""
         cuerpo = msg.body or ""
@@ -81,6 +84,16 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         try:
             contenido = _leer_msg(ruta_tmp)
             if not contenido:
+                if not extract_msg_disponible:
+                    await responder_registrando(
+                        mensaje,
+                        user_id,
+                        doc.file_name,
+                        "Instalá la librería 'extract-msg' para procesar correos .MSG.",
+                        "tareas",
+                    )
+                    os.remove(ruta_tmp)
+                    return
                 raise ValueError("Sin contenido")
 
             # Procesa correo → registra tarea y genera .msg
