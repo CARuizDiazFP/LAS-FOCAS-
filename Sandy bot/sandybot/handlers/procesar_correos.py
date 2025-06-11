@@ -1,3 +1,6 @@
+# + Nombre de archivo: procesar_correos.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/procesar_correos.py
+# User-provided custom instructions
 """Procesamiento masivo de correos .msg para registrar tareas."""
 
 from __future__ import annotations

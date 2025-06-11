@@ -1,3 +1,6 @@
+# + Nombre de archivo: main.py
+# + Ubicación de archivo: Sandy bot/main.py
+# User-provided custom instructions
 """
 Punto de entrada principal de la aplicación
 """

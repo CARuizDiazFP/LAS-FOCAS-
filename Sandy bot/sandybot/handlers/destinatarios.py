@@ -1,3 +1,6 @@
+# + Nombre de archivo: destinatarios.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/destinatarios.py
+# User-provided custom instructions
 """Manejo de destinatarios para envíos de SandyBot"""
 
 from telegram import Update

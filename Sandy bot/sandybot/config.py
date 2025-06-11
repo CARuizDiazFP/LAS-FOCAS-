@@ -1,3 +1,6 @@
+# + Nombre de archivo: config.py
+# + Ubicación de archivo: Sandy bot/sandybot/config.py
+# User-provided custom instructions
 """Configuración centralizada para el bot Sandy.
 
 Este módulo concentra la lectura de todas las variables de entorno

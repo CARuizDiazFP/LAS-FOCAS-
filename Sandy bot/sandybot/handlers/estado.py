@@ -1,3 +1,6 @@
+# + Nombre de archivo: estado.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/estado.py
+# User-provided custom instructions
 """
 Manejo del estado de usuarios del bot
 """

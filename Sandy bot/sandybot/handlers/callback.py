@@ -1,3 +1,6 @@
+# + Nombre de archivo: callback.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/callback.py
+# User-provided custom instructions
 """
 Handler para callbacks de botones
 """

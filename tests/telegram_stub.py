@@ -1,3 +1,6 @@
+# + Nombre de archivo: telegram_stub.py
+# + Ubicación de archivo: tests/telegram_stub.py
+# User-provided custom instructions
 from types import ModuleType, SimpleNamespace
 from pathlib import Path
 import sys

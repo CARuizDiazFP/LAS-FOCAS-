@@ -1,3 +1,6 @@
+# + Nombre de archivo: correo.py
+# + Ubicación de archivo: Sandy bot/sandybot/correo.py
+# User-provided custom instructions
 import os
 import smtplib
 from email.message import EmailMessage

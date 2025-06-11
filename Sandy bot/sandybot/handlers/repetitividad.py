@@ -1,3 +1,6 @@
+# + Nombre de archivo: repetitividad.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/repetitividad.py
+# User-provided custom instructions
 # Repetitividad.py
 """
 Handler para la generación de informes de repetitividad.

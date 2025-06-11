@@ -1,3 +1,6 @@
+# + Nombre de archivo: utils.py
+# + Ubicación de archivo: Sandy bot/sandybot/utils.py
+# User-provided custom instructions
 """
 Funciones de utilidad comunes para el bot
 """

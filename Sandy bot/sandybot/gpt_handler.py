@@ -1,3 +1,6 @@
+# + Nombre de archivo: gpt_handler.py
+# + Ubicación de archivo: Sandy bot/sandybot/gpt_handler.py
+# User-provided custom instructions
 """
 Manejador de interacciones con GPT con soporte para cache y manejo de errores.
 """

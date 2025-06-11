@@ -1,3 +1,6 @@
+# + Nombre de archivo: logging_config.py
+# + Ubicación de archivo: Sandy bot/sandybot/logging_config.py
+# User-provided custom instructions
 import logging
 from logging.handlers import RotatingFileHandler
 from .config import config

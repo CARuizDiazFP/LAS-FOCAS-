@@ -1,3 +1,6 @@
+# + Nombre de archivo: incidencias.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/incidencias.py
+# User-provided custom instructions
 """Manejadores para el análisis de incidencias."""
 
 from telegram import Update
