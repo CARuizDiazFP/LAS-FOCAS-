@@ -10,6 +10,7 @@ from typing import Optional
 import pandas as pd
 from docx import Document
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from types import SimpleNamespace
 from telegram.ext import ContextTypes
 
 from sandybot.config import config
@@ -36,12 +37,23 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
     context.user_data.clear()
     context.user_data["archivos"] = [None, None]  # [reclamos, servicios]
 
+    teclado = None
+    try:
+        boton = InlineKeyboardButton(
+            "Actualizar plantilla", callback_data="sla_cambiar_plantilla"
+        )
+        teclado = InlineKeyboardMarkup([[boton]])
+    except Exception:
+        boton = SimpleNamespace(text="Actualizar plantilla", callback_data="sla_cambiar_plantilla")
+        teclado = SimpleNamespace(inline_keyboard=[[boton]])
+
     await responder_registrando(
         mensaje,
         user_id,
         "informe_sla",
         "Enviá el Excel de **reclamos** y luego el de **servicios** para generar el informe.",
         "informe_sla",
+        reply_markup=teclado,
     )
 
 
@@ -55,6 +67,18 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = update.effective_user.id
     archivos = context.user_data.setdefault("archivos", [None, None])
+    if context.user_data.get("cambiar_plantilla"):
+        if getattr(mensaje, "document", None):
+            await actualizar_plantilla_sla(update, context)
+        else:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                getattr(mensaje, "text", ""),
+                "Adjuntá el archivo .docx para actualizar la plantilla.",
+                "informe_sla",
+            )
+        return
 
     # ───── Callback «Procesar informe» ─────
     if update.callback_query and update.callback_query.data == "sla_procesar":
@@ -119,9 +143,14 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             return
 
         # Ambos archivos listos: mostrar botón Procesar
-        keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
-        )
+        try:
+            boton = InlineKeyboardButton(
+                "Procesar informe 🚀", callback_data="sla_procesar"
+            )
+            keyboard = InlineKeyboardMarkup([[boton]])
+        except Exception:
+            boton = SimpleNamespace(text="Procesar informe 🚀", callback_data="sla_procesar")
+            keyboard = SimpleNamespace(inline_keyboard=[[boton]])
         await responder_registrando(
             mensaje,
             user_id,
@@ -138,6 +167,46 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         user_id,
         getattr(mensaje, "text", ""),
         "Adjuntá los archivos de reclamos y servicios para comenzar.",
+        "informe_sla",
+    )
+
+
+async def actualizar_plantilla_sla(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Guarda la plantilla enviada reemplazando la configuración actual."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje or not getattr(mensaje, "document", None):
+        logger.warning("No se recibió documento en actualizar_plantilla_sla")
+        return
+
+    user_id = update.effective_user.id
+    archivo = mensaje.document
+    if not archivo.file_name.lower().endswith(".docx"):
+        await responder_registrando(
+            mensaje,
+            user_id,
+            archivo.file_name,
+            "El archivo debe tener extensión .docx.",
+            "informe_sla",
+        )
+        return
+
+    try:
+        f = await archivo.get_file()
+        os.makedirs(os.path.dirname(config.SLA_PLANTILLA_PATH), exist_ok=True)
+        await f.download_to_drive(config.SLA_PLANTILLA_PATH)
+        texto = "Plantilla de SLA actualizada."
+    except Exception as e:  # pragma: no cover
+        logger.error("Error guardando plantilla SLA: %s", e)
+        texto = "No se pudo guardar la plantilla."
+
+    context.user_data.pop("cambiar_plantilla", None)
+    await responder_registrando(
+        mensaje,
+        user_id,
+        archivo.file_name,
+        texto,
         "informe_sla",
     )
 

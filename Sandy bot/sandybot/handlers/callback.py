@@ -135,6 +135,11 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         registrar_conversacion(user_id, "sla_procesar", "Procesar informe", "callback")
         await procesar_informe_sla(update, context)
 
+    elif data == "sla_cambiar_plantilla":
+        context.user_data["cambiar_plantilla"] = True
+        registrar_conversacion(user_id, "sla_cambiar_plantilla", "Solicitar plantilla", "callback")
+        await query.edit_message_text("Adjuntá la nueva plantilla .docx")
+
     # ─────────────────────────────── OTROS ─────────────────────────────────
     elif data == "otro":
         UserState.set_mode(user_id, "sandy")
