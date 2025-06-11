@@ -8,6 +8,13 @@ import re
 from datetime import datetime
 from email.message import EmailMessage
 
+try:
+    import win32com.client as win32
+    import pythoncom
+except ImportError:  # pragma: no cover - entornos sin win32
+    win32 = None
+    pythoncom = None
+
 from .config import config
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada
 from .utils import (
