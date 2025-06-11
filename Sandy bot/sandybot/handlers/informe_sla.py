@@ -113,4 +113,126 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             await responder_registrando(
                 mensaje,
                 user_id,
-                docs[-1].file_name_
+                docs[-1].file_name,
+                f"Archivo guardado. Falta el Excel de {falta}.",
+                "informe_sla",
+            )
+            return
+
+        # Ambos archivos listos: mostrar botón Procesar
+        try:
+            boton = InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")
+            keyboard = InlineKeyboardMarkup([[boton]])
+        except TypeError:
+            # Fallback para stubs sin clases reales
+            boton = type("StubButton", (), {"text": "Procesar informe 🚀", "callback_data": "sla_procesar"})()
+            keyboard = type("StubMarkup", (), {"inline_keyboard": [[boton]]})()
+
+        await responder_registrando(
+            mensaje,
+            user_id,
+            docs[-1].file_name,
+            "Archivos cargados. Presioná *Procesar informe*.",
+            "informe_sla",
+            reply_markup=keyboard,
+        )
+        return
+
+    # Sin adjuntos ni callback
+    await responder_registrando(
+        mensaje,
+        user_id,
+        getattr(mensaje, "text", ""),
+        "Adjuntá los archivos de reclamos y servicios para comenzar.",
+        "informe_sla",
+    )
+
+
+# ─────────────────────── FUNCIÓN GENERADORA DE WORD ───────────────────
+def _generar_documento_sla(
+    reclamos_xlsx: str,
+    servicios_xlsx: str,
+    eventos: Optional[str] = "",
+    conclusion: Optional[str] = "",
+    propuesta: Optional[str] = "",
+) -> str:
+    """Combina datos y genera el documento SLA usando la plantilla personalizada."""
+    reclamos_df = pd.read_excel(reclamos_xlsx)
+    servicios_df = pd.read_excel(servicios_xlsx)
+
+    # Normaliza nombres de columna
+    if "Servicio" not in reclamos_df.columns:
+        reclamos_df.rename(columns={reclamos_df.columns[0]: "Servicio"}, inplace=True)
+    if "Servicio" not in servicios_df.columns:
+        servicios_df.rename(columns={servicios_df.columns[0]: "Servicio"}, inplace=True)
+
+    # Título Mes/Año
+    try:
+        fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
+        if pd.isna(fecha):
+            raise ValueError
+    except Exception:
+        fecha = pd.Timestamp.today()
+
+    # Intentar locale español (en sistemas que lo soporten)
+    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            break
+        except locale.Error:
+            continue
+
+    mes = fecha.strftime("%B").upper()
+    anio = fecha.strftime("%Y")
+
+    # Conteo de reclamos por servicio
+    resumen = reclamos_df.groupby("Servicio").size().reset_index(name="Reclamos")
+    df = servicios_df.merge(resumen, on="Servicio", how="left")
+    df["Reclamos"] = df["Reclamos"].fillna(0).astype(int)
+
+    # Documento base
+    if not (RUTA_PLANTILLA and os.path.exists(RUTA_PLANTILLA)):
+        logger.error("Plantilla de SLA no encontrada: %s", RUTA_PLANTILLA)
+        raise ValueError("Plantilla de SLA no encontrada")
+    doc = Document(RUTA_PLANTILLA)
+
+    try:
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
+    except KeyError:
+        # Plantillas sin estilo 'Title'
+        doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
+
+    # Tabla de resumen
+    tabla = doc.add_table(rows=1, cols=2, style="Table Grid")
+    hdr = tabla.rows[0].cells
+    hdr[0].text = "Servicio"
+    hdr[1].text = "Reclamos"
+
+    for _, fila in df.iterrows():
+        row = tabla.add_row().cells
+        row[0].text = str(fila["Servicio"])
+        row[1].text = str(fila["Reclamos"])
+
+    # Insertar textos personalizados
+    etiquetas = {
+        "Eventos sucedidos de mayor impacto en SLA:": eventos,
+        "Conclusión:": conclusion,
+        "Propuesta de mejora:": propuesta,
+    }
+    encontrados = set()
+    for p in doc.paragraphs:
+        texto = p.text.strip()
+        for etiqueta, contenido in etiquetas.items():
+            if texto.startswith(etiqueta):
+                p.text = f"{etiqueta} {contenido}"
+                encontrados.add(etiqueta)
+                break
+    for etiqueta, contenido in etiquetas.items():
+        if etiqueta not in encontrados and contenido:
+            doc.add_paragraph(f"{etiqueta} {contenido}")
+
+    # Guardado temporal
+    nombre_archivo = "InformeSLA.docx"
+    ruta_salida = os.path.join(tempfile.gettempdir(), nombre_archivo)
+    doc.save(ruta_salida)
+    return ruta_salida
