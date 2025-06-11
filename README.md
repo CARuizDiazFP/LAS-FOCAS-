@@ -13,6 +13,7 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
   no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
+- `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
@@ -112,6 +113,7 @@ tarea = crear_tarea_programada(
 )
 ```
 
+
 ### Avisos en formato `.MSG`
 
 Al registrar una tarea se genera un archivo `.MSG` con los datos
@@ -125,6 +127,13 @@ formatear el mensaje.
 Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el
 bot y crear automáticamente cada tarea programada. De esta manera se
 evita cargar la información de forma manual.
+
+### Detectar tareas desde un correo
+
+Con `/detectar_tarea <cliente>` podés pegar el mail o adjuntar el archivo.
+Sandy utiliza GPT para extraer inicio, fin, tipo y los IDs de servicio.
+Al crear la tarea genera también un `.MSG` con el texto listo para enviar.
+
 
 ## Carga de tracking
 

@@ -32,6 +32,7 @@ from .handlers import (
     eliminar_destinatario,
     listar_destinatarios,
     registrar_tarea_programada,
+    detectar_tarea_mail,
 )
 
 logger = logging.getLogger(__name__)
@@ -72,6 +73,9 @@ class SandyBot:
         )
         self.app.add_handler(
             CommandHandler("registrar_tarea", registrar_tarea_programada)
+        )
+        self.app.add_handler(
+            CommandHandler("detectar_tarea", detectar_tarea_mail)
         )
 
         # Callbacks de botones
