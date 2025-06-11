@@ -10,6 +10,7 @@ fuzzywuzzy>=0.18.0
 python-Levenshtein>=0.12.0
 extract-msg==0.23.1
 pywin32>=300; sys_platform == 'win32'  # necesario para exportar a PDF
+docx2pdf>=0.1.8
 jsonschema>=4.0.0
 SQLAlchemy>=1.4
 textract==1.6.3  # opcional para archivos .doc

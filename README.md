@@ -4,8 +4,8 @@ Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `Sandy bot/requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
 API utilizada en `sandybot`. Es obligatorio instalar `extract-msg` para leer los
-adjuntos `.msg` y opcionalmente `pywin32`, que permite insertar la firma,
-generar un `.MSG` real desde Outlook y exportar informes a PDF. Desde esta versión el bot también acepta
+adjuntos `.msg` y opcionalmente `pywin32` en Windows o `docx2pdf` en otros sistemas.
+Estas librerías permiten insertar la firma, generar un `.MSG` real desde Outlook y exportar informes a PDF. Desde esta versión el bot también acepta
 mensajes de voz, los descarga y los transcribe automáticamente utilizando la API
 de OpenAI.
 
@@ -296,7 +296,7 @@ pip install -r requirements.txt
 Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `C:\Metrotel\Sandy`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
 Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `C:\Metrotel\Sandy\Template Informe SLA.docx`.
 El archivo debe existir en formato `.docx`.
-El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecerá el botón **Procesar**, que genera el informe utilizando la plantilla configurada en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco. Si ejecutás la función `_generar_documento_sla` con `exportar_pdf=True` y contás con `pywin32` en Windows, también se guardará una versión PDF.
+El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecen los botones **Procesar** y **Exportar a PDF**. El informe utiliza la plantilla configurada en `SLA_TEMPLATE_PATH` y deja en blanco los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora**. Si ejecutás `_generar_documento_sla(exportar_pdf=True)` con `pywin32` en Windows o con `docx2pdf` en otros sistemas, se guardará también la versión PDF.
 
 ```env
 SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
@@ -307,9 +307,9 @@ Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" 
 ### Ejemplo completo del flujo
 
 1. Enviá el Excel con los **reclamos** y luego el de **servicios**.
-2. Una vez recibidos ambos, el bot muestra el botón **Procesar**.
-3. Al presionarlo se genera el documento en una ruta temporal con un nombre aleatorio.
-   Si se llama a `_generar_documento_sla(exportar_pdf=True)` en Windows, también se guarda la versión PDF.
+2. Una vez recibidos ambos, el bot muestra los botones **Procesar** y **Exportar a PDF**.
+3. Al presionar alguna opción se genera el documento en una ruta temporal con un nombre aleatorio.
+   Si se llama a `_generar_documento_sla(exportar_pdf=True)` con `pywin32` en Windows o con `docx2pdf` en otros sistemas, también se guarda la versión PDF.
 4. Finalmente el archivo se envía por Telegram y se elimina automáticamente del sistema para evitar residuos.
 5. En cualquier momento se puede usar el botón **Actualizar plantilla** para cargar una nueva base en formato `.docx`.
 

@@ -63,8 +63,13 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 # ────────────────────────── FLUJO DE PROCESO ─────────────────────────
-async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Recibe dos Excel → botón “Procesar informe” → genera Word (y opcional PDF)."""
+async def procesar_informe_sla(
+    update: Update,
+    context: ContextTypes.DEFAULT_TYPE,
+    *,
+    exportar_pdf: bool = False,
+) -> None:
+    """Recibe los Excel, muestra opciones y genera el informe en Word o PDF."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en procesar_informe_sla")
@@ -94,15 +99,22 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     # ─── Callback «Procesar informe» ────────────────────────────────
-    if update.callback_query and update.callback_query.data == "sla_procesar":
+    if update.callback_query and update.callback_query.data in {"sla_procesar", "sla_pdf"}:
         reclamos_xlsx, servicios_xlsx = archivos
         try:
-            ruta_final = _generar_documento_sla(reclamos_xlsx, servicios_xlsx)
+            ruta_final = _generar_documento_sla(
+                reclamos_xlsx,
+                servicios_xlsx,
+                exportar_pdf=exportar_pdf or update.callback_query.data == "sla_pdf",
+            )
             with open(ruta_final, "rb") as f:
                 await update.callback_query.message.reply_document(f, filename=os.path.basename(ruta_final))
             os.remove(ruta_final)
             registrar_conversacion(
-                user_id, "informe_sla", f"Documento {os.path.basename(ruta_final)} enviado", "informe_sla"
+                user_id,
+                "informe_sla",
+                f"Documento {os.path.basename(ruta_final)} enviado",
+                "informe_sla",
             )
         except Exception as e:  # pragma: no cover
             logger.error("Error generando informe SLA: %s", e)
@@ -142,17 +154,19 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
 
-        # Ambos archivos listos → botón Procesar
+        # Ambos archivos listos → botones para procesar
         try:
-            boton = InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")
-            keyboard = InlineKeyboardMarkup([[boton]])
+            procesar = InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")
+            pdf = InlineKeyboardButton("Exportar a PDF", callback_data="sla_pdf")
+            keyboard = InlineKeyboardMarkup([[procesar, pdf]])
         except Exception:  # fallback para stubs
-            boton = SimpleNamespace(text="Procesar informe 🚀", callback_data="sla_procesar")
-            keyboard = SimpleNamespace(inline_keyboard=[[boton]])
+            procesar = SimpleNamespace(text="Procesar informe 🚀", callback_data="sla_procesar")
+            pdf = SimpleNamespace(text="Exportar a PDF", callback_data="sla_pdf")
+            keyboard = SimpleNamespace(inline_keyboard=[[procesar, pdf]])
 
         await responder_registrando(
             mensaje, user_id, docs[-1].file_name,
-            "Archivos cargados. Presioná *Procesar informe*.", "informe_sla",
+            "Archivos cargados. Elegí una opción.", "informe_sla",
             reply_markup=keyboard,
         )
         return
