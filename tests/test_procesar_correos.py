@@ -273,5 +273,8 @@ def test_procesar_correos_varios(tmp_path):
 
     assert len(tareas) == prev_tareas + 2
     assert len(rels) == prev_rels + 2
+    # Se registran dos tareas, una por cada adjunto
+    ids_nuevos = [t.id for t in tareas[-2:]]
+    assert ids_nuevos[0] != ids_nuevos[1]
     assert msg.sent == f"tarea_{tareas[-1].id}.msg"
     assert enviados["cid"] == cli.id
