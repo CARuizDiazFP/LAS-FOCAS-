@@ -13,6 +13,7 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
   no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
+- `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
