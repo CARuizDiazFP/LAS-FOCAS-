@@ -103,6 +103,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             return
 
         # Ambos archivos listos → ofrecer botón procesar
+        context.user_data["esperando_eventos"] = False
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
         )

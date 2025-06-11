@@ -164,11 +164,14 @@ def _importar_handler(tmp_path: Path):
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
+    # Asegurar que las clases de telegram sean las correctas antes de importar
+    telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+    telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
+    sys.modules["telegram"] = telegram_stub
     spec.loader.exec_module(mod)
 
-    # Restaurar engine
-    sa.create_engine = orig_engine
     import sandybot.database as bd
+    sa.create_engine = orig_engine
 
     bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
     bd.Base.metadata.create_all(bind=bd.engine)
