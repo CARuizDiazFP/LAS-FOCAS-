@@ -61,3 +61,36 @@ async def agregar_carrier(update: Update, context: ContextTypes.DEFAULT_TYPE) ->
         texto,
         "carriers",
     )
+
+
+async def eliminar_carrier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Elimina un carrier dado su nombre."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    if not context.args:
+        await responder_registrando(
+            mensaje,
+            user_id,
+            mensaje.text or "eliminar_carrier",
+            "Usá: /eliminar_carrier <nombre>",
+            "carriers",
+        )
+        return
+    nombre = context.args[0]
+    with SessionLocal() as session:
+        carrier = session.query(Carrier).filter(Carrier.nombre == nombre).first()
+        if not carrier:
+            texto = f"{nombre} no existe."
+        else:
+            session.delete(carrier)
+            session.commit()
+            texto = f"Carrier {nombre} eliminado."
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text,
+        texto,
+        "carriers",
+    )
