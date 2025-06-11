@@ -193,10 +193,13 @@ adicional.
 
 Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`.
 Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla`.
-El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**, que se pueden enviar por separado.
-Cuando ambos estén disponibles aparecerán los botones **Procesar** y **Exportar a PDF**. El informe usa la plantilla definida en `SLA_TEMPLATE_PATH` y deja vacíos los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora**.
-El título del informe se adapta al mes correspondiente en español. Si la plantilla no incluye el estilo `Title`, el bot emplea `Heading 1` como respaldo.
-También existe un botón para reemplazar la plantilla y otro para obtener el PDF. Para generar esta versión se ejecuta `_generar_documento_sla(exportar_pdf=True)` con `pywin32` en Windows o con `docx2pdf` en otros sistemas.
+El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Podés enviarlos por separado sin importar el orden.
+Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
+El título del informe se adapta al mes correspondiente en español. Si el documento de plantilla no incluye el estilo `Title`, el bot emplea `Heading 1` como respaldo.
+También existe un botón **Actualizar plantilla** para reemplazar el documento base en cualquier momento.
+Si instalás `docx2pdf` o usás `pywin32` en Windows aparecerá el botón **Exportar PDF**, que llama a
+`_generar_documento_sla(exportar_pdf=True)` y crea la versión en ese formato.
+
 
 
 
@@ -209,16 +212,17 @@ Si la ruta no existe se mostrará el mensaje "Plantilla de SLA no encontrada" y 
 ### Ejemplo completo del flujo
 
 1. Enviá primero el Excel con los **reclamos** y después el de **servicios**.
-2. Tras recibir ambos archivos aparecen los botones **Procesar** y **Exportar a PDF**.
-3. Al usar cualquiera de ellos se genera un archivo con nombre aleatorio en la carpeta temporal.
-   Si se incluye `exportar_pdf=True` con `pywin32` en Windows o con `docx2pdf` en otros sistemas, también se crea la versión PDF.
+2. Tras recibir ambos archivos aparece el botón **Procesar**.
+3. Al usarlo se genera un archivo en la carpeta temporal con un nombre aleatorio.
+   Si instalaste `docx2pdf` o `pywin32`, podés presionar **Exportar PDF** para obtener la versión final.
+
 4. El documento (DOCX o PDF) se envía por Telegram y luego se elimina de manera automática.
-5. Podés actualizar la plantilla en cualquier momento mediante el botón **Actualizar plantilla**.
+5. Si necesitás cambiar la base presioná el botón **Actualizar plantilla**.
 
 ## Pruebas
 
-Para ejecutar la suite de tests primero corré `setup_env.sh`.
-Ese script instala las dependencias en `.venv` y configura `PYTHONPATH`.
+Antes de lanzar `pytest` es **necesario** correr `setup_env.sh`.
+El script instala todas las dependencias en `.venv` y configura `PYTHONPATH`.
 Antes de correr las pruebas definí algunas variables de entorno mínimas:
 
 ```bash
