@@ -173,9 +173,12 @@ class TareaServicio(Base):
     tarea_id = Column(Integer, ForeignKey("tareas_programadas.id"), index=True)
     servicio_id = Column(Integer, ForeignKey("servicios.id"), index=True)
 
+    # Evita filas duplicadas con la misma tarea y servicio
     __table_args__ = (
         UniqueConstraint(
-            "tarea_id", "servicio_id", name="uix_tarea_servicio"
+            "tarea_id",
+            "servicio_id",
+            name="uix_tarea_servicio",
         ),
     )
 

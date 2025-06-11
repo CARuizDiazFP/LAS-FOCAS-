@@ -309,3 +309,16 @@ def test_crear_tarea_varios_servicios():
         )
     assert len(rels) == 2
     assert {r.servicio_id for r in rels} == {s1.id, s2.id}
+
+
+def test_crear_tarea_servicio_repetido():
+    """Crear una tarea con el mismo servicio dos veces provoca un error."""
+    s = bd.crear_servicio(nombre="SvRep", cliente="CliR")
+
+    with pytest.raises(sqlalchemy.exc.IntegrityError):
+        bd.crear_tarea_programada(
+            datetime(2024, 1, 4, 8),
+            datetime(2024, 1, 4, 10),
+            "Mantenimiento",
+            [s.id, s.id],
+        )
