@@ -176,8 +176,6 @@ class TareaServicio(Base):
 
     # Evita filas duplicadas con la misma tarea y servicio
     __table_args__ = (
-    # Evita filas duplicadas con la misma tarea y servicio
-    __table_args__ = (
         UniqueConstraint("tarea_id", "servicio_id", name="uix_tarea_servicio"),
     )
 
