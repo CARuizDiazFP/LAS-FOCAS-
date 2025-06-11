@@ -180,8 +180,8 @@ adicional.
    - Genera un resumen de nivel de servicio usando `Template Informe SLA.docx`
    - Podés iniciarlo desde el botón **Informe de SLA** o con `/informe_sla`
    - Solicita los Excel de reclamos y servicios, que pueden enviarse por separado
-   - Una vez cargados los dos archivos aparece el botón **Procesar**, que genera el informe según `SLA_TEMPLATE_PATH` con los campos de eventos, conclusión y mejora en blanco
-   - En Windows podés definir `exportar_pdf=True` para obtener también la versión PDF si tenés instalada la librería `pywin32`
+   - Una vez cargados los dos archivos aparecen los botones **Procesar** y **Exportar a PDF** para generar el informe según `SLA_TEMPLATE_PATH`
+   - En Windows podés definir `exportar_pdf=True` si contás con `pywin32`. En otros sistemas necesitás la librería `docx2pdf` para crear la versión PDF
 
 
 8. Consultas generales
@@ -202,6 +202,7 @@ Si instalás `docx2pdf` o usás `pywin32` en Windows aparecerá el botón **Expo
 
 
 
+
 ```env
 SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
 ```
@@ -214,6 +215,7 @@ Si la ruta no existe se mostrará el mensaje "Plantilla de SLA no encontrada" y 
 2. Tras recibir ambos archivos aparece el botón **Procesar**.
 3. Al usarlo se genera un archivo en la carpeta temporal con un nombre aleatorio.
    Si instalaste `docx2pdf` o `pywin32`, podés presionar **Exportar PDF** para obtener la versión final.
+
 4. El documento (DOCX o PDF) se envía por Telegram y luego se elimina de manera automática.
 5. Si necesitás cambiar la base presioná el botón **Actualizar plantilla**.
 
