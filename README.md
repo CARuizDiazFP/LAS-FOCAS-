@@ -14,9 +14,9 @@ de OpenAI.
 El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
-  no se define, se usa `C:\Metrotel\Sandy\plantilla_informe.docx`.
-- `SLA_TEMPLATE_PATH`: ruta del documento base para el informe de SLA. Por
-  defecto se aplica `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+
+- `SLA_TEMPLATE_PATH`: ruta de la plantilla para el Informe de SLA. Si no se define, se usa `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+
 - `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
@@ -267,6 +267,17 @@ También podés incluirlo al instalar todas las dependencias:
 ```bash
 pip install -r requirements.txt
 ```
+
+## Informe de SLA
+
+Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `C:\Metrotel\Sandy`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
+Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+El archivo debe existir en formato `.docx`.
+
+```env
+SLA_TEMPLATE_PATH=/ruta/al/Template Informe SLA.docx
+```
+
 
 ## Enviar Excel por correo
 
