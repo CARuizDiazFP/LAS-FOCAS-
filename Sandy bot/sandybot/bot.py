@@ -27,6 +27,7 @@ from .handlers import (
     iniciar_carga_tracking,
     iniciar_descarga_tracking,
     iniciar_envio_camaras_mail,
+    iniciar_informe_sla,
 )
 from .handlers import (
     agregar_destinatario,
@@ -83,6 +84,7 @@ class SandyBot:
         self.app.add_handler(CommandHandler("detectar_tarea", detectar_tarea_mail))
         self.app.add_handler(CommandHandler("procesar_correos", procesar_correos))
         self.app.add_handler(CommandHandler("reenviar_aviso", reenviar_aviso))
+        self.app.add_handler(CommandHandler("informe_sla", iniciar_informe_sla))
 
         # Callbacks de botones
         self.app.add_handler(CallbackQueryHandler(callback_handler))

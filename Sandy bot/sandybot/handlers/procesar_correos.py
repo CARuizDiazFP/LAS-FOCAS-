@@ -85,7 +85,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 raise ValueError("Sin contenido")
 
             # Procesa correo → registra tarea y genera .msg
-            tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
+            tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
                 contenido, cliente_nombre, carrier_nombre
             )
         except Exception as e:  # pragma: no cover
@@ -97,12 +97,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             if os.path.exists(ruta_tmp):
                 os.remove(ruta_tmp)
 
-        # Leemos cuerpo para reenviar por mail
-        cuerpo = ""
-        try:
-            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
+        # ``cuerpo`` ya contiene el texto del aviso generado
 
         # Envía aviso a destinatarios del cliente
         enviar_correo(
