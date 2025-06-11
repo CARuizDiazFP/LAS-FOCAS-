@@ -85,17 +85,6 @@ async def listar_tareas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             .all()
         )
 
-        filas = (
-            consulta.group_by(
-                TareaProgramada.id,
-                TareaProgramada.fecha_inicio,
-                TareaProgramada.fecha_fin,
-                TareaProgramada.tipo_tarea,
-            )
-            .order_by(TareaProgramada.fecha_inicio)
-            .all()
-        )
-
         if not filas:
             texto = "No se encontraron tareas."
         else:
