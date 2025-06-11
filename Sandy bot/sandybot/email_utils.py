@@ -310,6 +310,11 @@ def generar_archivo_msg(
 
             mail.Body = contenido + ("\n\n" + firma if firma else "")
             mail.SaveAs(ruta, 3)  # 3 = olMSGUnicode
+            try:
+                with open(f"{ruta}.txt", "w", encoding="utf-8") as txt:
+                    txt.write(mail.Body)
+            except Exception as e:  # pragma: no cover - depende del entorno
+                logger.error("No se pudo escribir el texto: %s", e)
             return ruta
         except Exception as e:  # pragma: no cover
             logger.error("Error generando archivo MSG: %s", e)

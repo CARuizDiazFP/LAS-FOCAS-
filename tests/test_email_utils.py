@@ -280,4 +280,6 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     assert resultado == str(ruta)
     assert outlook.saved == (str(ruta), 3)
     assert ruta.exists()
-    assert "Telco2" in ruta.read_text(encoding="utf-8")
+    texto = Path(str(ruta) + ".txt")
+    assert texto.exists()
+    assert "Telco2" in texto.read_text(encoding="utf-8")
