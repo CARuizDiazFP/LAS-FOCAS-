@@ -16,6 +16,15 @@ except ImportError:  # pragma: no cover - entornos sin win32
     pythoncom = None
 
 from .config import config
+
+try:
+    import win32com.client as win32
+except ImportError:  # pragma: no cover - depende del sistema
+    win32 = None
+
+SIGNATURE_PATH = (
+    Path(os.getenv("SIGNATURE_PATH")) if os.getenv("SIGNATURE_PATH") else None
+)
 from .database import SessionLocal, Cliente, Servicio, TareaProgramada
 from .utils import (
     cargar_destinatarios as utils_cargar_dest,
@@ -243,7 +252,11 @@ def generar_archivo_msg(
     servicios: list[Servicio],
     ruta: str,
 ) -> str:
-    """Crea un archivo .MSG simple con la información de la tarea."""
+    """Genera un archivo para notificar una tarea programada.
+
+    Cuando ``win32`` está disponible se crea un verdadero archivo ``.msg`` con
+    Outlook. En caso contrario se escribe texto plano como respaldo.
+    """
 
     lineas = [
         "Estimado Cliente, nuestro partner nos da aviso de la siguiente tarea programada:",
@@ -260,6 +273,24 @@ def generar_archivo_msg(
     lineas.append(f"Servicios afectados: {lista_servicios}")
 
     contenido = "\n".join(lineas)
+
+    if win32 is not None:
+        try:
+            outlook = win32.Dispatch("Outlook.Application")
+            mail = outlook.CreateItem(0)
+            mail.Subject = f"Aviso de tarea programada - {cliente.nombre}"
+            firma = ""
+            if SIGNATURE_PATH and SIGNATURE_PATH.exists():
+                try:
+                    firma = SIGNATURE_PATH.read_text(encoding="utf-8")
+                except Exception as e:  # pragma: no cover - depende del entorno
+                    logger.warning("No se pudo leer la firma: %s", e)
+            mail.Body = contenido + ("\n\n" + firma if firma else "")
+            mail.SaveAs(ruta, 3)
+            return ruta
+        except Exception as e:  # pragma: no cover - depende del entorno
+            logger.error("Error generando archivo MSG: %s", e)
+
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
     return ruta
