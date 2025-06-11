@@ -45,17 +45,40 @@ class Message:
     async def reply_text(self, *a, **k):
         pass
 
+    async def edit_text(self, *a, **k):
+        pass
+
+
+class InlineKeyboardButton:
+    def __init__(self, *a, **k):
+        pass
+
+
+class InlineKeyboardMarkup:
+    def __init__(self, *a, **k):
+        pass
+
+
+class CallbackQuery:
+    def __init__(self, message=None):
+        self.message = message
+
 
 class Update:
-    def __init__(self, *, message=None):
+    def __init__(self, *, message=None, callback_query=None, edited_message=None):
         self.message = message
+        self.callback_query = callback_query
+        self.edited_message = edited_message
         self.effective_user = SimpleNamespace(id=1)
 
 
 telegram_stub.Update = Update
 telegram_stub.Message = Message
 telegram_stub.Document = DocumentStub
-sys.modules.setdefault("telegram", telegram_stub)
+telegram_stub.CallbackQuery = CallbackQuery
+telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
+sys.modules["telegram"] = telegram_stub
 
 # --- telegram.ext stub ------------------------------------------------------
 telegram_ext_stub = ModuleType("telegram.ext")
@@ -90,6 +113,15 @@ def _importar_handler(tmp_path: Path):
     """
     template = tmp_path / "template.docx"
     Document().save(template)
+
+    telegram_mod = sys.modules.get("telegram") or ModuleType("telegram")
+    telegram_mod.Update = Update
+    telegram_mod.Message = Message
+    telegram_mod.Document = DocumentStub
+    telegram_mod.CallbackQuery = CallbackQuery
+    telegram_mod.InlineKeyboardButton = InlineKeyboardButton
+    telegram_mod.InlineKeyboardMarkup = InlineKeyboardMarkup
+    sys.modules["telegram"] = telegram_mod
 
     # Recargar config para que cualquier acceso posterior tome valores frescos
     if "sandybot.config" in sys.modules:
@@ -152,20 +184,26 @@ def test_procesar_informe_sla(tmp_path):
         # Paso 1: envío de ambos Excel
         msg1 = Message(documents=[doc1, doc2])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg1), ctx))
-        assert ctx.user_data.get("esperando_eventos")
+        assert ctx.user_data.get("archivos")
+        assert not ctx.user_data.get("esperando_eventos")
         assert msg1.sent is None
 
-        # Paso 2: eventos
+        # Paso 2: se presiona el botón Procesar
+        cb = CallbackQuery(message=Message())
+        asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
+        assert ctx.user_data.get("esperando_eventos")
+
+        # Paso 3: eventos
         msg2 = Message(text="Evento crítico")
         asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
         assert ctx.user_data.get("esperando_conclusion")
 
-        # Paso 3: conclusión
+        # Paso 4: conclusión
         msg3 = Message(text="Conclusión X")
         asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
         assert ctx.user_data.get("esperando_propuesta")
 
-        # Paso 4: propuesta y generación final
+        # Paso 5: propuesta y generación final
         msg4 = Message(text="Propuesta Y")
         asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
     finally:

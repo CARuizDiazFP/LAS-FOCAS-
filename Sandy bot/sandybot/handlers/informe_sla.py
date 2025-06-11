@@ -8,7 +8,7 @@ import tempfile
 
 import pandas as pd
 from docx import Document
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from sandybot.config import config
@@ -31,6 +31,8 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     user_id = update.effective_user.id
+
+
     UserState.set_mode(user_id, "informe_sla")
     context.user_data.clear()
     context.user_data["archivos"] = []
@@ -53,6 +55,14 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         return
 
     user_id = update.effective_user.id
+
+    if update.callback_query:
+        context.user_data["esperando_eventos"] = True
+        registrar_conversacion(user_id, "sla_procesar", "Solicitar eventos", "informe_sla")
+        await update.callback_query.message.edit_text(
+            "Escribí los eventos sucedidos de mayor impacto en SLA."
+        )
+        return
 
     # ───── Paso inicial: recepción de los 2 Excel ─────
     if not context.user_data.get("archivos"):
@@ -79,13 +89,16 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
                 tmp_paths.append(tmp.name)
 
         context.user_data["archivos"] = tmp_paths
-        context.user_data["esperando_eventos"] = True
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Procesar 🚀", callback_data="sla_procesar")]]
+        )
         await responder_registrando(
             mensaje,
             user_id,
             docs[0].file_name,
-            "Escribí los eventos sucedidos de mayor impacto en SLA.",
+            "Archivos recibidos",
             "informe_sla",
+            reply_markup=keyboard,
         )
         return
 
