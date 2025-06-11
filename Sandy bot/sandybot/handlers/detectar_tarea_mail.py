@@ -57,8 +57,14 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
         finally:
             os.remove(ruta)
     else:
-        partes = mensaje.text.split(maxsplit=2)
-        if len(partes) < 3:
+        if len(context.args) > 1:
+            partes = mensaje.text.split(maxsplit=3)
+            indice_cuerpo = 3
+        else:
+            partes = mensaje.text.split(maxsplit=2)
+            indice_cuerpo = 2
+
+        if len(partes) <= indice_cuerpo:
             await responder_registrando(
                 mensaje,
                 user_id,
@@ -67,7 +73,8 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
                 "tareas",
             )
             return
-        contenido = partes[2]
+
+        contenido = partes[indice_cuerpo]
 
     try:
         tarea, cliente, ruta, _ = await procesar_correo_a_tarea(

@@ -98,7 +98,7 @@ def test_detectar_tarea_mail(tmp_path, monkeypatch):
 
     email_utils.gpt = GPTStub()
 
-    msg = Message("/detectar_tarea Cliente ejemplo")
+    msg = Message("/detectar_tarea Cliente ejemplo correo")
     update = Update(message=msg)
     ctx = SimpleNamespace(args=["Cliente", "ejemplo"])
 
@@ -119,3 +119,51 @@ def test_detectar_tarea_mail(tmp_path, monkeypatch):
     ruta = tmp_path / f"tarea_{tarea.id}.msg"
     assert ruta.exists()
     assert msg.sent == ruta.name
+
+
+def test_cuerpo_sin_carrier(tmp_path):
+    """El texto enviado a procesar_correo_a_tarea no incluye el carrier."""
+
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+
+    tempfile.gettempdir = lambda: str(TEMP_DIR)
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.detectar_tarea_mail"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "detectar_tarea_mail.py",
+    )
+    tarea_mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = tarea_mod
+    spec.loader.exec_module(tarea_mod)
+
+    import sandybot.email_utils as email_utils
+
+    capturado = {}
+
+    async def stub_procesar(texto, cliente, carrier=None):
+        capturado["texto"] = texto
+        ruta = tmp_path / "dummy.msg"
+        ruta.write_text("x")
+        return SimpleNamespace(id=1), SimpleNamespace(nombre=cliente), ruta, "ok"
+
+    email_utils.procesar_correo_a_tarea = stub_procesar
+    tarea_mod.procesar_correo_a_tarea = stub_procesar
+
+    msg = Message("/detectar_tarea Cli Telco cuerpo mail")
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=["Cli", "Telco"])
+
+    asyncio.run(tarea_mod.detectar_tarea_mail(update, ctx))
+
+    tempfile.gettempdir = orig_tmp
+
+    assert capturado["texto"] == "cuerpo mail"
