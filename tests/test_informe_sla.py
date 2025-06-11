@@ -1,6 +1,3 @@
-# + Nombre de archivo: test_informe_sla.py
-# + Ubicación de archivo: tests/test_informe_sla.py
-# User-provided custom instructions
 import sys
 import importlib
 import asyncio
@@ -139,6 +136,10 @@ def _importar_handler(tmp_path: Path):
     registrador_stub.registrar_conversacion = lambda *a, **k: None
     sys.modules["sandybot.registrador"] = registrador_stub
 
+    # Asegurar botones correctos por si otros tests modificaron el stub
+    telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+    telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
+
     # Forzar engine SQLite memoria
     import sqlalchemy as sa
 
@@ -218,29 +219,16 @@ def test_procesar_informe_sla(tmp_path):
         msg2 = Message(documents=[doc2])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
         assert all(ctx.user_data["archivos"])
-        assert ctx.user_data["esperando_eventos"] is False
+        assert "esperando_eventos" not in ctx.user_data
         # Confirmamos botón procesar
         boton = msg2.markup.inline_keyboard[0][0]
         assert boton.callback_data == "sla_procesar"
 
-        # Paso 3: activamos callback
+        # Paso 3: activamos callback (se genera el documento)
         cb = CallbackQuery("sla_procesar", message=msg2)
         asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
-        assert ctx.user_data.get("esperando_eventos")
-
-        # Paso 4: eventos
-        msg3 = Message(text="Evento crítico")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
-        assert ctx.user_data.get("esperando_conclusion")
-
-        # Paso 5: conclusión
-        msg4 = Message(text="Conclusión X")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
-        assert ctx.user_data.get("esperando_propuesta")
-
-        # Paso 6: propuesta y generación final
-        msg5 = Message(text="Propuesta Y")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg5), ctx))
+        assert ctx.user_data == {}
+        msg5 = msg2  # el documento se envía al mensaje que contenía el botón
     finally:
         tempfile.gettempdir = orig_tmp  # Restaurar tempdir
 
@@ -251,9 +239,6 @@ def test_procesar_informe_sla(tmp_path):
 
     textos = "\n".join(p.text for p in doc.paragraphs)
     assert "Informe SLA" in textos
-    assert "Evento crítico" in textos
-    assert "Conclusión X" in textos
-    assert "Propuesta Y" in textos
 
     tabla = doc.tables[0]
     assert tabla.rows[1].cells[0].text == "1" and tabla.rows[1].cells[1].text == "2"
