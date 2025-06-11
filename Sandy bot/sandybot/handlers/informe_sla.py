@@ -89,6 +89,15 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             f"Documento {os.path.basename(ruta_final)} enviado",
             "informe_sla",
         )
+    except ValueError as e:
+        logger.error("Error generando informe SLA: %s", e)
+        await responder_registrando(
+            mensaje,
+            update.effective_user.id,
+            os.path.basename(tmp_paths[0]),
+            str(e),
+            "informe_sla",
+        )
     except Exception as e:  # pragma: no cover
         logger.error("Error generando informe SLA: %s", e)
         await responder_registrando(
@@ -134,10 +143,10 @@ def _generar_documento_sla(reclamos_xlsx: str, servicios_xlsx: str) -> str:
     df["Reclamos"] = df["Reclamos"].fillna(0).astype(int)
 
     # Documento base
-    if RUTA_PLANTILLA and os.path.exists(RUTA_PLANTILLA):
-        doc = Document(RUTA_PLANTILLA)
-    else:
-        doc = Document()
+    if not (RUTA_PLANTILLA and os.path.exists(RUTA_PLANTILLA)):
+        logger.error("Plantilla de SLA no encontrada: %s", RUTA_PLANTILLA)
+        raise ValueError("Plantilla de SLA no encontrada")
+    doc = Document(RUTA_PLANTILLA)
 
     doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
 
