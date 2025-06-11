@@ -1,3 +1,6 @@
+# + Nombre de archivo: message.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/message.py
+# User-provided custom instructions
 """
 Handler para mensajes de texto
 """

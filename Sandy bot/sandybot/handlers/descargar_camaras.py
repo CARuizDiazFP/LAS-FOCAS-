@@ -1,3 +1,6 @@
+# + Nombre de archivo: descargar_camaras.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/descargar_camaras.py
+# User-provided custom instructions
 """Handler para descargar las cámaras de un servicio en un Excel."""
 
 from telegram import Update

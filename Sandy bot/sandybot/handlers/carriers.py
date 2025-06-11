@@ -1,3 +1,6 @@
+# + Nombre de archivo: carriers.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/carriers.py
+# User-provided custom instructions
 """Comandos para administrar carriers."""
 
 from telegram import Update

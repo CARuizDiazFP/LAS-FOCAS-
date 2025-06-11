@@ -1,3 +1,6 @@
+# + Nombre de archivo: detectar_tarea_mail.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/detectar_tarea_mail.py
+# User-provided custom instructions
 """Detección automática de tareas programadas desde correos."""
 
 import logging

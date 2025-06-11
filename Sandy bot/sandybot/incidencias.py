@@ -1,3 +1,6 @@
+# + Nombre de archivo: incidencias.py
+# + Ubicación de archivo: Sandy bot/sandybot/incidencias.py
+# User-provided custom instructions
 from docx import Document
 from pathlib import Path
 from .gpt_handler import gpt

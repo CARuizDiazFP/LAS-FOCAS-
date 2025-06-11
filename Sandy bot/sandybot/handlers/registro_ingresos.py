@@ -1,3 +1,6 @@
+# + Nombre de archivo: registro_ingresos.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/registro_ingresos.py
+# User-provided custom instructions
 """Flujo para registrar ingresos a cámaras"""
 from datetime import datetime
 from telegram import Update

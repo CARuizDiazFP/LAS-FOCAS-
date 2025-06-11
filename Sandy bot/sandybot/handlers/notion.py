@@ -1,3 +1,6 @@
+# + Nombre de archivo: notion.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/notion.py
+# User-provided custom instructions
 """
 Integración con Notion para registro de acciones pendientes
 """

@@ -1,3 +1,6 @@
+# + Nombre de archivo: comparador.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/comparador.py
+# User-provided custom instructions
 """
 Handler para la comparación de trazados de fibra óptica.
 """

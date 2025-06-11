@@ -1,3 +1,6 @@
+# + Nombre de archivo: document.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/document.py
+# User-provided custom instructions
 """
 Handler para el procesamiento de documentos.
 """

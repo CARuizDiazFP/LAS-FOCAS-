@@ -1,3 +1,6 @@
+# + Nombre de archivo: database.py
+# + Ubicación de archivo: Sandy bot/sandybot/database.py
+# User-provided custom instructions
 from sqlalchemy import (
     create_engine,
     Column,

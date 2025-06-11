@@ -1,3 +1,6 @@
+# + Nombre de archivo: tarea_programada.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/tarea_programada.py
+# User-provided custom instructions
 from datetime import datetime
 import tempfile
 from pathlib import Path
