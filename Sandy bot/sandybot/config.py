@@ -80,6 +80,8 @@ class Config:
             "PLANTILLA_PATH",
             r"C:\\Metrotel\\Sandy\\plantilla_informe.docx"
         )
+        # Firma opcional en correos
+        self.SIGNATURE_PATH = os.getenv("SIGNATURE_PATH")
 
         # Configuración GPT
         # Permite elegir el modelo vía la variable de entorno "GPT_MODEL".
