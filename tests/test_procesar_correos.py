@@ -124,6 +124,14 @@ def test_procesar_correos(tmp_path):
     sys.modules[mod_name] = tarea_mod
     spec.loader.exec_module(tarea_mod)
 
+    enviados = {}
+    def fake_enviar(asunto, cuerpo, cid, **k):
+        enviados["cid"] = cid
+        enviados["asunto"] = asunto
+        enviados["cuerpo"] = cuerpo
+        return True
+    tarea_mod.enviar_correo = fake_enviar
+
     servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
 
     class GPTStub(tarea_mod.gpt.__class__):
@@ -149,6 +157,7 @@ def test_procesar_correos(tmp_path):
     with bd.SessionLocal() as s:
         tareas = s.query(bd.TareaProgramada).all()
         rels = s.query(bd.TareaServicio).all()
+        cli = s.query(bd.Cliente).filter_by(nombre="Cliente").first()
 
     tempfile.gettempdir = orig_tmp
 
@@ -161,3 +170,5 @@ def test_procesar_correos(tmp_path):
     ruta = tmp_path / f"tarea_{tarea.id}.msg"
     assert ruta.exists()
     assert msg.sent == ruta.name
+    assert enviados["cid"] == cli.id
+    assert "Mant" in enviados["cuerpo"]

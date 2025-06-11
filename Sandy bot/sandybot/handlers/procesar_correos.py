@@ -27,7 +27,7 @@ from ..database import (
     Carrier,
     SessionLocal,
 )
-from ..email_utils import generar_archivo_msg
+from ..email_utils import generar_archivo_msg, enviar_correo
 from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
@@ -149,6 +149,18 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             nombre_arch = f"tarea_{tarea.id}.msg"
             ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
             generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta_msg))
+
+            cuerpo = ""
+            try:
+                cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
+            except Exception:
+                pass
+            enviar_correo(
+                f"Aviso de tarea programada - {cliente.nombre}",
+                cuerpo,
+                cliente.id,
+            )
+
             if ruta_msg.exists():
                 with open(ruta_msg, "rb") as f:
                     await mensaje.reply_document(f, filename=nombre_arch)

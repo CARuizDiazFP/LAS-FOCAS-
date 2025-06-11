@@ -8,6 +8,7 @@ from ..database import (
     TareaProgramada,
     TareaServicio,
     Servicio,
+    Carrier,
     SessionLocal,
 )
 from sqlalchemy import func, cast, String
@@ -25,6 +26,7 @@ async def listar_tareas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
     servicio_id = None
     fecha_inicio = None
     fecha_fin = None
+    carrier_nombre = None
 
     for arg in context.args:
         if arg.isdigit():
@@ -38,7 +40,9 @@ async def listar_tareas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                 fecha_fin = fecha
             continue
         except ValueError:
-            if not cliente:
+            if arg.startswith("carrier="):
+                carrier_nombre = arg.split("=", 1)[1]
+            elif not cliente:
                 cliente = arg
 
     with SessionLocal() as session:
@@ -64,6 +68,22 @@ async def listar_tareas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
             consulta = consulta.filter(TareaProgramada.fecha_inicio >= fecha_inicio)
         if fecha_fin:
             consulta = consulta.filter(TareaProgramada.fecha_fin <= fecha_fin)
+        if carrier_nombre:
+            consulta = consulta.join(
+                Carrier, TareaProgramada.carrier_id == Carrier.id
+            ).filter(Carrier.nombre == carrier_nombre)
+
+        # Agrupamos + ordenamos en un solo paso
+        filas = (
+            consulta.group_by(
+                TareaProgramada.id,
+                TareaProgramada.fecha_inicio,
+                TareaProgramada.fecha_fin,
+                TareaProgramada.tipo_tarea,
+            )
+            .order_by(TareaProgramada.fecha_inicio)
+            .all()
+        )
 
         filas = (
             consulta.group_by(
