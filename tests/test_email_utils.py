@@ -305,27 +305,35 @@ def test_enviar_correo_con_adjunto(tmp_path):
 
 
 def test_registrar_tarea_envia_correo(tmp_path):
+    """Al registrar una tarea programada se dispara un correo automático."""
     import asyncio
     from types import SimpleNamespace, ModuleType
     import importlib.util
     import tempfile
 
+    # Redirigimos el directorio temp para capturar adjuntos generados
     reg.clear()
     orig_tmp = tempfile.gettempdir
     tempfile.gettempdir = lambda: str(tmp_path)
 
+    # Aseguramos que el paquete de handlers exista en sys.modules
     pkg = "sandybot.handlers"
     if pkg not in sys.modules:
         handlers_pkg = ModuleType(pkg)
         handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
         sys.modules[pkg] = handlers_pkg
 
+    # Cargamos dinámicamente el handler de tarea_programada
     mod_name = f"{pkg}.tarea_programada"
-    spec = importlib.util.spec_from_file_location(mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "tarea_programada.py")
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "tarea_programada.py",
+    )
     tarea_mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = tarea_mod
     spec.loader.exec_module(tarea_mod)
 
+    # Creamos cliente y servicio asociados
     cli = bd.Cliente(nombre="CliMail", destinatarios=["b@x.com"])
     with bd.SessionLocal() as s:
         s.add(cli)
@@ -334,18 +342,24 @@ def test_registrar_tarea_envia_correo(tmp_path):
 
     srv = bd.crear_servicio(nombre="Srv", cliente="CliMail", cliente_id=cli.id)
 
+    # Simulamos comando /registrar_tarea
     msg = tests.telegram_stub.Message("/registrar_tarea")
     update = tests.telegram_stub.Update(message=msg)
-    ctx = SimpleNamespace(args=[
-        "CliMail",
-        "2024-01-02T08:00:00",
-        "2024-01-02T10:00:00",
-        "Mant",
-        str(srv.id),
-    ])
+    ctx = SimpleNamespace(
+        args=[
+            "CliMail",
+            "2024-01-02T08:00:00",
+            "2024-01-02T10:00:00",
+            "Mant",
+            str(srv.id),
+        ]
+    )
 
     asyncio.run(tarea_mod.registrar_tarea_programada(update, ctx))
 
+    # Volvemos a dejar tempfile como estaba
     tempfile.gettempdir = orig_tmp
+
+    # Debe haberse enviado correo al destinatario
     assert reg["sent"] is True
     assert reg["to"] == "b@x.com"

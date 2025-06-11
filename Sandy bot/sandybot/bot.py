@@ -32,6 +32,7 @@ from .handlers import (
     eliminar_destinatario,
     listar_destinatarios,
     registrar_tarea_programada,
+    listar_tareas,
     detectar_tarea_mail,
     procesar_correos,
 )
@@ -74,6 +75,9 @@ class SandyBot:
         )
         self.app.add_handler(
             CommandHandler("registrar_tarea", registrar_tarea_programada)
+        )
+        self.app.add_handler(
+            CommandHandler("listar_tareas", listar_tareas)
         )
         self.app.add_handler(
             CommandHandler("detectar_tarea", detectar_tarea_mail)

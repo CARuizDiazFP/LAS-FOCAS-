@@ -116,6 +116,18 @@ tarea = crear_tarea_programada(
 )
 ```
 
+### Listar tareas programadas
+
+Con `/listar_tareas` podés consultar las ventanas ya registradas.
+Los parámetros `cliente`, `servicio` e intervalo de fechas son opcionales
+y se pueden combinar libremente.
+Ejemplos:
+
+```bash
+/listar_tareas ClienteA
+/listar_tareas 7 2024-01-01 2024-01-05
+```
+El bot muestra inicio, fin, tipo y los servicios afectados.
 
 ### Avisos en formato `.MSG`
 
