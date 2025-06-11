@@ -188,13 +188,13 @@ def test_enviar_correo_a_cliente(monkeypatch):
 
 
 def test_generar_archivo_msg(tmp_path):
-    cli = bd.Cliente(nombre="AcmeX", destinatarios=["x@y.com"])
+    cli = bd.Cliente(nombre="AcmeWin", destinatarios=["x@y.com"])
     with bd.SessionLocal() as s:
         s.add(cli)
         s.commit()
         s.refresh(cli)
 
-    srv = bd.crear_servicio(nombre="S1", cliente="AcmeX", cliente_id=cli.id)
+    srv = bd.crear_servicio(nombre="S1", cliente="AcmeWin", cliente_id=cli.id)
     tarea = bd.crear_tarea_programada(
         datetime(2024, 1, 2, 8),
         datetime(2024, 1, 2, 10),
@@ -207,3 +207,57 @@ def test_generar_archivo_msg(tmp_path):
     assert ruta.exists()
     contenido = ruta.read_text(encoding="utf-8")
     assert "Mantenimiento" in contenido
+
+
+def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
+    """Genera el archivo usando Outlook cuando win32 está disponible."""
+
+    class OutlookStub:
+        def __init__(self):
+            self.saved = None
+
+        def Dispatch(self, name):
+            return self
+
+        def CreateItem(self, typ):
+            return self
+
+        def SaveAs(self, path, fmt):
+            self.saved = (path, fmt)
+            Path(path).touch()
+
+    class PycomStub:
+        def __init__(self):
+            self.init = False
+            self.uninit = False
+
+        def CoInitialize(self):
+            self.init = True
+
+        def CoUninitialize(self):
+            self.uninit = True
+
+    outlook = OutlookStub()
+    pyc = PycomStub()
+    monkeypatch.setattr(email_utils, "win32", outlook)
+    monkeypatch.setattr(email_utils, "pythoncom", pyc)
+
+    cli = bd.Cliente(nombre="AcmeWin2", destinatarios=["x@y.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    srv = bd.crear_servicio(nombre="S1", cliente="AcmeWin2", cliente_id=cli.id)
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8),
+        datetime(2024, 1, 2, 10),
+        "Mantenimiento",
+        [srv.id],
+    )
+
+    ruta = tmp_path / "aviso.msg"
+    resultado = email_utils.generar_archivo_msg(tarea, cli, [srv], str(ruta))
+    assert resultado == str(ruta)
+    assert outlook.saved == (str(ruta), 3)
+    assert ruta.exists()

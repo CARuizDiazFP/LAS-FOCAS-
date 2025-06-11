@@ -8,10 +8,11 @@ import re
 from datetime import datetime
 from email.message import EmailMessage
 
+# Para exportar mensajes .msg en Windows se usan estos módulos opcionales
 try:
-    import win32com.client as win32
-    import pythoncom
-except ImportError:  # pragma: no cover - entornos sin win32
+    import win32com.client as win32   # pragma: no cover - solo disponible en Windows
+    import pythoncom                  # pragma: no cover - solo disponible en Windows
+except Exception:                     # pragma: no cover - entornos sin win32
     win32 = None
     pythoncom = None
 
@@ -252,10 +253,12 @@ def generar_archivo_msg(
     servicios: list[Servicio],
     ruta: str,
 ) -> str:
-    """Genera un archivo para notificar una tarea programada.
 
-    Cuando ``win32`` está disponible se crea un verdadero archivo ``.msg`` con
-    Outlook. En caso contrario se escribe texto plano como respaldo.
+    """Crea un archivo ``.msg`` con la información de la tarea.
+
+    Si ``win32`` y ``pythoncom`` están disponibles (Windows), utiliza Outlook
+    para generar el mensaje. En otros entornos crea un archivo de texto plano.
+
     """
 
     lineas = [
@@ -274,23 +277,69 @@ def generar_archivo_msg(
 
     contenido = "\n".join(lineas)
 
+def generar_archivo_msg(
+    tarea: TareaProgramada,
+    cliente: Cliente,
+    servicios: list[Servicio],
+    ruta: str,
+) -> str:
+    """Genera un archivo *.msg* (Outlook) o texto plano con la tarea programada.
+
+    - Con ``win32`` + ``pythoncom`` disponibles → se crea un verdadero **MSG**,
+      se establece asunto, cuerpo y se agrega firma (si existe).
+    - Sin estas librerías → se genera un **.txt** de respaldo.
+    """
+
+    # 📨 Contenido base
+    lineas = [
+        "Estimado Cliente, nuestro partner nos da aviso de la siguiente tarea programada:",
+        f"Inicio: {tarea.fecha_inicio}",
+        f"Fin: {tarea.fecha_fin}",
+        f"Tipo de tarea: {tarea.tipo_tarea}",
+    ]
+    if tarea.tiempo_afectacion:
+        lineas.append(f"Tiempo de afectación: {tarea.tiempo_afectacion}")
+    if tarea.descripcion:
+        lineas.append(f"Descripción: {tarea.descripcion}")
+
+    lista_servicios = ", ".join(str(s.id) for s in servicios)
+    lineas.append(f"Servicios afectados: {lista_servicios}")
+    contenido = "\n".join(lineas)
+
+    # 🪟 Intento de generar MSG con Outlook
     if win32 is not None:
         try:
+            # Inicialización COM explícita si pythoncom está presente
+            if pythoncom is not None:
+                pythoncom.CoInitialize()
+
             outlook = win32.Dispatch("Outlook.Application")
             mail = outlook.CreateItem(0)
             mail.Subject = f"Aviso de tarea programada - {cliente.nombre}"
+
+            # Firma opcional
             firma = ""
             if SIGNATURE_PATH and SIGNATURE_PATH.exists():
                 try:
                     firma = SIGNATURE_PATH.read_text(encoding="utf-8")
-                except Exception as e:  # pragma: no cover - depende del entorno
+                except Exception as e:  # pragma: no cover
                     logger.warning("No se pudo leer la firma: %s", e)
-            mail.Body = contenido + ("\n\n" + firma if firma else "")
-            mail.SaveAs(ruta, 3)
-            return ruta
-        except Exception as e:  # pragma: no cover - depende del entorno
-            logger.error("Error generando archivo MSG: %s", e)
 
+            mail.Body = contenido + ("\n\n" + firma if firma else "")
+            mail.SaveAs(ruta, 3)  # 3 = olMSGUnicode
+            return ruta
+        except Exception as e:  # pragma: no cover
+            logger.error("Error generando archivo MSG: %s", e)
+        finally:
+            # Cerramos el entorno COM si corresponde
+            if pythoncom is not None:
+                try:
+                    pythoncom.CoUninitialize()
+                except Exception:
+                    pass
+
+    # 📝 Fallback a texto plano
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
+    return ruta
     return ruta
