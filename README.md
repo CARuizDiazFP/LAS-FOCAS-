@@ -124,6 +124,8 @@ principales. Este aviso puede abrirse con Outlook y reenviarse o
 ajustarse antes de enviarlo. Si `pywin32` está presente, el sistema
 aplica la firma ubicada en `SIGNATURE_PATH` y aprovecha Outlook para
 formatear el mensaje.
+Si el cliente tiene destinatarios configurados, Sandy envía ese mismo
+archivo por correo de forma automática.
 
 ### Procesar correos y registrar tareas
 

@@ -21,7 +21,7 @@ from ..database import (
     Carrier,
     SessionLocal,
 )
-from ..email_utils import generar_archivo_msg
+from ..email_utils import generar_archivo_msg, enviar_correo
 from ..registrador import responder_registrando
 
 logger = logging.getLogger(__name__)
@@ -146,6 +146,12 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             if ruta_msg.exists():
                 with open(ruta_msg, "rb") as f:
                     await mensaje.reply_document(f, filename=nombre_arch)
+                enviar_correo(
+                    "Aviso de tarea programada",
+                    "Adjunto el aviso generado por SandyBot.",
+                    cliente.id,
+                    adjunto=str(ruta_msg),
+                )
         tareas.append(str(tarea.id))
 
     if tareas:

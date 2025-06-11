@@ -14,7 +14,7 @@ from ..database import (
     Carrier,
     SessionLocal,
 )
-from ..email_utils import generar_archivo_msg
+from ..email_utils import generar_archivo_msg, enviar_correo
 
 
 async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -94,6 +94,12 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
         if ruta.exists():
             with open(ruta, "rb") as f:
                 await mensaje.reply_document(f, filename=nombre_arch)
+            enviar_correo(
+                "Aviso de tarea programada",
+                "Adjunto el aviso generado por SandyBot.",
+                cliente.id,
+                adjunto=str(ruta),
+            )
 
     await responder_registrando(
         mensaje,

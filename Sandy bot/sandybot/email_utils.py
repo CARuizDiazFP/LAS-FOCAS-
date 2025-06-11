@@ -79,8 +79,12 @@ def enviar_correo(
     host: str | None = None,
     port: int | None = None,
     debug: bool | None = None,
+    adjunto: str | None = None,
 ) -> bool:
-    """Envía un correo simple a los destinatarios almacenados."""
+    """Envía un correo simple a los destinatarios almacenados.
+
+    Si se indica ``adjunto`` se envía como archivo utilizando ``EmailMessage``.
+    """
     correos = cargar_destinatarios(cliente_id)
     if not correos:
         return False
@@ -88,7 +92,6 @@ def enviar_correo(
     host = host or config.SMTP_HOST
     port = port or config.SMTP_PORT
 
-    msg = f"Subject: {asunto}\n\n{cuerpo}"
     try:
         usar_ssl = port == 465
         smtp_cls = smtplib.SMTP_SSL if usar_ssl else smtplib.SMTP
@@ -104,7 +107,33 @@ def enviar_correo(
                 smtp.starttls()
             if config.SMTP_USER and config.SMTP_PASSWORD:
                 smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
-            smtp.sendmail(config.EMAIL_FROM or config.SMTP_USER, correos, msg)
+
+            if adjunto:
+                mensaje = EmailMessage()
+                mensaje["From"] = config.EMAIL_FROM or config.SMTP_USER or ""
+                mensaje["To"] = ", ".join(correos)
+                mensaje["Subject"] = asunto
+                mensaje.set_content(cuerpo)
+                try:
+                    with open(adjunto, "rb") as f:
+                        datos = f.read()
+                    mensaje.add_attachment(
+                        datos,
+                        maintype="application",
+                        subtype="octet-stream",
+                        filename=Path(adjunto).name,
+                    )
+                except Exception as e:  # pragma: no cover - depende del entorno
+                    logger.error("No se pudo adjuntar el archivo: %s", e)
+                    return False
+                smtp.send_message(mensaje)
+            else:
+                msg = f"Subject: {asunto}\n\n{cuerpo}"
+                smtp.sendmail(
+                    config.EMAIL_FROM or config.SMTP_USER,
+                    correos,
+                    msg,
+                )
         return True
     except Exception as e:  # pragma: no cover - depende del entorno
         logger.error("Error enviando correo: %s", e)

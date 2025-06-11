@@ -285,3 +285,67 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     texto = Path(str(ruta) + ".txt")
     assert texto.exists()
     assert "Telco2" in texto.read_text(encoding="utf-8")
+
+
+def test_enviar_correo_con_adjunto(tmp_path):
+    cli = bd.Cliente(nombre="Adjunto", destinatarios=["a@x.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    archivo = tmp_path / "aviso.msg"
+    archivo.write_text("contenido")
+
+    reg.clear()
+    ok = email_utils.enviar_correo("Asunto", "Texto", cli.id, adjunto=str(archivo))
+    assert ok is True
+    assert reg["sent"] is True
+    assert reg["to"] == "a@x.com"
+
+
+def test_registrar_tarea_envia_correo(tmp_path):
+    import asyncio
+    from types import SimpleNamespace, ModuleType
+    import importlib.util
+    import tempfile
+
+    reg.clear()
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = lambda: str(tmp_path)
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.tarea_programada"
+    spec = importlib.util.spec_from_file_location(mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "tarea_programada.py")
+    tarea_mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = tarea_mod
+    spec.loader.exec_module(tarea_mod)
+
+    cli = bd.Cliente(nombre="CliMail", destinatarios=["b@x.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    srv = bd.crear_servicio(nombre="Srv", cliente="CliMail", cliente_id=cli.id)
+
+    msg = tests.telegram_stub.Message("/registrar_tarea")
+    update = tests.telegram_stub.Update(message=msg)
+    ctx = SimpleNamespace(args=[
+        "CliMail",
+        "2024-01-02T08:00:00",
+        "2024-01-02T10:00:00",
+        "Mant",
+        str(srv.id),
+    ])
+
+    asyncio.run(tarea_mod.registrar_tarea_programada(update, ctx))
+
+    tempfile.gettempdir = orig_tmp
+    assert reg["sent"] is True
+    assert reg["to"] == "b@x.com"
