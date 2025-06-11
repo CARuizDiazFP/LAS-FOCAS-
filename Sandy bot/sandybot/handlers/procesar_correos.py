@@ -78,6 +78,8 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     tareas = []
 
+    session = SessionLocal()
+
     for doc in docs:
         archivo = await doc.get_file()
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
@@ -119,64 +121,63 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             continue
         os.remove(ruta)
 
-        with SessionLocal() as session:
-            cliente = obtener_cliente_por_nombre(cliente_nombre)
-            if not cliente:
-                cliente = Cliente(nombre=cliente_nombre)
-                session.add(cliente)
+        cliente = obtener_cliente_por_nombre(cliente_nombre)
+        if not cliente:
+            cliente = Cliente(nombre=cliente_nombre)
+            session.add(cliente)
+            session.commit()
+            session.refresh(cliente)
+
+        carrier = None
+        if carrier_nombre:
+            carrier = (
+                session.query(Carrier)
+                .filter(Carrier.nombre == carrier_nombre)
+                .first()
+            )
+            if not carrier:
+                carrier = Carrier(nombre=carrier_nombre)
+                session.add(carrier)
                 session.commit()
-                session.refresh(cliente)
+                session.refresh(carrier)
 
-            carrier = None
-            if carrier_nombre:
-                carrier = (
-                    session.query(Carrier)
-                    .filter(Carrier.nombre == carrier_nombre)
-                    .first()
-                )
-                if not carrier:
-                    carrier = Carrier(nombre=carrier_nombre)
-                    session.add(carrier)
-                    session.commit()
-                    session.refresh(carrier)
+        tarea = crear_tarea_programada(
+            inicio,
+            fin,
+            tipo,
+            ids,
+            carrier_id=carrier.id if carrier else None,
+            tiempo_afectacion=afect,
+        )
+        servicios = [session.get(Servicio, i) for i in ids]
+        if carrier:
+            for s in servicios:
+                if s:
+                    s.carrier_id = carrier.id
+                    s.carrier = carrier.nombre
+            session.commit()
 
-            tarea = crear_tarea_programada(
-                inicio,
-                fin,
-                tipo,
-                ids,
-                carrier_id=carrier.id if carrier else None,
-                tiempo_afectacion=afect,
-            )
-            servicios = [session.get(Servicio, i) for i in ids]
-            if carrier:
-                for s in servicios:
-                    if s:
-                        s.carrier_id = carrier.id
-                        s.carrier = carrier.nombre
-                session.commit()
+        nombre_arch = f"tarea_{tarea.id}.msg"
+        ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
+        generar_archivo_msg(
+            tarea, cliente, [s for s in servicios if s], str(ruta_msg)
+        )
 
-            nombre_arch = f"tarea_{tarea.id}.msg"
-            ruta_msg = Path(tempfile.gettempdir()) / nombre_arch
-            generar_archivo_msg(
-                tarea, cliente, [s for s in servicios if s], str(ruta_msg)
-            )
+        cuerpo = ""
+        try:
+            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
+        except Exception:
+            pass
+        enviar_correo(
+            f"Aviso de tarea programada - {cliente.nombre}",
+            cuerpo,
+            cliente.id,
+            carrier.nombre if carrier else None,
+        )
 
-            cuerpo = ""
-            try:
-                cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-            except Exception:
-                pass
-            enviar_correo(
-                f"Aviso de tarea programada - {cliente.nombre}",
-                cuerpo,
-                cliente.id,
-                carrier.nombre if carrier else None,
-            )
-
-            if ruta_msg.exists():
-                with open(ruta_msg, "rb") as f:
-                    await mensaje.reply_document(f, filename=nombre_arch)
+        if ruta_msg.exists():
+            with open(ruta_msg, "rb") as f:
+                await mensaje.reply_document(f, filename=nombre_arch)
         tareas.append(str(tarea.id))
 
     if tareas:
@@ -187,3 +188,5 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             f"Tareas registradas: {', '.join(tareas)}",
             "tareas",
         )
+
+    session.close()
