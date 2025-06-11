@@ -142,7 +142,17 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
         with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp_excel:
             await file.download_to_drive(tmp_excel.name)
 
-        ruta_salida = generar_informe_y_modificar(tmp_excel.name)
+        try:
+            ruta_salida = generar_informe_y_modificar(tmp_excel.name)
+        except ValueError as err:
+            await responder_registrando(
+                message,
+                user_id,
+                archivo.file_name,
+                str(err),
+                "repetitividad",
+            )
+            return
         nombre_final = os.path.basename(ruta_salida)
         with open(ruta_salida, "rb") as docx_file:
             await message.reply_document(document=docx_file, filename=nombre_final)
@@ -171,12 +181,41 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
 def generar_informe_y_modificar(ruta_excel):
     locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
 
-    casos_df = pd.read_excel(ruta_excel)
-    columnas_a_conservar_casos = ['Número Reclamo', 'Número Línea', 'Tipo Servicio', 'Nombre Cliente',
-                                  'Fecha Inicio Reclamo', 'Fecha Cierre Reclamo', 
-                                  'Tipo Solución Reclamo', 'Descripción Solución Reclamo']
+    try:
+        casos_df = pd.read_excel(ruta_excel)
+    except Exception as exc:
+        logger.error("Error leyendo el Excel %s: %s", ruta_excel, exc)
+        raise ValueError("⚠️ No se pudo leer el Excel. Verificá el archivo.") from exc
+
+    columnas_a_conservar_casos = [
+        'Número Reclamo',
+        'Número Línea',
+        'Tipo Servicio',
+        'Nombre Cliente',
+        'Fecha Inicio Reclamo',
+        'Fecha Cierre Reclamo',
+        'Tipo Solución Reclamo',
+        'Descripción Solución Reclamo',
+    ]
+
+    faltantes = set(columnas_a_conservar_casos) - set(casos_df.columns)
+    if faltantes:
+        logger.error("Faltan columnas requeridas: %s", ", ".join(faltantes))
+        raise ValueError(
+            "⚠️ El Excel no tiene todas las columnas necesarias. Revisá el formato."
+        )
+
     casos_limpio = casos_df[columnas_a_conservar_casos]
-    fecha_cierre = pd.to_datetime(casos_limpio['Fecha Cierre Reclamo'].iloc[0])
+    try:
+        valor_fecha = casos_limpio['Fecha Cierre Reclamo'].dropna().iloc[0]
+        fecha_cierre = pd.to_datetime(valor_fecha)
+    except Exception as exc:
+        logger.warning(
+            "'Fecha Cierre Reclamo' vacía o inválida, se usa la fecha actual: %s",
+            exc,
+        )
+        fecha_cierre = datetime.now()
+
     mes_actual = fecha_cierre.strftime("%B")
     año_actual = fecha_cierre.strftime("%Y")
 
