@@ -94,3 +94,38 @@ async def eliminar_carrier(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         texto,
         "carriers",
     )
+
+
+async def actualizar_carrier(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Cambia el nombre de un carrier existente."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    if len(context.args) < 2:
+        await responder_registrando(
+            mensaje,
+            user_id,
+            mensaje.text or "actualizar_carrier",
+            "Usá: /actualizar_carrier <nombre_antiguo> <nombre_nuevo>",
+            "carriers",
+        )
+        return
+    viejo, nuevo = context.args[0], context.args[1]
+    with SessionLocal() as session:
+        carrier = session.query(Carrier).filter(Carrier.nombre == viejo).first()
+        if not carrier:
+            texto = f"{viejo} no existe."
+        elif session.query(Carrier).filter(Carrier.nombre == nuevo).first():
+            texto = f"Ya existe un carrier llamado {nuevo}."
+        else:
+            carrier.nombre = nuevo
+            session.commit()
+            texto = f"Carrier {viejo} actualizado a {nuevo}."
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text,
+        texto,
+        "carriers",
+    )

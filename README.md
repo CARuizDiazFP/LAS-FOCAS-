@@ -117,6 +117,18 @@ tarea = crear_tarea_programada(
 )
 ```
 
+Si un carrier cambia de nombre podés actualizarlo antes de registrar nuevas tareas:
+
+```bash
+/actualizar_carrier Telco NuevoTelco
+```
+
+Para verificar todos los correos asignados a un cliente según su carrier ejecutá:
+
+```bash
+/destinatarios_por_carrier ClienteA
+```
+
 ### Listar tareas programadas
 
 Con `/listar_tareas` podés consultar las ventanas ya registradas.
@@ -191,13 +203,15 @@ devuelve el archivo actualizado con los datos completados.
 ## Administración de carriers y destinatarios
 
 Podés crear carriers manualmente con `/agregar_carrier <nombre>`, consultarlos
-mediante `/listar_carriers` y borrarlos con `/eliminar_carrier <nombre>`.
+mediante `/listar_carriers`, renombrarlos con `/actualizar_carrier <viejo> <nuevo>`
+y borrarlos con `/eliminar_carrier <nombre>`.
 Los contactos de cada cliente se gestionan con:
 
 ```
 /agregar_destinatario <cliente> <correo> [carrier]
 /eliminar_destinatario <cliente> <correo> [carrier]
 /listar_destinatarios <cliente> [carrier]
+/destinatarios_por_carrier <cliente>
 ```
 
 Si indicás un carrier, el correo queda asociado únicamente a ese proveedor. De

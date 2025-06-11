@@ -30,7 +30,7 @@ async def agregar_destinatario(
     correo = context.args[1]
     carrier = context.args[2] if len(context.args) > 2 else None
     with SessionLocal() as session:
-        cli = obtener_cliente_por_nombre(cliente)
+        cli = session.query(Cliente).filter(Cliente.nombre == cliente).first()
         if not cli:
             cli = Cliente(nombre=cliente)
             session.add(cli)
@@ -91,7 +91,7 @@ async def eliminar_destinatario(
     correo = context.args[1]
     carrier = context.args[2] if len(context.args) > 2 else None
     with SessionLocal() as session:
-        cli = obtener_cliente_por_nombre(cliente)
+        cli = session.query(Cliente).filter(Cliente.nombre == cliente).first()
         if not cli:
             await responder_registrando(
                 mensaje,
@@ -156,7 +156,7 @@ async def listar_destinatarios(
     cliente = context.args[0]
     carrier = context.args[1] if len(context.args) > 1 else None
     with SessionLocal() as session:
-        cli = obtener_cliente_por_nombre(cliente)
+        cli = session.query(Cliente).filter(Cliente.nombre == cliente).first()
         if carrier and cli and cli.destinatarios_carrier:
             lista = cli.destinatarios_carrier.get(carrier, [])
         else:
@@ -173,4 +173,45 @@ async def listar_destinatarios(
         mensaje.text or "listar_destinatarios",
         respuesta,
         "destinatarios",
+    )
+
+
+async def listar_destinatarios_por_carrier(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Lista todos los correos de un cliente agrupados por carrier."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    if not context.args:
+        await responder_registrando(
+            mensaje,
+            user_id,
+            mensaje.text or "destinatarios_por_carrier",
+            "Usá: /destinatarios_por_carrier <cliente>",
+            ARCH_KEY,
+        )
+        return
+    cliente = context.args[0]
+    with SessionLocal() as session:
+        cli = session.query(Cliente).filter(Cliente.nombre == cliente).first()
+        generales = cli.destinatarios if cli and cli.destinatarios else []
+        por_carrier = cli.destinatarios_carrier if cli and cli.destinatarios_carrier else {}
+    if not generales and not por_carrier:
+        texto = f"No hay destinatarios registrados para {cliente}."
+    else:
+        secciones = []
+        if generales:
+            secciones.append("Generales:\n" + "\n".join(f"- {d}" for d in generales))
+        for carr, lista in por_carrier.items():
+            if lista:
+                secciones.append(f"{carr}:\n" + "\n".join(f"- {d}" for d in lista))
+        texto = f"Destinatarios de {cliente}:\n" + "\n\n".join(secciones)
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "destinatarios_por_carrier",
+        texto,
+        ARCH_KEY,
     )

@@ -55,13 +55,14 @@ def _importar():
         handlers_pkg = ModuleType(pkg)
         handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
         sys.modules[pkg] = handlers_pkg
-    mod_name = f"{pkg}.carriers"
+    mod_name = f"{pkg}.destinatarios"
     sys.modules["sandybot.registrador"] = registrador_stub
-    spec = importlib.util.spec_from_file_location(mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "carriers.py")
+    spec = importlib.util.spec_from_file_location(mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "destinatarios.py")
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
     return mod
+
 
 async def _run(func, args):
     mod = _importar()
@@ -73,21 +74,12 @@ async def _run(func, args):
     return captura.get("texto", "")
 
 
-def test_operaciones_carriers():
-    texto = asyncio.run(_run("agregar_carrier", ["CarrierX"]))
+def test_listar_por_carrier():
+    bd.crear_servicio(nombre="Srv", cliente="CliTest")
+    texto = asyncio.run(_run("agregar_destinatario", ["CliTest", "a@x.com"]))
+    assert "agregado" in texto
+    texto = asyncio.run(_run("agregar_destinatario", ["CliTest", "b@x.com", "Telco"]))
     assert "agregado" in texto
 
-    texto = asyncio.run(_run("listar_carriers", []))
-    assert "CarrierX" in texto
-
-    texto = asyncio.run(_run("actualizar_carrier", ["CarrierX", "CarrierY"]))
-    assert "actualizado" in texto
-
-    texto = asyncio.run(_run("listar_carriers", []))
-    assert "CarrierY" in texto and "CarrierX" not in texto
-
-    texto = asyncio.run(_run("eliminar_carrier", ["CarrierY"]))
-    assert "eliminado" in texto
-
-    texto = asyncio.run(_run("listar_carriers", []))
-    assert "No hay carriers" in texto
+    texto = asyncio.run(_run("listar_destinatarios_por_carrier", ["CliTest"]))
+    assert "Generales" in texto and "Telco" in texto
