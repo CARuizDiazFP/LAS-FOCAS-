@@ -1,6 +1,3 @@
-# + Nombre de archivo: informe_sla.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/informe_sla.py
-# User-provided custom instructions
 """Handler para generar informes de SLA."""
 
 from __future__ import annotations
@@ -8,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
+from typing import Optional
 
 import pandas as pd
 from docx import Document
@@ -36,8 +34,7 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
     user_id = update.effective_user.id
     UserState.set_mode(user_id, "informe_sla")
     context.user_data.clear()
-    # Se reservan dos posiciones: 0 para reclamos y 1 para servicios
-    context.user_data["archivos"] = [None, None]
+    context.user_data["archivos"] = [None, None]  # [reclamos, servicios]
 
     await responder_registrando(
         mensaje,
@@ -50,19 +47,20 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 # ────────────────────────── FLUJO DE PROCESO ─────────────────────────
 async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Gestiona la generación del informe SLA paso a paso."""
+    """Gestiona la generación del informe SLA: carga 2 Excel → botón Procesar → genera Word."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en procesar_informe_sla")
         return
 
     user_id = update.effective_user.id
+    archivos = context.user_data.setdefault("archivos", [None, None])
 
     # ───── Callback «Procesar informe» ─────
     if update.callback_query and update.callback_query.data == "sla_procesar":
-        rec, serv = context.user_data.get("archivos", [None, None])
+        reclamos_xlsx, servicios_xlsx = archivos
         try:
-            ruta_final = _generar_documento_sla(rec, serv, "", "", "")
+            ruta_final = _generar_documento_sla(reclamos_xlsx, servicios_xlsx)
             with open(ruta_final, "rb") as f:
                 await update.callback_query.message.reply_document(
                     f, filename=os.path.basename(ruta_final)
@@ -75,15 +73,11 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
         except Exception as e:  # pragma: no cover
             logger.error("Error generando informe SLA: %s", e)
-            await responder_registrando(
-                update.callback_query.message,
-                user_id,
-                os.path.basename(rec or ""),
-                "💥 Algo falló generando el informe de SLA.",
-                "informe_sla",
+            await update.callback_query.message.reply_text(
+                "💥 Algo falló generando el informe de SLA."
             )
         finally:
-            for p in context.user_data.get("archivos", []):
+            for p in archivos:
                 try:
                     os.remove(p)
                 except OSError:
@@ -92,8 +86,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             UserState.set_mode(user_id, "")
         return
 
-    # ───── Paso inicial: recepción de los 2 Excel ─────
-    archivos = context.user_data.setdefault("archivos", [None, None])
+    # ───── Recepción de archivos Excel ─────
     docs: list = []
     if getattr(mensaje, "document", None):
         docs.append(mensaje.document)
@@ -105,7 +98,6 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
                 await archivo.download_to_drive(tmp.name)
                 nombre = doc.file_name.lower()
-                # Detección básica por nombre
                 if "recl" in nombre and archivos[0] is None:
                     archivos[0] = tmp.name
                 elif "serv" in nombre and archivos[1] is None:
@@ -115,7 +107,6 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
                 else:
                     archivos[1] = tmp.name
 
-        # Verificamos si faltan archivos
         if None in archivos:
             falta = "reclamos" if archivos[0] is None else "servicios"
             await responder_registrando(
@@ -127,8 +118,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
 
-        # Ambos archivos listos → ofrecer botón procesar
-        context.user_data["esperando_eventos"] = False
+        # Ambos archivos listos: mostrar botón Procesar
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
         )
@@ -142,76 +132,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
         )
         return
 
-    # ───── Paso eventos ─────
-    # if context.user_data.get("esperando_eventos"):
-    #     context.user_data["eventos"] = getattr(mensaje, "text", "")
-    #     context.user_data["esperando_eventos"] = False
-    #     context.user_data["esperando_conclusion"] = True
-    #     await responder_registrando(
-    #         mensaje,
-    #         user_id,
-    #         mensaje.text,
-    #         "Indicá la conclusión.",
-    #         "informe_sla",
-    #     )
-    #     return
-
-    # ───── Paso conclusión ─────
-    # if context.user_data.get("esperando_conclusion"):
-    #     context.user_data["conclusion"] = getattr(mensaje, "text", "")
-    #     context.user_data["esperando_conclusion"] = False
-    #     context.user_data["esperando_propuesta"] = True
-    #     await responder_registrando(
-    #         mensaje,
-    #         user_id,
-    #         mensaje.text,
-    #         "¿Cuál es la propuesta de mejora?",
-    #         "informe_sla",
-    #     )
-    #     return
-
-    # ───── Paso propuesta y generación final ─────
-    # if context.user_data.get("esperando_propuesta"):
-    #     context.user_data["propuesta"] = getattr(mensaje, "text", "")
-    #     context.user_data["esperando_propuesta"] = False
-    #
-    #     eventos = context.user_data.get("eventos")
-    #     conclusion = context.user_data.get("conclusion")
-    #     propuesta = context.user_data.get("propuesta")
-    #     rec, serv = context.user_data.get("archivos", [None, None])
-    #
-    #     try:
-    #         ruta_final = _generar_documento_sla(rec, serv, eventos, conclusion, propuesta)
-    #         with open(ruta_final, "rb") as f:
-    #             await mensaje.reply_document(f, filename=os.path.basename(ruta_final))
-    #
-    #         registrar_conversacion(
-    #             user_id,
-    #             "informe_sla",
-    #             f"Documento {os.path.basename(ruta_final)} enviado",
-    #             "informe_sla",
-    #         )
-    #     except Exception as e:  # pragma: no cover
-    #         logger.error("Error generando informe SLA: %s", e)
-    #         await responder_registrando(
-    #             mensaje,
-    #             user_id,
-    #             os.path.basename(rec or ""),
-    #             "💥 Algo falló generando el informe de SLA.",
-    #             "informe_sla",
-    #         )
-    #     finally:
-    #         # Limpieza de temporales y restablecimiento de estado
-    #         for p in archivos:
-    #             try:
-    #                 os.remove(p)
-    #             except OSError:
-    #                 pass
-    #         context.user_data.clear()
-    #         UserState.set_mode(user_id, "")
-    #     return
-
-    # Estado no reconocido
+    # Si llegó aquí sin adjuntos ni callback, se recuerda al usuario qué hacer
     await responder_registrando(
         mensaje,
         user_id,
@@ -225,9 +146,9 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 def _generar_documento_sla(
     reclamos_xlsx: str,
     servicios_xlsx: str,
-    eventos: str | None = None,
-    conclusion: str | None = None,
-    propuesta: str | None = None,
+    eventos: Optional[str] = "",
+    conclusion: Optional[str] = "",
+    propuesta: Optional[str] = "",
 ) -> str:
     """Combina datos y genera el documento SLA usando la plantilla personalizada."""
     reclamos_df = pd.read_excel(reclamos_xlsx)
@@ -242,14 +163,10 @@ def _generar_documento_sla(
     # Título Mes/Año
     try:
         fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
+        if pd.isna(fecha):
+            raise ValueError
     except Exception:
         fecha = pd.Timestamp.today()
-
-    # Validación de la fecha obtenida
-    if pd.isna(fecha) or not hasattr(fecha, "strftime"):
-        logger.warning("Fecha de reclamo inválida: %s. Se usa la fecha actual.", fecha)
-        fecha = pd.Timestamp.today()
-
     mes = fecha.strftime("%B")
     anio = fecha.strftime("%Y")
 
@@ -277,7 +194,7 @@ def _generar_documento_sla(
         row[0].text = str(fila["Servicio"])
         row[1].text = str(fila["Reclamos"])
 
-    # Insertar textos personalizados
+    # Insertar textos personalizados (si se pasan)
     etiquetas = {
         "Eventos sucedidos de mayor impacto en SLA:": eventos,
         "Conclusión:": conclusion,
@@ -285,10 +202,10 @@ def _generar_documento_sla(
     }
     encontrados = set()
     for p in doc.paragraphs:
-        texto = p.text.strip()
+        pref = p.text.strip()
         for etiqueta, contenido in etiquetas.items():
-            if texto.startswith(etiqueta):
-                p.text = f"{etiqueta} {contenido or ''}"
+            if pref.startswith(etiqueta):
+                p.text = f"{etiqueta} {contenido}"
                 encontrados.add(etiqueta)
                 break
     for etiqueta, contenido in etiquetas.items():
@@ -296,7 +213,7 @@ def _generar_documento_sla(
             doc.add_paragraph(f"{etiqueta} {contenido}")
 
     # Guardado temporal
-    nombre_arch = "InformeSLA.docx"
-    ruta_salida = os.path.join(tempfile.gettempdir(), nombre_arch)
+    nombre_archivo = "InformeSLA.docx"
+    ruta_salida = os.path.join(tempfile.gettempdir(), nombre_archivo)
     doc.save(ruta_salida)
     return ruta_salida

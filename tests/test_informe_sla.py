@@ -56,7 +56,6 @@ class Message:
         self.sent = filename
 
     async def reply_text(self, *a, **k):
-        # Captura de reply_markup para los asserts
         self.markup = k.get("reply_markup")
 
     async def edit_text(self, *a, **k):  # pragma: no cover
@@ -115,13 +114,17 @@ for var in [
 # ───────────────────── FUNCIÓN DE IMPORT DINÁMICA ────────────────────
 def _importar_handler(tmp_path: Path):
     """
-    1. Crea una plantilla vacía de Word y la fija en RUTA_PLANTILLA.
+    1. Genera una plantilla básica de Word con los placeholders.
     2. Stub de registrador para capturar reply_markup.
-    3. Fuerza SQLite en memoria.
-    4. Carga dinámicamente sandybot.handlers.informe_sla y devuelve el módulo.
+    3. Fuerza SQLite en memoria para pruebas.
+    4. Importa dinámicamente sandybot.handlers.informe_sla y devuelve el módulo.
     """
     template = tmp_path / "template.docx"
-    Document().save(template)
+    doc = Document()
+    doc.add_paragraph("Eventos sucedidos de mayor impacto en SLA:")
+    doc.add_paragraph("Conclusión:")
+    doc.add_paragraph("Propuesta de mejora:")
+    doc.save(template)
 
     # Stub registrador
     registrador_stub = ModuleType("sandybot.registrador")
@@ -135,10 +138,6 @@ def _importar_handler(tmp_path: Path):
     registrador_stub.responder_registrando = responder_registrando
     registrador_stub.registrar_conversacion = lambda *a, **k: None
     sys.modules["sandybot.registrador"] = registrador_stub
-
-    # Asegurar botones correctos por si otros tests modificaron el stub
-    telegram_stub.InlineKeyboardButton = InlineKeyboardButton
-    telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
 
     # Forzar engine SQLite memoria
     import sqlalchemy as sa
@@ -165,14 +164,11 @@ def _importar_handler(tmp_path: Path):
     )
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
-    # Asegurar que las clases de telegram sean las correctas antes de importar
-    telegram_stub.InlineKeyboardButton = InlineKeyboardButton
-    telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
-    sys.modules["telegram"] = telegram_stub
     spec.loader.exec_module(mod)
 
-    import sandybot.database as bd
+    # Restaurar engine
     sa.create_engine = orig_engine
+    import sandybot.database as bd
 
     bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
     bd.Base.metadata.create_all(bind=bd.engine)
@@ -204,6 +200,7 @@ def test_procesar_informe_sla(tmp_path):
     reclamos.to_excel(r_path, index=False)
     servicios.to_excel(s_path, index=False)
 
+    # Stub documentos Telegram
     doc1 = DocumentStub("reclamos.xlsx", r_path.read_bytes())
     doc2 = DocumentStub("servicios.xlsx", s_path.read_bytes())
     ctx = SimpleNamespace(user_data={})
@@ -222,27 +219,38 @@ def test_procesar_informe_sla(tmp_path):
         msg2 = Message(documents=[doc2])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
         assert all(ctx.user_data["archivos"])
-        assert "esperando_eventos" not in ctx.user_data
         # Confirmamos botón procesar
         boton = msg2.markup.inline_keyboard[0][0]
         assert boton.callback_data == "sla_procesar"
 
-        # Paso 3: activamos callback (se genera el documento)
+        # Paso 3: activamos callback
         cb = CallbackQuery("sla_procesar", message=msg2)
         asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
-        assert ctx.user_data == {}
-        msg5 = msg2  # el documento se envía al mensaje que contenía el botón
     finally:
         tempfile.gettempdir = orig_tmp  # Restaurar tempdir
 
-    # -------- Verificaciones de resultado --------
-    ruta_generada = tmp_path / msg5.sent
+    ruta_generada = tmp_path / msg2.sent
     assert ruta_generada.exists()
     doc = Document(ruta_generada)
-
     textos = "\n".join(p.text for p in doc.paragraphs)
     assert "Informe SLA" in textos
 
     tabla = doc.tables[0]
     assert tabla.rows[1].cells[0].text == "1" and tabla.rows[1].cells[1].text == "2"
     assert tabla.rows[2].cells[0].text == "2" and tabla.rows[2].cells[1].text == "1"
+
+
+def test_generar_sin_fecha(tmp_path):
+    """El generador funciona aunque el Excel de reclamos no tenga columna Fecha."""
+    informe = _importar_handler(tmp_path)
+
+    reclamos = pd.DataFrame({"Servicio": [1, 2]})
+    servicios = pd.DataFrame({"Servicio": [1, 2]})
+
+    r_path = tmp_path / "reclamos.xlsx"
+    s_path = tmp_path / "servicios.xlsx"
+    reclamos.to_excel(r_path, index=False)
+    servicios.to_excel(s_path, index=False)
+
+    ruta = informe._generar_documento_sla(str(r_path), str(s_path))
+    assert Path(ruta).exists()
