@@ -3,6 +3,7 @@ import importlib
 import asyncio
 from types import ModuleType, SimpleNamespace
 from pathlib import Path
+from sqlalchemy.orm import sessionmaker
 import tempfile
 import os
 
@@ -30,11 +31,32 @@ class DocumentStub:
         return F()
 
 
+class InlineKeyboardButton:
+    def __init__(self, text, callback_data=None):
+        self.text = text
+        self.callback_data = callback_data
+
+
+class InlineKeyboardMarkup:
+    def __init__(self, keyboard):
+        self.inline_keyboard = keyboard
+
+
+class CallbackQuery:
+    def __init__(self, data="", message=None):
+        self.data = data
+        self.message = message
+
+    async def answer(self):
+        pass
+
+
 class Message:
     def __init__(self, *, documents=None, text=""):
         self.documents = documents or []
         self.text = text
         self.sent: str | None = None
+        self.markup = None
         self.from_user = SimpleNamespace(id=1)
 
     async def reply_document(self, f, *, filename=None):
@@ -43,19 +65,24 @@ class Message:
         self.sent = filename
 
     async def reply_text(self, *a, **k):
-        pass
+        self.markup = k.get("reply_markup")
 
 
 class Update:
-    def __init__(self, *, message=None):
+    def __init__(self, *, message=None, callback_query=None, edited_message=None):
         self.message = message
+        self.callback_query = callback_query
+        self.edited_message = edited_message
         self.effective_user = SimpleNamespace(id=1)
 
 
 telegram_stub.Update = Update
 telegram_stub.Message = Message
 telegram_stub.Document = DocumentStub
-sys.modules.setdefault("telegram", telegram_stub)
+telegram_stub.CallbackQuery = CallbackQuery
+telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
+sys.modules["telegram"] = telegram_stub
 
 # --- telegram.ext stub ------------------------------------------------------
 telegram_ext_stub = ModuleType("telegram.ext")
@@ -91,6 +118,22 @@ def _importar_handler(tmp_path: Path):
     template = tmp_path / "template.docx"
     Document().save(template)
 
+    # Stub de registrador para capturar botones
+    registrador_stub = ModuleType("sandybot.registrador")
+    async def responder_registrando(msg, *a, **k):
+        if "reply_markup" in k:
+            msg.markup = k["reply_markup"]
+        if hasattr(msg, "reply_text"):
+            await msg.reply_text(*a, **k)
+    registrador_stub.responder_registrando = responder_registrando
+    registrador_stub.registrar_conversacion = lambda *a, **k: None
+    sys.modules["sandybot.registrador"] = registrador_stub
+
+    # Forzar SQLite en memoria para la base de datos
+    import sqlalchemy
+    orig_engine = sqlalchemy.create_engine
+    sqlalchemy.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
+
     # Recargar config para que cualquier acceso posterior tome valores frescos
     if "sandybot.config" in sys.modules:
         importlib.reload(sys.modules["sandybot.config"])
@@ -111,6 +154,12 @@ def _importar_handler(tmp_path: Path):
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
+    mod.InlineKeyboardButton = InlineKeyboardButton
+    mod.InlineKeyboardMarkup = InlineKeyboardMarkup
+    sqlalchemy.create_engine = orig_engine
+    import sandybot.database as bd
+    bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
+    bd.Base.metadata.create_all(bind=bd.engine)
 
     # Forzamos la plantilla a la recién creada
     mod.RUTA_PLANTILLA = str(template)
@@ -149,30 +198,42 @@ def test_procesar_informe_sla(tmp_path):
     tempfile.gettempdir = lambda: str(tmp_path)
 
     try:
-        # Paso 1: envío de ambos Excel
-        msg1 = Message(documents=[doc1, doc2])
+        # Paso 1: envío de primer Excel
+        msg1 = Message(documents=[doc1])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg1), ctx))
-        assert ctx.user_data.get("esperando_eventos")
-        assert msg1.sent is None
+        assert len(ctx.user_data.get("archivos", [])) == 1
+        assert msg1.markup is None
 
-        # Paso 2: eventos
-        msg2 = Message(text="Evento crítico")
+        # Paso 2: envío de segundo Excel
+        msg2 = Message(documents=[doc2])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
+        assert ctx.user_data.get("esperando_procesar")
+        boton = msg2.markup.inline_keyboard[0][0]
+        assert boton.callback_data == "sla_procesar"
+
+        # Paso 3: activar callback
+        cb = CallbackQuery("sla_procesar", message=msg2)
+        asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
+        assert ctx.user_data.get("esperando_eventos")
+
+        # Paso 4: eventos
+        msg3 = Message(text="Evento crítico")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
         assert ctx.user_data.get("esperando_conclusion")
 
-        # Paso 3: conclusión
-        msg3 = Message(text="Conclusión X")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
+        # Paso 5: conclusión
+        msg4 = Message(text="Conclusión X")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
         assert ctx.user_data.get("esperando_propuesta")
 
-        # Paso 4: propuesta y generación final
-        msg4 = Message(text="Propuesta Y")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
+        # Paso 6: propuesta y generación final
+        msg5 = Message(text="Propuesta Y")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg5), ctx))
     finally:
         tempfile.gettempdir = orig_tmp  # Restaurar tempdir
 
     # Verifica documento generado
-    ruta_generada = tmp_path / msg4.sent
+    ruta_generada = tmp_path / msg5.sent
     assert ruta_generada.exists()
     doc = Document(ruta_generada)
 

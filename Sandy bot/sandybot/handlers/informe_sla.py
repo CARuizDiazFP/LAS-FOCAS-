@@ -8,7 +8,7 @@ import tempfile
 
 import pandas as pd
 from docx import Document
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from sandybot.config import config
@@ -31,6 +31,9 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
         return
 
     user_id = update.effective_user.id
+
+
+
     UserState.set_mode(user_id, "informe_sla")
     context.user_data.clear()
     context.user_data["archivos"] = []
@@ -54,14 +57,44 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = update.effective_user.id
 
+    if update.callback_query and update.callback_query.data == "sla_procesar":
+        context.user_data.pop("esperando_procesar", None)
+        context.user_data["esperando_eventos"] = True
+        await responder_registrando(
+            mensaje,
+            user_id,
+            "sla_procesar",
+            "Escribí los eventos sucedidos de mayor impacto en SLA.",
+            "informe_sla",
+        )
+        return
+
     # ───── Paso inicial: recepción de los 2 Excel ─────
-    if not context.user_data.get("archivos"):
+    if len(context.user_data.get("archivos", [])) < 2:
         docs: list = []
         if getattr(mensaje, "document", None):
             docs.append(mensaje.document)
         docs.extend(getattr(mensaje, "documents", []))
 
-        if len(docs) < 2:
+        if not docs:
+            await responder_registrando(
+                mensaje,
+                user_id,
+                getattr(mensaje, "text", ""),
+                "Adjuntá los Excel de reclamos y servicios.",
+                "informe_sla",
+            )
+            return
+
+        for doc in docs:
+            archivo = await doc.get_file()
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
+                await archivo.download_to_drive(tmp.name)
+                context.user_data.setdefault("archivos", []).append(tmp.name)
+            if len(context.user_data["archivos"]) == 2:
+                break
+
+        if len(context.user_data["archivos"]) < 2:
             await responder_registrando(
                 mensaje,
                 user_id,
@@ -71,21 +104,17 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
 
-        tmp_paths: list[str] = []
-        for doc in docs[:2]:
-            archivo = await doc.get_file()
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-                await archivo.download_to_drive(tmp.name)
-                tmp_paths.append(tmp.name)
-
-        context.user_data["archivos"] = tmp_paths
-        context.user_data["esperando_eventos"] = True
+        context.user_data["esperando_procesar"] = True
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("Procesar 🚀", callback_data="sla_procesar")]]
+        )
         await responder_registrando(
             mensaje,
             user_id,
-            docs[0].file_name,
-            "Escribí los eventos sucedidos de mayor impacto en SLA.",
+            docs[-1].file_name,
+            "Archivos cargados. Presioná procesar.",
             "informe_sla",
+            reply_markup=keyboard,
         )
         return
 
