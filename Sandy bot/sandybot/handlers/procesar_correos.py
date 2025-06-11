@@ -78,8 +78,10 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 raise ValueError("Sin contenido")
 
             tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
+                contenido,
+                cliente_nombre,
+                carrier_nombre,
 
-                contenido, cliente_nombre, carrier_nombre
             )
         except Exception as e:  # pragma: no cover - manejo simple
             logger.error("Fallo procesando correo: %s", e)
