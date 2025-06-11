@@ -195,3 +195,34 @@ def test_ensure_servicio_columns_crea_indice():
         i["name"] == "ix_servicios_id_carrier" for i in insp.get_indexes("servicios")
     )
 
+
+def test_ensure_servicio_columns_cliente():
+    """La función crea la tabla de clientes y la columna cliente_id."""
+
+    with bd.engine.begin() as conn:
+        conn.execute(text("DROP TABLE IF EXISTS clientes"))
+
+    insp = sqlalchemy.inspect(bd.engine)
+    assert "clientes" not in insp.get_table_names()
+
+    bd.ensure_servicio_columns()
+
+    insp = sqlalchemy.inspect(bd.engine)
+    assert "clientes" in insp.get_table_names()
+    cols = {c["name"] for c in insp.get_columns("servicios")}
+    assert "cliente_id" in cols
+
+
+def test_cliente_destinatarios():
+    """Los servicios se vinculan con un cliente y sus correos."""
+
+    with bd.SessionLocal() as s:
+        cli = bd.Cliente(nombre="Acme", destinatarios=["a@x.com"])
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+        servicio = bd.crear_servicio(nombre="S_cli", cliente="Acme", cliente_id=cli.id)
+
+        dest = bd.obtener_destinatarios_servicio(servicio.id)
+        assert dest == ["a@x.com"]
+

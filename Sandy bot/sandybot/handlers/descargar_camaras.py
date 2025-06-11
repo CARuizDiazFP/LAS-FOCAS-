@@ -6,7 +6,7 @@ import logging
 import os
 import tempfile
 
-from ..utils import obtener_mensaje, cargar_json
+from ..utils import obtener_mensaje
 from ..database import exportar_camaras_servicio
 from ..registrador import (
     responder_registrando,
@@ -14,7 +14,6 @@ from ..registrador import (
     registrar_envio_email,
 )
 from ..correo import enviar_email
-from ..config import config
 from .estado import UserState
 
 logger = logging.getLogger(__name__)
@@ -87,11 +86,10 @@ async def enviar_camaras_servicio(
             "descargar_camaras",
         )
 
-        # Cargar los destinatarios desde el JSON configurado y enviar el
-        # mismo archivo por correo. Si el envío es exitoso se registra en la
-        # base de conversaciones para mantener un historial.
-        data = cargar_json(config.ARCHIVO_DESTINATARIOS)
-        destinatarios = data.get("emails", []) if isinstance(data, dict) else []
+        # Obtener destinatarios del cliente asociado al servicio
+        from ..database import obtener_destinatarios_servicio
+
+        destinatarios = obtener_destinatarios_servicio(id_servicio)
         if destinatarios:
             if enviar_email(
                 destinatarios,

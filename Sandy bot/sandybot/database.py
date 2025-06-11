@@ -13,6 +13,7 @@ from sqlalchemy import (
     inspect,
     func,
     JSON,
+    ForeignKey,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
@@ -54,6 +55,16 @@ SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 Base = declarative_base()
 
 
+class Cliente(Base):
+    """Clientes que pueden asociarse a un servicio."""
+
+    __tablename__ = "clientes"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String, unique=True, index=True)
+    destinatarios = Column(JSONType)
+
+
 class Conversacion(Base):
     """Modelo para almacenar conversaciones del bot"""
 
@@ -80,6 +91,7 @@ class Servicio(Base):
     id = Column(Integer, primary_key=True)
     nombre = Column(String, index=True)
     cliente = Column(String, index=True)
+    cliente_id = Column(Integer, ForeignKey("clientes.id"), index=True)
     ruta_tracking = Column(String)
 
     trackings = Column(JSONType)
@@ -131,6 +143,11 @@ def ensure_servicio_columns() -> None:
     sincronizada con la definición de :class:`Servicio`.
     """
     inspector = inspect(engine)
+
+    # Crear la tabla de clientes si no existe
+    if "clientes" not in inspector.get_table_names():
+        Cliente.__table__.create(bind=engine)
+
     actuales = {col["name"] for col in inspector.get_columns("servicios")}
     definidas = {c.name for c in Servicio.__table__.columns}
 
@@ -138,9 +155,12 @@ def ensure_servicio_columns() -> None:
     faltantes = definidas - actuales
     for columna in faltantes:
         tipo = Servicio.__table__.columns[columna].type.compile(engine.dialect)
+        extra = ""
+        if columna == "cliente_id":
+            extra = " REFERENCES clientes(id)"
         with engine.begin() as conn:
             conn.execute(
-                text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}")
+                text(f"ALTER TABLE servicios ADD COLUMN {columna} {tipo}{extra}")
             )
 
     indices = {idx["name"] for idx in inspector.get_indexes("servicios")}
@@ -150,6 +170,14 @@ def ensure_servicio_columns() -> None:
                 text(
                     "CREATE INDEX ix_servicios_id_carrier"
                     " ON servicios (id_carrier)"
+                )
+            )
+    if "ix_servicios_cliente_id" not in indices:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX ix_servicios_cliente_id"
+                    " ON servicios (cliente_id)"
                 )
             )
 
@@ -206,6 +234,30 @@ def obtener_servicio(id_servicio: int) -> Servicio | None:
     """Devuelve un servicio por su ID o ``None`` si no existe."""
     with SessionLocal() as session:
         return session.get(Servicio, id_servicio)
+
+
+def obtener_cliente_por_nombre(nombre: str) -> Cliente | None:
+    """Devuelve un cliente por su nombre."""
+    with SessionLocal() as session:
+        return session.query(Cliente).filter(Cliente.nombre == nombre).first()
+
+
+def obtener_destinatarios_servicio(id_servicio: int) -> list[str]:
+    """Recupera los correos asociados al cliente de un servicio."""
+    with SessionLocal() as session:
+        servicio = session.get(Servicio, id_servicio)
+        if not servicio:
+            return []
+        cliente = None
+        if servicio.cliente_id:
+            cliente = session.get(Cliente, servicio.cliente_id)
+        elif servicio.cliente:
+            cliente = (
+                session.query(Cliente)
+                .filter(Cliente.nombre == servicio.cliente)
+                .first()
+            )
+        return cliente.destinatarios if cliente and cliente.destinatarios else []
 
 
 def crear_servicio(**datos) -> Servicio:

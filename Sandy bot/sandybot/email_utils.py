@@ -9,58 +9,67 @@ from datetime import datetime
 from email.message import EmailMessage
 
 from .config import config
-from .utils import cargar_json, guardar_json
+from .database import SessionLocal, Cliente
+from .utils import (
+    cargar_destinatarios as utils_cargar_dest,
+    guardar_destinatarios as utils_guardar,
+    cargar_json,
+    guardar_json,
+)
 
 logger = logging.getLogger(__name__)
 
 
-def cargar_destinatarios(ruta: str | Path) -> list[str]:
-    """Devuelve la lista de correos almacenada en ``ruta``."""
+def cargar_destinatarios(cliente_id: int) -> list[str]:
+    """Obtiene la lista de correos para el cliente indicado."""
 
-    datos = cargar_json(Path(ruta))
-    if isinstance(datos, list):
-        return datos
-    if isinstance(datos, dict):
-        return datos.get("emails") or datos.get("destinatarios", [])
-    return []
+    with SessionLocal() as session:
+        cli = session.get(Cliente, cliente_id)
+        return cli.destinatarios if cli and cli.destinatarios else []
 
 
-def guardar_destinatarios(destinatarios: list[str], ruta: str | Path) -> bool:
-    """Guarda la lista de correos en formato JSON."""
+def guardar_destinatarios(destinatarios: list[str], cliente_id: int) -> bool:
+    """Actualiza los correos de un cliente."""
 
-    return guardar_json({"emails": destinatarios}, Path(ruta))
+    with SessionLocal() as session:
+        cli = session.get(Cliente, cliente_id)
+        if not cli:
+            return False
+        cli.destinatarios = destinatarios
+        session.commit()
+        return True
 
 
-def agregar_destinatario(correo: str, ruta: str | Path) -> bool:
-    """Agrega ``correo`` al listado en ``ruta`` si no existe."""
+def agregar_destinatario(correo: str, cliente_id: int) -> bool:
+    """Agrega ``correo`` al listado del cliente si no existe."""
 
-    lista = cargar_destinatarios(ruta)
+    lista = cargar_destinatarios(cliente_id)
     if correo not in lista:
         lista.append(correo)
-    return guardar_destinatarios(lista, ruta)
+    return guardar_destinatarios(lista, cliente_id)
 
 
-def eliminar_destinatario(correo: str, ruta: str | Path) -> bool:
+def eliminar_destinatario(correo: str, cliente_id: int) -> bool:
     """Elimina ``correo`` del listado si existe."""
 
-    lista = cargar_destinatarios(ruta)
+    lista = cargar_destinatarios(cliente_id)
     if correo not in lista:
         return False
     lista.remove(correo)
-    return guardar_destinatarios(lista, ruta)
+    return guardar_destinatarios(lista, cliente_id)
 
 
 def enviar_correo(
     asunto: str,
     cuerpo: str,
-    ruta_dest: str | Path,
+    cliente_id: int,
     *,
     host: str | None = None,
     port: int | None = None,
     debug: bool | None = None,
 ) -> bool:
     """Envía un correo simple a los destinatarios almacenados."""
-    correos = cargar_destinatarios(ruta_dest)
+    correos = cargar_destinatarios(cliente_id)
     if not correos:
         return False
 
