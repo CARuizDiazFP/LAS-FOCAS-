@@ -99,11 +99,13 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             continue
         os.remove(ruta)
 
+        # Leer el cuerpo del .msg recién generado para enviarlo por correo
         cuerpo = ""
         try:
             cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
         except Exception:
             pass
+
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
             cuerpo,
@@ -114,6 +116,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         if ruta_msg.exists():
             with open(ruta_msg, "rb") as f:
                 await mensaje.reply_document(f, filename=ruta_msg.name)
+
         tareas.append(str(tarea.id))
 
     if tareas:

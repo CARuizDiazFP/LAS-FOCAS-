@@ -28,6 +28,7 @@ from .database import (
     TareaProgramada,
     Carrier,
     obtener_cliente_por_nombre,
+    crear_tarea_programada,    # (+) Necesario en procesar_correo_a_tarea
 )
 from .utils import (
     cargar_json,
@@ -275,8 +276,13 @@ def generar_archivo_msg(
     cliente: Cliente,
     servicios: list[Servicio],
     ruta: str,
-) -> str:
+) -> tuple[str, str]:
     """Genera un archivo *.msg* (Outlook) o texto plano con la tarea programada.
+
+    Returns
+    -------
+    tuple[str, str]
+        Ruta del archivo generado y el texto completo del aviso.
 
     - Con ``win32`` + ``pythoncom`` disponibles → se crea un verdadero **MSG**,
       se establece asunto, cuerpo y se agrega firma (si existe).
@@ -351,7 +357,7 @@ def generar_archivo_msg(
                     os.remove(temp_txt)
                 except OSError:
                     pass
-            return ruta
+            return ruta, mail.Body
         except Exception as e:  # pragma: no cover
             logger.error("Error generando archivo MSG: %s", e)
         finally:
@@ -365,6 +371,7 @@ def generar_archivo_msg(
     # 📝 Fallback a texto plano
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
+
     return ruta
 
 
@@ -452,3 +459,4 @@ async def procesar_correo_a_tarea(
         generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta))
 
         return tarea, cliente, ruta
+    return ruta, contenido

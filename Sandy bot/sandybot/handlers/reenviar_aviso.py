@@ -90,14 +90,10 @@ async def reenviar_aviso(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
                 carrier = session.get(Carrier, ids.pop())
 
         nombre_arch = f"tarea_{tarea.id}.msg"
-        ruta = Path(tempfile.gettempdir()) / nombre_arch
-        generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta))
-
-        cuerpo = ""
-        try:
-            cuerpo = Path(ruta).read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
+        ruta_path = Path(tempfile.gettempdir()) / nombre_arch
+        _, cuerpo = generar_archivo_msg(
+            tarea, cliente, [s for s in servicios if s], str(ruta_path)
+        )
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
             cuerpo,
@@ -105,8 +101,8 @@ async def reenviar_aviso(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
             carrier.nombre if carrier else None,
         )
 
-        if ruta.exists():
-            with open(ruta, "rb") as f:
+        if ruta_path.exists():
+            with open(ruta_path, "rb") as f:
                 await mensaje.reply_document(f, filename=nombre_arch)
 
     await responder_registrando(
