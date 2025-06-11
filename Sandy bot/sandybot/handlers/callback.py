@@ -109,10 +109,9 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await guardar_tracking_servicio(update, context)
 
     elif query.data == "informe_sla":
-        registrar_conversacion(query.from_user.id, "informe_sla", "No implementado", "callback")
-        await query.edit_message_text(
-            "🔧 Función 'Informe de SLA' aún no implementada."
-        )
+        from .informe_sla import iniciar_informe_sla
+        registrar_conversacion(query.from_user.id, "boton_informe_sla", "Inicio informe SLA", "callback")
+        await iniciar_informe_sla(update, context)
         
     elif query.data == "otro":
         user_id = query.from_user.id

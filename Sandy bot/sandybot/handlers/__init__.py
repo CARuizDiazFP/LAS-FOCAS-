@@ -10,6 +10,7 @@ from .voice import voice_handler
 from .ingresos import iniciar_verificacion_ingresos, procesar_ingresos
 from .registro_ingresos import iniciar_registro_ingresos, guardar_registro
 from .repetitividad import procesar_repetitividad
+from .informe_sla import iniciar_informe_sla, procesar_informe_sla
 from .comparador import iniciar_comparador, recibir_tracking, procesar_comparacion
 from .cargar_tracking import iniciar_carga_tracking, guardar_tracking_servicio
 from .descargar_tracking import iniciar_descarga_tracking, enviar_tracking_servicio
@@ -64,6 +65,8 @@ __all__ = [
     "procesar_identificador_carrier",
     "iniciar_incidencias",
     "procesar_incidencias",
+    "iniciar_informe_sla",
+    "procesar_informe_sla",
     "agregar_destinatario",
     "eliminar_destinatario",
     "listar_destinatarios",
