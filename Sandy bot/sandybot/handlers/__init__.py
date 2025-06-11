@@ -24,8 +24,14 @@ from .destinatarios import (
     agregar_destinatario,
     eliminar_destinatario,
     listar_destinatarios,
+    listar_destinatarios_por_carrier,
 )
-from .carriers import listar_carriers, agregar_carrier, eliminar_carrier
+from .carriers import (
+    listar_carriers,
+    agregar_carrier,
+    eliminar_carrier,
+    actualizar_carrier,
+)
 from .tarea_programada import registrar_tarea_programada
 from .detectar_tarea_mail import detectar_tarea_mail
 from .procesar_correos import procesar_correos
@@ -61,9 +67,11 @@ __all__ = [
     "agregar_destinatario",
     "eliminar_destinatario",
     "listar_destinatarios",
+    "listar_destinatarios_por_carrier",
     "agregar_carrier",
     "eliminar_carrier",
     "listar_carriers",
+    "actualizar_carrier",
     "registrar_tarea_programada",
     "listar_tareas",
     "detectar_tarea_mail",
