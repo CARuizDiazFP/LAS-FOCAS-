@@ -76,35 +76,16 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             contenido = _leer_msg(ruta)
             if not contenido:
                 raise ValueError("Sin contenido")
-            prompt = (
-                "Extraé del siguiente correo los datos de la ventana de mantenimiento "
-                "y devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
-                "'afectacion' e 'ids' (lista de servicios).\n\n"
-                f"Correo:\n{contenido}"
-            )
-            esquema = {
-                "type": "object",
-                "properties": {
-
-        try:
-            contenido = _leer_msg(ruta)
-            if not contenido:
-                raise ValueError("Sin contenido")
-            tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
-                contenido, cliente_nombre, carrier_nombre
+            tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
+                contenido,
+                cliente_nombre,
+                carrier_nombre,
             )
         except Exception as e:  # pragma: no cover - manejo simple
             logger.error("Fallo procesando correo: %s", e)
             os.remove(ruta)
             continue
         os.remove(ruta)
-
-        # Leer el cuerpo del .msg recién generado para enviarlo por correo
-        cuerpo = ""
-        try:
-            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
 
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
