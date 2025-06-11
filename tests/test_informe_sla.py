@@ -18,6 +18,8 @@ if pkg not in sys.modules:
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
 __package__ = pkg
 
+import tests.telegram_stub  # Registra stubs de telegram
+
 import logging
 import os
 import tempfile
@@ -25,9 +27,38 @@ import locale
 from types import SimpleNamespace
 from typing import Optional
 
+os.environ.update(
+    {
+        "TELEGRAM_TOKEN": "x",
+        "OPENAI_API_KEY": "x",
+        "NOTION_TOKEN": "x",
+        "NOTION_DATABASE_ID": "x",
+        "DB_USER": "u",
+        "DB_PASSWORD": "p",
+        "SLACK_WEBHOOK_URL": "x",
+        "SUPERVISOR_DB_ID": "x",
+        "DB_HOST": "localhost",
+        "DB_PORT": "5432",
+        "DB_NAME": "sandy",
+    }
+)
+os.environ["SLA_TEMPLATE_PATH"] = str(Path(tempfile.gettempdir()) / "sla.docx")
+
+registrador_stub = ModuleType("sandybot.registrador")
+async def _noop(*a, **k):
+    pass
+registrador_stub.responder_registrando = _noop
+registrador_stub.registrar_conversacion = lambda *a, **k: None
+sys.modules.setdefault("sandybot.registrador", registrador_stub)
+
 import pandas as pd
 from docx import Document
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    CallbackQuery,
+)
 from telegram.ext import ContextTypes
 
 # ► Exportar a PDF (solo funciona en entornos donde esté disponible)
@@ -318,3 +349,92 @@ def _generar_documento_sla(
             return pdf_path
 
     return ruta_docx
+
+
+# ─────────────────────────────── TESTS ────────────────────────────────
+
+import asyncio
+import pytest
+from pathlib import Path
+from tests.telegram_stub import Message, Document, Update, CallbackQuery
+
+
+captura = {}
+
+
+async def _fake_responder(mensaje, user_id, txt_usr, txt_resp, modo, **k):
+    captura["texto"] = txt_resp
+    captura["markup"] = k.get("reply_markup")
+
+
+def _patch_registrador():
+    globals()["responder_registrando"] = _fake_responder
+    globals()["registrar_conversacion"] = lambda *a, **k: None
+
+
+def test_procesar_archivos_en_orden(tmp_path):
+    _patch_registrador()
+    config.SLA_PLANTILLA_PATH = str(tmp_path / "tpl.docx")
+    global RUTA_PLANTILLA
+    RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
+    Path(RUTA_PLANTILLA).write_text("tpl")
+    ctx = SimpleNamespace(user_data={})
+
+    msg = Message()
+    asyncio.run(iniciar_informe_sla(Update(message=msg), ctx))
+    assert ctx.user_data["archivos"] == [None, None]
+
+    doc1 = Document(file_name="recl.xlsx", content="a")
+    asyncio.run(procesar_informe_sla(Update(message=Message(document=doc1)), ctx))
+    assert "Falta el Excel de servicios" in captura["texto"]
+    assert ctx.user_data["archivos"][0] and ctx.user_data["archivos"][1] is None
+
+    doc2 = Document(file_name="serv.xlsx", content="b")
+    asyncio.run(procesar_informe_sla(Update(message=Message(document=doc2)), ctx))
+    assert "Procesar informe" in captura["texto"]
+
+
+def test_actualizar_plantilla(tmp_path):
+    _patch_registrador()
+    ruta = tmp_path / "plantilla.docx"
+    config.SLA_PLANTILLA_PATH = str(ruta)
+    global RUTA_PLANTILLA
+    RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
+    ctx = SimpleNamespace(user_data={})
+
+    cb = CallbackQuery(message=Message())
+    cb.data = "sla_cambiar_plantilla"
+    asyncio.run(procesar_informe_sla(Update(callback_query=cb), ctx))
+    assert ctx.user_data["cambiar_plantilla"] is True
+
+    doc = Document(file_name="nueva.docx", content="x")
+    asyncio.run(procesar_informe_sla(Update(message=Message(document=doc)), ctx))
+    assert ruta.exists()
+    assert "actualizada" in captura["texto"]
+    assert "cambiar_plantilla" not in ctx.user_data
+
+
+def test_finaliza_limpiando_user_data(tmp_path):
+    _patch_registrador()
+    config.SLA_PLANTILLA_PATH = str(tmp_path / "tpl.docx")
+    global RUTA_PLANTILLA
+    RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
+    Path(RUTA_PLANTILLA).write_text("tpl")
+    ctx = SimpleNamespace(user_data={"archivos": []})
+    r = tmp_path / "re.xlsx"
+    s = tmp_path / "se.xlsx"
+    r.write_text("r")
+    s.write_text("s")
+    ctx.user_data["archivos"] = [str(r), str(s)]
+
+    def _gen(_, __):
+        final = tmp_path / "final.docx"
+        final.write_text("x")
+        return str(final)
+
+    globals()["_generar_documento_sla"] = _gen
+    cb = CallbackQuery(message=Message())
+    cb.data = "sla_procesar"
+    asyncio.run(procesar_informe_sla(Update(callback_query=cb), ctx))
+    assert ctx.user_data == {}
+
