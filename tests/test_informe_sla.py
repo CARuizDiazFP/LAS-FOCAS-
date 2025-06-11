@@ -244,10 +244,31 @@ def test_generar_sin_fecha_y_exportar_pdf(tmp_path):
     reclamos.to_excel(r, index=False)
     servicios.to_excel(s, index=False)
 
-    # DOCX por default
+    # Generador retorna un archivo DOCX
     ruta_docx = informe._generar_documento_sla(str(r), str(s))
     assert ruta_docx.endswith(".docx")
 
-    # PDF opcional (solo se verifica extensión, porque conversión depende de Word/LibreOffice)
-    ruta_pdf = informe._generar_documento_sla(str(r), str(s), exportar_pdf=True)
-    assert ruta_pdf.endswith(".pdf") or ruta_pdf.endswith(".docx")
+
+def test_cambiar_plantilla_docx(tmp_path):
+    """Envia un .docx y verifica que se actualice la plantilla"""
+    informe = _importar_handler(tmp_path)
+
+    nuevo = Document()
+    nuevo.add_paragraph("Plantilla nueva")
+    nuevo_path = tmp_path / "nueva.docx"
+    nuevo.save(nuevo_path)
+
+    ctx = SimpleNamespace(user_data={})
+    cb = CallbackQuery("sla_cambiar_plantilla", message=Message())
+    asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
+    assert ctx.user_data.get("cambiar_plantilla") is True
+
+    msg = Message(documents=[DocumentStub("nueva.docx", nuevo_path.read_bytes())])
+    # Se define tambien la propiedad document para pasar la validacion
+    msg.document = msg.documents[0]
+    asyncio.run(informe.procesar_informe_sla(Update(message=msg), ctx))
+
+    saved = Path(informe.RUTA_PLANTILLA)
+    assert saved.exists() and saved.read_bytes() == nuevo_path.read_bytes()
+    assert "cambiar_plantilla" not in ctx.user_data
+
