@@ -14,6 +14,7 @@ from sqlalchemy import (
     func,
     JSON,
     ForeignKey,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
@@ -158,6 +159,12 @@ class TareaServicio(Base):
     tarea_id = Column(Integer, ForeignKey("tareas_programadas.id"), index=True)
     servicio_id = Column(Integer, ForeignKey("servicios.id"), index=True)
 
+    __table_args__ = (
+        UniqueConstraint(
+            "tarea_id", "servicio_id", name="uix_tarea_servicio"
+        ),
+    )
+
 
 def ensure_servicio_columns() -> None:
     """Comprueba que la tabla ``servicios`` posea todas las columnas del modelo.
@@ -203,6 +210,21 @@ def ensure_servicio_columns() -> None:
                     " ON servicios (cliente_id)"
                 )
             )
+
+    if "tareas_servicio" in inspector.get_table_names():
+        uniques = {
+            u["name"]
+            for u in inspector.get_unique_constraints("tareas_servicio")
+        }
+        if "uix_tarea_servicio" not in uniques:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE tareas_servicio "
+                        "ADD CONSTRAINT uix_tarea_servicio "
+                        "UNIQUE (tarea_id, servicio_id)"
+                    )
+                )
 
 
 def init_db():
