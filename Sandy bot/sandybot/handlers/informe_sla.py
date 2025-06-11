@@ -55,6 +55,15 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
     user_id = update.effective_user.id
 
+    # Callback «Procesar informe»
+    if update.callback_query:
+        context.user_data["esperando_eventos"] = True
+        registrar_conversacion(user_id, "sla_procesar", "Solicitar eventos", "informe_sla")
+        await update.callback_query.message.edit_text(
+            "Escribí los eventos sucedidos de mayor impacto en SLA."
+        )
+        return
+
     # ───── Paso inicial: recepción de los 2 Excel ─────
     archivos = context.user_data.setdefault("archivos", [None, None])
     docs: list = []
@@ -88,6 +97,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
                 "informe_sla",
             )
             return
+
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("Procesar informe", callback_data="sla_procesar")]]
         )
@@ -182,7 +192,7 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
 # ──────────────────────── CONTINUACIÓN VIA CALLBACK ───────────────────
 async def preguntar_eventos_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Inicia la etapa de descripción de eventos tras recibir ambos Excel."""
+    """Inicia la etapa de descripción de eventos tras presionar “Procesar informe”."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en preguntar_eventos_sla")

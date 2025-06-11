@@ -191,8 +191,8 @@ adicional.
 
 Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`.
 Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla`.
-El bot pedirá primero el Excel de **reclamos** y a continuación el de **servicios**.
-Una vez recibidos ambos archivos solicitará escribir los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora**.
+El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**.
+Tras recibirlos mostrará el botón *Procesar 🚀*. Al presionarlo solicitará los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora**.
 La variable `SLA_TEMPLATE_PATH` permite indicar la ruta exacta de la plantilla y debe apuntar a un archivo `.docx`.
 
 ```env
