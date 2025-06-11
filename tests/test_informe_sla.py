@@ -1,6 +1,22 @@
+# + Nombre de archivo: test_informe_sla.py
+# + Ubicación de archivo: tests/test_informe_sla.py
+# User-provided custom instructions
 """Handler para generar informes de SLA."""
 
 from __future__ import annotations
+
+import sys
+from pathlib import Path
+from types import ModuleType
+
+ROOT_DIR = Path(__file__).resolve().parents[1]
+pkg = "sandybot.handlers"
+if pkg not in sys.modules:
+    handlers_pkg = ModuleType(pkg)
+    handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+    sys.modules[pkg] = handlers_pkg
+sys.path.append(str(ROOT_DIR / "Sandy bot"))
+__package__ = pkg
 
 import logging
 import os
