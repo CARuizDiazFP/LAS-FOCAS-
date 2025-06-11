@@ -179,7 +179,9 @@ adicional.
 7. Informe de SLA
    - Genera un resumen de nivel de servicio usando `Template Informe SLA.docx`
    - Podés iniciarlo desde el botón **Informe de SLA** o con `/informe_sla`
-   - Solicita los Excel de reclamos y servicios y luego pide los textos de eventos, conclusión y mejora
+   - Solicita los Excel de reclamos y servicios, que pueden enviarse por separado
+   - Una vez cargados los dos archivos aparece el botón **Procesar**, que genera el informe según `SLA_TEMPLATE_PATH`
+   - Luego pide los textos de eventos, conclusión y mejora
 
 
 8. Consultas generales
@@ -191,9 +193,10 @@ adicional.
 
 Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`.
 Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla`.
-El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**.
-Tras recibirlos mostrará el botón *Procesar 🚀*. Al presionarlo solicitará los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora**.
-La variable `SLA_TEMPLATE_PATH` permite indicar la ruta exacta de la plantilla y debe apuntar a un archivo `.docx`.
+El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Podés enviarlos por separado sin importar el orden.
+Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`.
+Después solicitará escribir los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora**.
+
 
 ```env
 SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
