@@ -62,6 +62,14 @@ tal como se especifica en `config.py`.
 Para los reportes de nivel de servicio se utiliza un archivo Word
 configurable por `SLA_TEMPLATE_PATH`. Si la variable no está presente,
 se recurre a `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+El sistema valida que la ruta indicada exista. En caso de no
+encontrarla se registra el mensaje **"Plantilla de SLA no encontrada"**
+y se lanza `ValueError`.
+
+```env
+# Ejemplo para personalizar la plantilla en otra ubicación
+SLA_TEMPLATE_PATH=D:\Informes\MiPlantilla.docx
+```
 
 ## Base de datos
 
@@ -273,10 +281,14 @@ pip install -r requirements.txt
 Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `C:\Metrotel\Sandy`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
 Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `C:\Metrotel\Sandy\Template Informe SLA.docx`.
 El archivo debe existir en formato `.docx`.
+El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**.
+Tras adjuntar ambos archivos deberás escribir los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** que se insertarán en el documento.
 
 ```env
-SLA_TEMPLATE_PATH=/ruta/al/Template Informe SLA.docx
+SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
 ```
+
+Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" y el proceso se cancelará.
 
 
 ## Enviar Excel por correo
