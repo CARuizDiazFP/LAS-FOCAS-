@@ -124,7 +124,11 @@ def _importar_handler(tmp_path: Path):
     4. Carga dinámicamente sandybot.handlers.informe_sla y devuelve el módulo.
     """
     template = tmp_path / "template.docx"
-    Document().save(template)
+    doc = Document()
+    doc.add_paragraph("Eventos sucedidos de mayor impacto en SLA:")
+    doc.add_paragraph("Conclusión:")
+    doc.add_paragraph("Propuesta de mejora:")
+    doc.save(template)
 
     # Stub registrador
     registrador_stub = ModuleType("sandybot.registrador")
@@ -139,6 +143,11 @@ def _importar_handler(tmp_path: Path):
     registrador_stub.registrar_conversacion = lambda *a, **k: None
     sys.modules["sandybot.registrador"] = registrador_stub
 
+    # Restablecer stubs de telegram en caso de modificaciones previas
+    telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+    telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
+    sys.modules["telegram"] = telegram_stub
+
     # Forzar engine SQLite memoria
     import sqlalchemy as sa
 
@@ -150,6 +159,7 @@ def _importar_handler(tmp_path: Path):
         importlib.reload(sys.modules["sandybot.config"])
     else:
         importlib.import_module("sandybot.config")
+
 
     # Asegurar paquete handlers
     pkg = "sandybot.handlers"
@@ -166,9 +176,9 @@ def _importar_handler(tmp_path: Path):
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
 
+    import sandybot.database as bd
     # Restaurar engine
     sa.create_engine = orig_engine
-    import sandybot.database as bd
 
     bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
     bd.Base.metadata.create_all(bind=bd.engine)
@@ -218,7 +228,6 @@ def test_procesar_informe_sla(tmp_path):
         msg2 = Message(documents=[doc2])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
         assert all(ctx.user_data["archivos"])
-        assert ctx.user_data["esperando_eventos"] is False
         # Confirmamos botón procesar
         boton = msg2.markup.inline_keyboard[0][0]
         assert boton.callback_data == "sla_procesar"
@@ -226,35 +235,47 @@ def test_procesar_informe_sla(tmp_path):
         # Paso 3: activamos callback
         cb = CallbackQuery("sla_procesar", message=msg2)
         asyncio.run(informe.procesar_informe_sla(Update(callback_query=cb), ctx))
-        assert ctx.user_data.get("esperando_eventos")
-
-        # Paso 4: eventos
-        msg3 = Message(text="Evento crítico")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
-        assert ctx.user_data.get("esperando_conclusion")
-
-        # Paso 5: conclusión
-        msg4 = Message(text="Conclusión X")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
-        assert ctx.user_data.get("esperando_propuesta")
-
-        # Paso 6: propuesta y generación final
-        msg5 = Message(text="Propuesta Y")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg5), ctx))
+        assert "esperando_eventos" not in ctx.user_data
+        assert "esperando_conclusion" not in ctx.user_data
+        assert "esperando_propuesta" not in ctx.user_data
+        ruta_generada = tmp_path / msg2.sent
+        assert ruta_generada.exists()
     finally:
         tempfile.gettempdir = orig_tmp  # Restaurar tempdir
 
     # -------- Verificaciones de resultado --------
-    ruta_generada = tmp_path / msg5.sent
-    assert ruta_generada.exists()
     doc = Document(ruta_generada)
 
     textos = "\n".join(p.text for p in doc.paragraphs)
     assert "Informe SLA" in textos
-    assert "Evento crítico" in textos
-    assert "Conclusión X" in textos
-    assert "Propuesta Y" in textos
+    assert "Eventos sucedidos" in textos
+    assert "Conclusión:" in textos
+    assert "Propuesta de mejora:" in textos
+
+    for p in doc.paragraphs:
+        if p.text.startswith("Eventos sucedidos"):
+            assert p.text.strip() == "Eventos sucedidos de mayor impacto en SLA:"
+        if p.text.startswith("Conclusión:"):
+            assert p.text.strip() == "Conclusión:"
+        if p.text.startswith("Propuesta de mejora:"):
+            assert p.text.strip() == "Propuesta de mejora:"
 
     tabla = doc.tables[0]
     assert tabla.rows[1].cells[0].text == "1" and tabla.rows[1].cells[1].text == "2"
     assert tabla.rows[2].cells[0].text == "2" and tabla.rows[2].cells[1].text == "1"
+
+
+def test_generar_sin_fecha(tmp_path):
+    """El generador funciona aunque el Excel de reclamos no tenga columna Fecha."""
+    informe = _importar_handler(tmp_path)
+
+    reclamos = pd.DataFrame({"Servicio": [1, 2]})
+    servicios = pd.DataFrame({"Servicio": [1, 2]})
+
+    r_path = tmp_path / "reclamos.xlsx"
+    s_path = tmp_path / "servicios.xlsx"
+    reclamos.to_excel(r_path, index=False)
+    servicios.to_excel(s_path, index=False)
+
+    ruta = informe._generar_documento_sla(str(r_path), str(s_path))
+    assert Path(ruta).exists()

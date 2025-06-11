@@ -60,11 +60,32 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
 
     # ───── Callback «Procesar informe» ─────
     if update.callback_query and update.callback_query.data == "sla_procesar":
-        context.user_data["esperando_eventos"] = True
-        registrar_conversacion(user_id, "sla_procesar", "Solicitar eventos", "informe_sla")
-        await update.callback_query.message.edit_text(
-            "Escribí los eventos sucedidos de mayor impacto en SLA."
-        )
+        rec, serv = context.user_data.get("archivos", [None, None])
+        try:
+            ruta_final = _generar_documento_sla(rec, serv)
+            with open(ruta_final, "rb") as f:
+                await update.callback_query.message.reply_document(
+                    f, filename=os.path.basename(ruta_final)
+                )
+            registrar_conversacion(
+                user_id,
+                "sla_procesar",
+                f"Documento {os.path.basename(ruta_final)} enviado",
+                "informe_sla",
+            )
+        except Exception as e:  # pragma: no cover
+            logger.error("Error generando informe SLA: %s", e)
+            await update.callback_query.message.reply_text(
+                "💥 Algo falló generando el informe de SLA."
+            )
+        finally:
+            for p in context.user_data.get("archivos", []):
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+            context.user_data.clear()
+            UserState.set_mode(user_id, "")
         return
 
     # ───── Paso inicial: recepción de los 2 Excel ─────
@@ -215,7 +236,10 @@ def _generar_documento_sla(
 
     # Título Mes/Año
     try:
-        fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
+        valor_fecha = reclamos_df.iloc[0].get("Fecha")
+        fecha = pd.to_datetime(valor_fecha)
+        if fecha is None or pd.isna(fecha):
+            raise ValueError
     except Exception:
         fecha = pd.Timestamp.today()
     mes = fecha.strftime("%B")
