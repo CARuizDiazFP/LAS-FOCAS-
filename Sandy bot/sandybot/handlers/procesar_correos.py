@@ -39,6 +39,8 @@ def _leer_msg(ruta: str) -> str:
         msg = extract_msg.Message(ruta)
         asunto = msg.subject or ""
         cuerpo = msg.body or ""
+        if hasattr(msg, "close"):
+            msg.close()
         return f"{asunto}\n{cuerpo}".strip()
     except Exception as exc:  # pragma: no cover - depende del archivo
         logger.error("Error leyendo MSG %s: %s", ruta, exc)
