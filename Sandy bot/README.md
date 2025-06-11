@@ -194,6 +194,8 @@ Esta opcion genera un documento de nivel de servicio basado en `Template Informe
 Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla`.
 El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Podés enviarlos por separado sin importar el orden.
 Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
+El título del informe se adapta al mes correspondiente en español. Si el documento de plantilla no incluye el estilo `Title`, el bot emplea `Heading 1` como respaldo.
+Además se agregó un botón para reemplazar la plantilla actual y otro para exportar el resultado directamente a PDF.
 
 
 ```env
@@ -206,6 +208,17 @@ Si la ruta no existe se mostrará el mensaje "Plantilla de SLA no encontrada" y 
 
 Para ejecutar la suite de tests primero corré `setup_env.sh`.
 Ese script instala las dependencias en `.venv` y configura `PYTHONPATH`.
+Antes de correr las pruebas definí algunas variables de entorno mínimas:
+
+```bash
+export TELEGRAM_TOKEN=dummy
+export OPENAI_API_KEY=dummy
+export NOTION_TOKEN=dummy
+export NOTION_DATABASE_ID=dummy
+export DB_USER=postgres
+export DB_PASSWORD=postgres
+```
+
 Luego podés lanzar `pytest` normalmente.
 
 ```bash
