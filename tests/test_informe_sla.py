@@ -49,7 +49,7 @@ async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE
         kb = InlineKeyboardMarkup(
             [[InlineKeyboardButton("Actualizar plantilla", callback_data="sla_cambiar_plantilla")]]
         )
-    except Exception:  # stubs
+    except Exception:  # fallback en tests
         btn = SimpleNamespace(text="Actualizar plantilla", callback_data="sla_cambiar_plantilla")
         kb = SimpleNamespace(inline_keyboard=[[btn]])
 
@@ -74,12 +74,13 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
     user_id = update.effective_user.id
     archivos = context.user_data.setdefault("archivos", [None, None])
 
-    # -- Callback para cambiar plantilla -------------------------------------------------
+    # 1) ── Callback para cambiar plantilla ───────────────────────────
     if update.callback_query and update.callback_query.data == "sla_cambiar_plantilla":
         context.user_data["cambiar_plantilla"] = True
         await update.callback_query.message.reply_text("Adjuntá la nueva plantilla .docx.")
         return
 
+    # 2) ── Guardar la nueva plantilla, si se solicitó ────────────────
     if context.user_data.get("cambiar_plantilla"):
         if getattr(mensaje, "document", None):
             await _actualizar_plantilla_sla(mensaje, context)
@@ -93,11 +94,10 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
         return
 
-    # -- Callback «Procesar informe» -----------------------------------------------------
+    # 3) ── Callback «Procesar informe» ───────────────────────────────
     if update.callback_query and update.callback_query.data == "sla_procesar":
-        reclamos_xlsx, servicios_xlsx = archivos
         try:
-            ruta_final = _generar_documento_sla(reclamos_xlsx, servicios_xlsx)
+            ruta_final = _generar_documento_sla(*archivos)
             with open(ruta_final, "rb") as f:
                 await update.callback_query.message.reply_document(f, filename=os.path.basename(ruta_final))
             registrar_conversacion(
@@ -112,21 +112,20 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
                     os.remove(p)
                 except OSError:
                     pass
-            if os.path.exists(ruta_final):
+            if "ruta_final" in locals() and os.path.exists(ruta_final):
                 os.remove(ruta_final)
             context.user_data.clear()
             UserState.set_mode(user_id, "")
         return
 
-    # -- Recepción de Excel --------------------------------------------------------------
+    # 4) ── Recepción de archivos Excel ───────────────────────────────
     docs = [d for d in (getattr(mensaje, "document", None), *getattr(mensaje, "documents", [])) if d]
     if docs:
         for doc in docs:
-            archivo = await doc.get_file()
+            f = await doc.get_file()
             with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
-                await archivo.download_to_drive(tmp.name)
+                await f.download_to_drive(tmp.name)
                 nombre = doc.file_name.lower()
-                # Heurística simple por nombre
                 if "recl" in nombre and archivos[0] is None:
                     archivos[0] = tmp.name
                 elif "serv" in nombre and archivos[1] is None:
@@ -144,31 +143,29 @@ async def procesar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYP
             )
             return
 
-        # Botón Procesar
+        # Mostrar botón Procesar
         try:
             kb = InlineKeyboardMarkup(
                 [[InlineKeyboardButton("Procesar informe 🚀", callback_data="sla_procesar")]]
             )
-        except Exception:  # stubs
+        except Exception:  # fallback stubs
             btn = SimpleNamespace(text="Procesar informe 🚀", callback_data="sla_procesar")
             kb = SimpleNamespace(inline_keyboard=[[btn]])
 
         await responder_registrando(
             mensaje, user_id, docs[-1].file_name,
-            "Archivos cargados. Presioná *Procesar informe*.",
-            "informe_sla", reply_markup=kb,
+            "Archivos cargados. Presioná *Procesar informe*.", "informe_sla", reply_markup=kb,
         )
         return
 
-    # Recordatorio si no hubo adjuntos
+    # 5) ── Ningún adjunto ni callback reconocido ─────────────────────
     await responder_registrando(
         mensaje, user_id, getattr(mensaje, "text", ""),
-        "Adjuntá los archivos de reclamos y servicios para comenzar.",
-        "informe_sla",
+        "Adjuntá los archivos de reclamos y servicios para comenzar.", "informe_sla",
     )
 
 
-# ──────────────────────── ACTUALIZAR PLANTILLA ───────────────────────
+# ──────────────────── ACTUALIZAR PLANTILLA SLA ───────────────────────
 async def _actualizar_plantilla_sla(mensaje, context):
     user_id = mensaje.from_user.id
     archivo = mensaje.document
@@ -199,11 +196,9 @@ def _generar_documento_sla(
     exportar_pdf: bool = False,
 ) -> str:
     """Genera el documento SLA; si `exportar_pdf` es True intenta generar PDF."""
-
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
 
-    # Columnas extra opcionales
     columnas_extra = [c for c in ("SLA Entregado", "Dirección", "Horas Netas Reclamo") if c in servicios_df]
 
     # Normaliza nombres
@@ -251,7 +246,7 @@ def _generar_documento_sla(
     for i, h in enumerate(headers):
         tbl.rows[0].cells[i].text = h
 
-    for _, fila in df.iterrows():
+    for _, fila in df.iteritems():
         cells = tbl.add_row().cells
         for i, h in enumerate(headers):
             cells[i].text = str(fila.get(h, ""))
@@ -278,7 +273,7 @@ def _generar_documento_sla(
     os.close(fd)
     doc.save(ruta_docx)
 
-    # Exportar PDF (si procede)
+    # Exportar PDF (opcional)
     if exportar_pdf:
         pdf_path = os.path.splitext(ruta_docx)[0] + ".pdf"
         convertido = False
@@ -302,7 +297,7 @@ def _generar_documento_sla(
             except Exception:
                 logger.warning("Fallo exportando PDF con docx2pdf")
 
-        if converted:
+        if convertido:
             os.remove(ruta_docx)
             return pdf_path
 
