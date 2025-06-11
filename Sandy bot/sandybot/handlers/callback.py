@@ -165,3 +165,8 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif query.data == "comparador_procesar":
         registrar_conversacion(query.from_user.id, "comparador_procesar", "Procesar", "callback")
         await procesar_comparacion(update, context)
+
+    elif query.data == "sla_procesar":
+        from .informe_sla import preguntar_eventos_sla
+        registrar_conversacion(query.from_user.id, "sla_procesar", "Procesar informe", "callback")
+        await preguntar_eventos_sla(update, context)

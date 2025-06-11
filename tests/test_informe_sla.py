@@ -16,7 +16,16 @@ sys.path.append(str(ROOT_DIR / "Sandy bot"))
 # --- Telegram stub (mínimo) -------------------------------------------------
 telegram_stub = ModuleType("telegram")
 
+class InlineKeyboardButton:
+    def __init__(self, *a, **k):
+        pass
 
+class InlineKeyboardMarkup:
+    def __init__(self, *a, **k):
+        pass
+
+telegram_stub.InlineKeyboardButton = InlineKeyboardButton
+telegram_stub.InlineKeyboardMarkup = InlineKeyboardMarkup
 class DocumentStub:
     def __init__(self, file_name="file.xlsx", content: bytes = b""):
         self.file_name = file_name
@@ -55,12 +64,12 @@ class Update:
 telegram_stub.Update = Update
 telegram_stub.Message = Message
 telegram_stub.Document = DocumentStub
-sys.modules.setdefault("telegram", telegram_stub)
+sys.modules["telegram"] = telegram_stub
 
 # --- telegram.ext stub ------------------------------------------------------
 telegram_ext_stub = ModuleType("telegram.ext")
 telegram_ext_stub.ContextTypes = type("C", (), {"DEFAULT_TYPE": object})
-sys.modules.setdefault("telegram.ext", telegram_ext_stub)
+sys.modules["telegram.ext"] = telegram_ext_stub
 
 # --- dotenv stub ------------------------------------------------------------
 dotenv_stub = ModuleType("dotenv")
@@ -90,6 +99,10 @@ def _importar_handler(tmp_path: Path):
     """
     template = tmp_path / "template.docx"
     Document().save(template)
+
+    # Asegurar que las clases de teclado sean las adecuadas
+    sys.modules["telegram"].InlineKeyboardButton = InlineKeyboardButton
+    sys.modules["telegram"].InlineKeyboardMarkup = InlineKeyboardMarkup
 
     # Recargar config para que cualquier acceso posterior tome valores frescos
     if "sandybot.config" in sys.modules:
@@ -149,30 +162,40 @@ def test_procesar_informe_sla(tmp_path):
     tempfile.gettempdir = lambda: str(tmp_path)
 
     try:
-        # Paso 1: envío de ambos Excel
-        msg1 = Message(documents=[doc1, doc2])
+        # Paso 1: envío primer Excel
+        msg1 = Message(documents=[doc1])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg1), ctx))
-        assert ctx.user_data.get("esperando_eventos")
-        assert msg1.sent is None
+        assert ctx.user_data["archivos"][0] or ctx.user_data["archivos"][1]
+        assert None in ctx.user_data["archivos"]
 
-        # Paso 2: eventos
-        msg2 = Message(text="Evento crítico")
+        # Paso 2: segundo Excel
+        msg2 = Message(documents=[doc2])
         asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
+        assert all(ctx.user_data["archivos"])
+        assert not ctx.user_data.get("esperando_eventos")
+
+        # Paso 3: clic en Procesar informe
+        asyncio.run(informe.preguntar_eventos_sla(Update(message=Message()), ctx))
+        assert ctx.user_data.get("esperando_eventos")
+
+        # Paso 4: eventos
+        msg3 = Message(text="Evento crítico")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
         assert ctx.user_data.get("esperando_conclusion")
 
-        # Paso 3: conclusión
-        msg3 = Message(text="Conclusión X")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
+        # Paso 5: conclusión
+        msg4 = Message(text="Conclusión X")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
         assert ctx.user_data.get("esperando_propuesta")
 
-        # Paso 4: propuesta y generación final
-        msg4 = Message(text="Propuesta Y")
-        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
+        # Paso 6: propuesta y generación final
+        msg5 = Message(text="Propuesta Y")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg5), ctx))
     finally:
         tempfile.gettempdir = orig_tmp  # Restaurar tempdir
 
     # Verifica documento generado
-    ruta_generada = tmp_path / msg4.sent
+    ruta_generada = tmp_path / msg5.sent
     assert ruta_generada.exists()
     doc = Document(ruta_generada)
 
