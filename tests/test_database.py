@@ -240,6 +240,30 @@ def test_crear_tarea_y_relacion():
     assert len(tareas) == 1
     assert tareas[0].id == tarea.id
 
+
+def test_carrier_asociaciones():
+    car = bd.Carrier(nombre="CarrierTest")
+    with bd.SessionLocal() as s:
+        s.add(car)
+        s.commit()
+        s.refresh(car)
+
+    srv = bd.crear_servicio(nombre="SrvC", cliente="CliC", carrier_id=car.id)
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 3, 8),
+        datetime(2024, 1, 3, 10),
+        "Mant",
+        [srv.id],
+        carrier_id=car.id,
+    )
+
+    with bd.SessionLocal() as s:
+        s_srv = s.get(bd.Servicio, srv.id)
+        s_tarea = s.get(bd.TareaProgramada, tarea.id)
+
+    assert s_srv.carrier_id == car.id
+    assert s_tarea.carrier_id == car.id
+
 def test_ensure_servicio_columns_indice_tarea_programada():
     """La función crea el índice combinado de fechas en tareas_programadas."""
     # 1️⃣  El índice se elimina si existe para garantizar la prueba

@@ -11,6 +11,7 @@ from ..database import (
     obtener_cliente_por_nombre,
     Cliente,
     Servicio,
+    Carrier,
     SessionLocal,
 )
 from ..email_utils import generar_archivo_msg
@@ -29,7 +30,7 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
             mensaje,
             user_id,
             mensaje.text or "registrar_tarea_programada",
-            "Us\u00e1: /registrar_tarea <cliente> <inicio> <fin> <tipo> <id1,id2>",
+            "Us\u00e1: /registrar_tarea <cliente> <inicio> <fin> <tipo> <id1,id2> [carrier]",
             "tareas",
         )
         return
@@ -49,6 +50,7 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
         return
     tipo_tarea = context.args[3]
     ids = [int(i) for i in context.args[4].split(',') if i.isdigit()]
+    carrier_nombre = context.args[5] if len(context.args) > 5 else None
 
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
@@ -57,8 +59,33 @@ async def registrar_tarea_programada(update: Update, context: ContextTypes.DEFAU
             session.add(cliente)
             session.commit()
             session.refresh(cliente)
-        tarea = crear_tarea_programada(fecha_inicio, fecha_fin, tipo_tarea, ids)
+        carrier = None
+        if carrier_nombre:
+            carrier = (
+                session.query(Carrier)
+                .filter(Carrier.nombre == carrier_nombre)
+                .first()
+            )
+            if not carrier:
+                carrier = Carrier(nombre=carrier_nombre)
+                session.add(carrier)
+                session.commit()
+                session.refresh(carrier)
+
+        tarea = crear_tarea_programada(
+            fecha_inicio,
+            fecha_fin,
+            tipo_tarea,
+            ids,
+            carrier_id=carrier.id if carrier else None,
+        )
         servicios = [session.get(Servicio, i) for i in ids]
+        if carrier:
+            for s in servicios:
+                if s:
+                    s.carrier_id = carrier.id
+                    s.carrier = carrier.nombre
+            session.commit()
 
         nombre_arch = f"tarea_{tarea.id}.msg"
         ruta = Path(tempfile.gettempdir()) / nombre_arch
