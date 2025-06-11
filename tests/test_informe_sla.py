@@ -83,6 +83,9 @@ spec.loader.exec_module(informe)
 
 
 def test_procesar_informe_sla(tmp_path):
+    template = tmp_path / "template.docx"
+    Document().save(template)
+    informe.RUTA_PLANTILLA = str(template)
     reclamos = pd.DataFrame({
         "ID Servicio": [1, 1, 2],
         "Fecha": pd.to_datetime(["2024-05-01", "2024-05-02", "2024-05-03"]),
@@ -114,5 +117,8 @@ def test_procesar_informe_sla(tmp_path):
     doc = Document(ruta)
     titulo = doc.paragraphs[0].text
     assert "Informe SLA" in titulo
-    assert "Servicio 1" in doc.paragraphs[1].text
-    assert "Servicio 2" in doc.paragraphs[3].text
+    tabla = doc.tables[0]
+    assert tabla.cell(1, 0).text == "1"
+    assert tabla.cell(1, 1).text == "2"
+    assert tabla.cell(2, 0).text == "2"
+    assert tabla.cell(2, 1).text == "1"
