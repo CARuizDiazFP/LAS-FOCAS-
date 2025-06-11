@@ -72,12 +72,13 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         with tempfile.NamedTemporaryFile(delete=False) as tmp:
             await archivo.download_to_drive(tmp.name)
             ruta = tmp.name
-
         try:
             contenido = _leer_msg(ruta)
             if not contenido:
                 raise ValueError("Sin contenido")
-            tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
+
+            tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
+
                 contenido, cliente_nombre, carrier_nombre
             )
         except Exception as e:  # pragma: no cover - manejo simple
@@ -85,13 +86,6 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             os.remove(ruta)
             continue
         os.remove(ruta)
-
-        # Leer el cuerpo del .msg recién generado para enviarlo por correo
-        cuerpo = ""
-        try:
-            cuerpo = Path(ruta_msg).read_text(encoding="utf-8", errors="ignore")
-        except Exception:
-            pass
 
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
