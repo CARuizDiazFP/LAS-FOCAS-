@@ -3,7 +3,8 @@
 Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `Sandy bot/requirements.txt`. Se recomienda usar
 la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
-API utilizada en `sandybot`.
+API utilizada en `sandybot`. También se necesita `extract-msg` para leer los
+archivos `.msg` con el comando `/procesar_correos`.
 Desde esta versión el bot también acepta mensajes de voz, los descarga y
 transcribe automáticamente utilizando la API de OpenAI.
 
@@ -141,7 +142,8 @@ formatear el mensaje.
 
 Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el
 bot y crear automáticamente cada tarea programada. De esta manera se
-evita cargar la información de forma manual.
+evita cargar la información de forma manual. Este comando necesita la
+biblioteca `extract-msg` para leer los mensajes.
 Por ejemplo:
 ```bash
 /procesar_correos Cliente
