@@ -2,6 +2,7 @@
 # + Ubicación de archivo: Sandy bot/sandybot/handlers/reenviar_aviso.py
 # User-provided custom instructions
 import tempfile
+import os
 from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -107,6 +108,7 @@ async def reenviar_aviso(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         if ruta_path.exists():
             with open(ruta_path, "rb") as f:
                 await mensaje.reply_document(f, filename=nombre_arch)
+            os.remove(ruta_path)
 
     await responder_registrando(
         mensaje,

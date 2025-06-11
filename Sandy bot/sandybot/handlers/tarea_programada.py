@@ -3,6 +3,7 @@
 # User-provided custom instructions
 from datetime import datetime
 import tempfile
+import os
 from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
@@ -109,6 +110,7 @@ async def registrar_tarea_programada(
         if ruta_path.exists():
             with open(ruta_path, "rb") as f:
                 await mensaje.reply_document(f, filename=nombre_arch)
+            os.remove(ruta_path)
 
     await responder_registrando(
         mensaje,
