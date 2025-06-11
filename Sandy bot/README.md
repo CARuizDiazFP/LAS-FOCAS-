@@ -206,6 +206,15 @@ SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
 
 Si la ruta no existe se mostrará el mensaje "Plantilla de SLA no encontrada" y el proceso finalizará sin generar el informe.
 
+### Ejemplo completo del flujo
+
+1. Enviá primero el Excel con los **reclamos** y después el de **servicios**.
+2. Tras recibir ambos archivos aparece el botón **Procesar**.
+3. Al usarlo se produce un archivo con nombre aleatorio en la carpeta temporal.
+   Si se incluye `exportar_pdf=True` y el bot corre en Windows, también se crea la versión PDF.
+4. El documento (DOCX o PDF) se envía por Telegram y luego se elimina de manera automática.
+5. Podés actualizar la plantilla en cualquier momento mediante el botón **Actualizar plantilla**.
+
 ## Pruebas
 
 Para ejecutar la suite de tests primero corré `setup_env.sh`.
