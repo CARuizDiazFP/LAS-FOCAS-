@@ -9,6 +9,7 @@ from datetime import datetime
 # Preparar rutas
 ROOT_DIR = Path(__file__).resolve().parents[1]
 sys.path.append(str(ROOT_DIR / "Sandy bot"))
+import tests.telegram_stub  # Registra las clases fake de telegram
 
 # Stub de dotenv para Config
 dotenv_stub = types.ModuleType("dotenv")
@@ -225,6 +226,7 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     class OutlookStub:
         def __init__(self):
             self.saved = None
+            self.Body = ""
 
         def Dispatch(self, name):
             return self
@@ -234,7 +236,7 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
 
         def SaveAs(self, path, fmt):
             self.saved = (path, fmt)
-            Path(path).touch()
+            Path(path).write_text(self.Body or "")
 
     class PycomStub:
         def __init__(self):
