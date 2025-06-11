@@ -23,8 +23,9 @@ class DocumentStub:
                 Path(path).write_bytes(self._content)
         return F()
 class Message:
-    def __init__(self, documents=None):
+    def __init__(self, documents=None, text=""):
         self.documents = documents or []
+        self.text = text
         self.sent = None
         self.from_user = SimpleNamespace(id=1)
     async def reply_document(self, f, filename=None):
@@ -98,21 +99,42 @@ def test_procesar_informe_sla(tmp_path):
 
     doc1 = DocumentStub("reclamos.xlsx", r_path.read_bytes())
     doc2 = DocumentStub("servicios.xlsx", s_path.read_bytes())
-    msg = Message(documents=[doc1, doc2])
-    upd = Update(message=msg)
-    ctx = SimpleNamespace()
+    ctx = SimpleNamespace(user_data={})
 
     orig_tmp = tempfile.gettempdir
     tempfile.gettempdir = lambda: str(tmp_path)
     try:
-        asyncio.run(informe.procesar_informe_sla(upd, ctx))
+        # Paso 1: envío de archivos
+        msg1 = Message(documents=[doc1, doc2])
+        upd1 = Update(message=msg1)
+        asyncio.run(informe.procesar_informe_sla(upd1, ctx))
+        assert ctx.user_data.get("esperando_eventos")
+        assert msg1.sent is None
+
+        # Paso 2: eventos
+        msg2 = Message(text="ev")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg2), ctx))
+        assert ctx.user_data.get("esperando_conclusion")
+
+        # Paso 3: conclusion
+        msg3 = Message(text="conc")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg3), ctx))
+        assert ctx.user_data.get("esperando_propuesta")
+
+        # Paso 4: propuesta y generación
+        msg4 = Message(text="prop")
+        asyncio.run(informe.procesar_informe_sla(Update(message=msg4), ctx))
     finally:
         tempfile.gettempdir = orig_tmp
 
-    ruta = tmp_path / msg.sent
+    ruta = tmp_path / msg4.sent
     assert ruta.exists()
     doc = Document(ruta)
-    titulo = doc.paragraphs[0].text
-    assert "Informe SLA" in titulo
-    assert "Servicio 1" in doc.paragraphs[1].text
-    assert "Servicio 2" in doc.paragraphs[3].text
+    textos = "\n".join(p.text for p in doc.paragraphs)
+    tabla = doc.tables[0]
+    assert "Informe SLA" in textos
+    assert tabla.rows[1].cells[0].text == "1"
+    assert tabla.rows[2].cells[0].text == "2"
+    assert "ev" in textos
+    assert "conc" in textos
+    assert "prop" in textos
