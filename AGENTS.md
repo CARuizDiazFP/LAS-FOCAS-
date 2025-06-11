@@ -163,4 +163,8 @@ Salida esperada:
 ## 📧 Envío de correos
 
 El bot puede enviar listados por email usando los destinatarios guardados en `Sandy bot/data/destinatarios.json`. Configurá `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` y `SMTP_PASSWORD` junto a `EMAIL_FROM` en el `.env`. Las variables `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y `EMAIL_PASSWORD` siguen siendo válidas para compatibilidad.
+Definí también `SIGNATURE_PATH` para indicar la firma que se agrega a los mensajes generados.
+
+Al registrar tareas se crea un aviso en formato `.MSG`. Si tenés Outlook y la dependencia opcional `pywin32`, la firma se inserta de forma automática y podés editar el mensaje antes de enviarlo.
+El comando `/procesar_correos` analiza esos archivos `.MSG` y genera las tareas en la base sin intervención manual.
 
