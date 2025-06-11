@@ -76,20 +76,6 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             contenido = _leer_msg(ruta)
             if not contenido:
                 raise ValueError("Sin contenido")
-            prompt = (
-                "Extraé del siguiente correo los datos de la ventana de mantenimiento "
-                "y devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
-                "'afectacion' e 'ids' (lista de servicios).\n\n"
-                f"Correo:\n{contenido}"
-            )
-            esquema = {
-                "type": "object",
-                "properties": {
-
-        try:
-            contenido = _leer_msg(ruta)
-            if not contenido:
-                raise ValueError("Sin contenido")
             tarea, cliente, ruta_msg = await procesar_correo_a_tarea(
                 contenido, cliente_nombre, carrier_nombre
             )
