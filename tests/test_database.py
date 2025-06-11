@@ -281,3 +281,22 @@ def test_tarea_servicio_unica():
         with bd.SessionLocal() as session:
             session.add(bd.TareaServicio(tarea_id=tarea.id, servicio_id=s.id))
             session.commit()
+
+
+def test_crear_tarea_varios_servicios():
+    s1 = bd.crear_servicio(nombre="Sv1", cliente="C1")
+    s2 = bd.crear_servicio(nombre="Sv2", cliente="C2")
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 3, 8),
+        datetime(2024, 1, 3, 10),
+        "Mantenimiento",
+        [s1.id, s2.id],
+    )
+    with bd.SessionLocal() as session:
+        rels = (
+            session.query(bd.TareaServicio)
+            .filter(bd.TareaServicio.tarea_id == tarea.id)
+            .all()
+        )
+    assert len(rels) == 2
+    assert {r.servicio_id for r in rels} == {s1.id, s2.id}
