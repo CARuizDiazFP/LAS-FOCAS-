@@ -29,6 +29,7 @@ from .carriers import listar_carriers, agregar_carrier, eliminar_carrier
 from .tarea_programada import registrar_tarea_programada
 from .detectar_tarea_mail import detectar_tarea_mail
 from .procesar_correos import procesar_correos
+from .reenviar_aviso import reenviar_aviso
 from .listar_tareas import listar_tareas
 
 __all__ = [
@@ -67,4 +68,5 @@ __all__ = [
     "listar_tareas",
     "detectar_tarea_mail",
     "procesar_correos",
+    "reenviar_aviso",
 ]
