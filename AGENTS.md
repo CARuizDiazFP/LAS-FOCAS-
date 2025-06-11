@@ -168,3 +168,16 @@ Definí también `SIGNATURE_PATH` para indicar la firma que se agrega a los mens
 Al registrar tareas se genera un aviso en formato `.MSG` y se envía de forma automática a los destinatarios correspondientes. Si tenés Outlook y la dependencia opcional `pywin32`, la firma se inserta y podés ajustar el mensaje antes de enviarlo.
 El comando `/procesar_correos` analiza esos `.MSG` y registra las tareas en la base sin intervención manual.
 
+
+### Convenciones para commits
+
+- Escribir el resumen en español (máximo 60 caracteres).
+- Usar prefijos adecuados (`feat:`, `fix:`, `docs:`, etc.).
+- De ser necesario, incluir un cuerpo separado por una línea en blanco.
+
+### Encabezado obligatorio en archivos de código
+
+- Incluir al inicio de cada archivo las líneas con `Nombre de archivo`, `Ubicación de archivo` y `User-provided custom instructions`.
+- Colocar el encabezado tras la línea shebang (`#!/usr/bin/env python`) si existe.
+- No agregarlo en archivos de datos (`*.json`, `destinatarios.json`) ni en `README.md`.
+- Estas líneas sirven para identificar rápidamente cada módulo y recordar que se deben seguir las instrucciones personalizadas.
