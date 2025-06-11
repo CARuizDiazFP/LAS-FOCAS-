@@ -5,6 +5,7 @@ import logging
 import smtplib
 import os
 import re
+import tempfile
 from datetime import datetime
 from email.message import EmailMessage
 
@@ -17,9 +18,17 @@ except Exception:  # pragma: no cover - entornos sin win32
     pythoncom = None
 
 from .config import config
+from .gpt_handler import gpt
 
 SIGNATURE_PATH = Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
-from .database import SessionLocal, Cliente, Servicio, TareaProgramada, Carrier
+from .database import (
+    SessionLocal,
+    Cliente,
+    Servicio,
+    TareaProgramada,
+    Carrier,
+    obtener_cliente_por_nombre,
+)
 from .utils import (
     cargar_json,
     guardar_json,
@@ -357,3 +366,89 @@ def generar_archivo_msg(
     with open(ruta, "w", encoding="utf-8") as f:
         f.write(contenido)
     return ruta
+
+
+async def procesar_correo_a_tarea(
+    texto: str, cliente_nombre: str, carrier_nombre: str | None = None
+) -> tuple[TareaProgramada, Cliente, Path]:
+    """Analiza ``texto`` con GPT y registra la tarea programada."""
+
+    prompt = (
+        "Extraé del siguiente correo los datos de la ventana de mantenimiento y "
+        "devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
+        "'afectacion' e 'ids' (lista de servicios).\n\n"
+        f"Correo:\n{texto}"
+    )
+
+    esquema = {
+        "type": "object",
+        "properties": {
+            "inicio": {"type": "string"},
+            "fin": {"type": "string"},
+            "tipo": {"type": "string"},
+            "afectacion": {"type": "string"},
+            "ids": {"type": "array", "items": {"type": "integer"}},
+        },
+        "required": ["inicio", "fin", "tipo", "ids"],
+    }
+
+    try:
+        respuesta = await gpt.consultar_gpt(prompt)
+        datos = await gpt.procesar_json_response(respuesta, esquema)
+        if not datos:
+            raise ValueError("JSON inválido")
+    except Exception as exc:  # pragma: no cover - fallo externo
+        raise ValueError("No se pudo extraer la tarea del correo") from exc
+
+    try:
+        inicio = datetime.fromisoformat(str(datos["inicio"]))
+        fin = datetime.fromisoformat(str(datos["fin"]))
+    except Exception as exc:
+        raise ValueError("Fechas con formato inválido") from exc
+
+    tipo = datos["tipo"]
+    ids = [int(i) for i in datos.get("ids", [])]
+    afectacion = datos.get("afectacion")
+
+    with SessionLocal() as session:
+        cliente = obtener_cliente_por_nombre(cliente_nombre)
+        if not cliente:
+            cliente = Cliente(nombre=cliente_nombre)
+            session.add(cliente)
+            session.commit()
+            session.refresh(cliente)
+
+        carrier = None
+        if carrier_nombre:
+            carrier = (
+                session.query(Carrier)
+                .filter(Carrier.nombre == carrier_nombre)
+                .first()
+            )
+            if not carrier:
+                carrier = Carrier(nombre=carrier_nombre)
+                session.add(carrier)
+                session.commit()
+                session.refresh(carrier)
+
+        tarea = crear_tarea_programada(
+            inicio,
+            fin,
+            tipo,
+            ids,
+            carrier_id=carrier.id if carrier else None,
+            tiempo_afectacion=afectacion,
+        )
+        servicios = [session.get(Servicio, i) for i in ids]
+        if carrier:
+            for srv in servicios:
+                if srv:
+                    srv.carrier_id = carrier.id
+                    srv.carrier = carrier.nombre
+            session.commit()
+
+        nombre_arch = f"tarea_{tarea.id}.msg"
+        ruta = Path(tempfile.gettempdir()) / nombre_arch
+        generar_archivo_msg(tarea, cliente, [s for s in servicios if s], str(ruta))
+
+        return tarea, cliente, ruta
