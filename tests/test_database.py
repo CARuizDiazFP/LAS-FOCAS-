@@ -17,7 +17,9 @@ sys.path.append(str(ROOT_DIR / "Sandy bot"))
 import tests.telegram_stub  # Registra las clases fake de telegram
 
 # Stub de dotenv requerido por config
-dotenv_stub = importlib.util.module_from_spec(importlib.machinery.ModuleSpec("dotenv", None))
+dotenv_stub = importlib.util.module_from_spec(
+    importlib.machinery.ModuleSpec("dotenv", None)
+)
 dotenv_stub.load_dotenv = lambda *a, **k: None
 sys.modules.setdefault("dotenv", dotenv_stub)
 
@@ -69,7 +71,6 @@ def test_buscar_servicios_por_camara():
     res3 = bd.buscar_servicios_por_camara("peron 7540")
     assert {s.nombre for s in res3} == {"S4"}
 
-
     bd.crear_servicio(nombre="S5", cliente="E", camaras=["Cámara Fiscalía"])
     res4 = bd.buscar_servicios_por_camara("camara fiscalia")
     assert {s.nombre for s in res4} == {"S5"}
@@ -81,7 +82,6 @@ def test_buscar_servicios_por_camara_jsonb():
 
     res = bd.buscar_servicios_por_camara("camara jsonb")
     assert {s.nombre for s in res} == {"SJ1"}
-
 
 
 def test_exportar_camaras_servicio(tmp_path):
@@ -102,9 +102,7 @@ def test_exportar_camaras_servicio(tmp_path):
 
 def test_exportar_camaras_servicio_cadena(tmp_path):
     """Verifica la exportación cuando las cámaras se guardaron como texto JSON."""
-    servicio = bd.crear_servicio(
-        nombre="S4b", cliente="D", camaras='["C1", "C2"]'
-    )
+    servicio = bd.crear_servicio(nombre="S4b", cliente="D", camaras='["C1", "C2"]')
 
     ruta = tmp_path / "camaras_str.xlsx"
     ok = bd.exportar_camaras_servicio(servicio.id, str(ruta))
@@ -119,7 +117,9 @@ def test_exportar_camaras_servicio_cadena(tmp_path):
 
 def test_actualizar_tracking_jsonb():
     servicio = bd.crear_servicio(nombre="S6", cliente="F")
-    bd.actualizar_tracking(servicio.id, "ruta.txt", ["C1"], ["t1.txt"], tipo="principal")
+    bd.actualizar_tracking(
+        servicio.id, "ruta.txt", ["C1"], ["t1.txt"], tipo="principal"
+    )
 
     with bd.SessionLocal() as s:
         reg = s.get(bd.Servicio, servicio.id)
@@ -133,7 +133,9 @@ def test_actualizar_tracking_jsonb():
 def test_actualizar_tracking_string():
     """Verifica que se actualice si el campo ``trackings`` quedó como texto."""
     servicio = bd.crear_servicio(nombre="S7", cliente="G", trackings="[]")
-    bd.actualizar_tracking(servicio.id, trackings_txt=["nuevo.txt"], tipo="complementario")
+    bd.actualizar_tracking(
+        servicio.id, trackings_txt=["nuevo.txt"], tipo="complementario"
+    )
 
     with bd.SessionLocal() as s:
         reg = s.get(bd.Servicio, servicio.id)
@@ -202,14 +204,20 @@ def test_cliente_destinatarios():
     """Los servicios se vinculan con un cliente y sus correos."""
 
     with bd.SessionLocal() as s:
-        cli = bd.Cliente(nombre="Acme", destinatarios=["a@x.com"])
+        cli = bd.Cliente(
+            nombre="Acme",
+            destinatarios=["a@x.com"],
+            destinatarios_carrier={"Telco": ["b@x.com"]},
+        )
         s.add(cli)
         s.commit()
         s.refresh(cli)
-        servicio = bd.crear_servicio(nombre="S_cli", cliente="Acme", cliente_id=cli.id)
+        servicio = bd.crear_servicio(
+            nombre="S_cli", cliente="Acme", cliente_id=cli.id, carrier="Telco"
+        )
 
         dest = bd.obtener_destinatarios_servicio(servicio.id)
-        assert dest == ["a@x.com"]
+        assert dest == ["b@x.com"]
 
 
 def test_crear_tarea_y_relacion():
@@ -249,14 +257,13 @@ def test_carrier_asociaciones():
     assert s_srv.carrier_id == car.id
     assert s_tarea.carrier_id == car.id
 
+
 def test_ensure_servicio_columns_indice_tarea_programada():
     """La función crea el índice combinado de fechas en tareas_programadas."""
     # 1️⃣  El índice se elimina si existe para garantizar la prueba
     with bd.engine.begin() as conn:
         conn.execute(
-            text(
-                "DROP INDEX IF EXISTS ix_tareas_programadas_fecha_inicio_fecha_fin"
-            )
+            text("DROP INDEX IF EXISTS ix_tareas_programadas_fecha_inicio_fecha_fin")
         )
 
     insp = sqlalchemy.inspect(bd.engine)
