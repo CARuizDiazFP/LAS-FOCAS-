@@ -9,8 +9,8 @@ from sqlalchemy import (
     func,
     JSON,
     ForeignKey,
-    Index,              # (+) Necesario para definir y recrear índices de forma explícita
-    UniqueConstraint,    # (+) Mantiene la restricción única de tareas_servicio
+    Index,  # (+) Necesario para definir y recrear índices de forma explícita
+    UniqueConstraint,  # (+) Mantiene la restricción única de tareas_servicio
 )
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
@@ -60,6 +60,7 @@ class Cliente(Base):
     id = Column(Integer, primary_key=True)
     nombre = Column(String, unique=True, index=True)
     destinatarios = Column(JSONType)
+    destinatarios_carrier = Column(JSONType)
 
 
 class Carrier(Base):
@@ -175,11 +176,9 @@ class TareaServicio(Base):
 
     # Evita filas duplicadas con la misma tarea y servicio
     __table_args__ = (
-        UniqueConstraint(
-            "tarea_id",
-            "servicio_id",
-            name="uix_tarea_servicio",
-        ),
+    # Evita filas duplicadas con la misma tarea y servicio
+    __table_args__ = (
+        UniqueConstraint("tarea_id", "servicio_id", name="uix_tarea_servicio"),
     )
 
 
@@ -194,12 +193,23 @@ def ensure_servicio_columns() -> None:
     # Crear la tabla de clientes y carriers si no existen
     if "clientes" not in inspector.get_table_names():
         Cliente.__table__.create(bind=engine)
+    else:
+        cols_cli = {c["name"] for c in inspector.get_columns("clientes")}
+        if "destinatarios_carrier" not in cols_cli:
+            tipo = Cliente.__table__.columns["destinatarios_carrier"].type.compile(
+                engine.dialect
+            )
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        f"ALTER TABLE clientes ADD COLUMN destinatarios_carrier {tipo}"
+                    )
+                )
     if "carriers" not in inspector.get_table_names():
         Carrier.__table__.create(bind=engine)
 
     actuales = {col["name"] for col in inspector.get_columns("servicios")}
     definidas = {c.name for c in Servicio.__table__.columns}
-
 
     faltantes = definidas - actuales
     for columna in faltantes:
@@ -219,29 +229,24 @@ def ensure_servicio_columns() -> None:
         with engine.begin() as conn:
             conn.execute(
                 text(
-                    "CREATE INDEX ix_servicios_id_carrier"
-                    " ON servicios (id_carrier)"
+                    "CREATE INDEX ix_servicios_id_carrier" " ON servicios (id_carrier)"
                 )
             )
     if "ix_servicios_carrier_id" not in indices:
         with engine.begin() as conn:
             conn.execute(
-                text(
-                    "CREATE INDEX ix_servicios_carrier_id ON servicios (carrier_id)"
-                )
+                text("CREATE INDEX ix_servicios_carrier_id ON servicios (carrier_id)")
             )
     if "ix_servicios_cliente_id" not in indices:
         with engine.begin() as conn:
             conn.execute(
                 text(
-                    "CREATE INDEX ix_servicios_cliente_id"
-                    " ON servicios (cliente_id)"
+                    "CREATE INDEX ix_servicios_cliente_id" " ON servicios (cliente_id)"
                 )
             )
 
     indices_tareas = {
-        idx["name"]
-        for idx in inspector.get_indexes("tareas_programadas")
+        idx["name"] for idx in inspector.get_indexes("tareas_programadas")
     }
     if "ix_tareas_programadas_fecha_inicio_fecha_fin" not in indices_tareas:
         with engine.begin() as conn:
@@ -254,7 +259,9 @@ def ensure_servicio_columns() -> None:
 
     actuales_tarea = {c["name"] for c in inspector.get_columns("tareas_programadas")}
     if "carrier_id" not in actuales_tarea:
-        tipo = TareaProgramada.__table__.columns["carrier_id"].type.compile(engine.dialect)
+        tipo = TareaProgramada.__table__.columns["carrier_id"].type.compile(
+            engine.dialect
+        )
         with engine.begin() as conn:
             conn.execute(
                 text(
@@ -328,7 +335,6 @@ def init_db():
                 )
 
 
-
 # La inicialización se realiza desde ``main.py`` para evitar errores al
 # importar el módulo cuando la base de datos no está disponible.
 
@@ -360,7 +366,13 @@ def obtener_destinatarios_servicio(id_servicio: int) -> list[str]:
                 .filter(Cliente.nombre == servicio.cliente)
                 .first()
             )
-        return cliente.destinatarios if cliente and cliente.destinatarios else []
+        if not cliente:
+            return []
+        if cliente.destinatarios_carrier and servicio.carrier:
+            lista = cliente.destinatarios_carrier.get(servicio.carrier)
+            if lista:
+                return lista
+        return cliente.destinatarios if cliente.destinatarios else []
 
 
 def crear_servicio(**datos) -> Servicio:
@@ -429,8 +441,12 @@ def actualizar_tracking(
                     anteriores = {normalizar_camara(c) for c in cam_anterior}
                     dif_agregadas = nuevas - anteriores
                     dif_quitadas = anteriores - nuevas
-                    entrada["nuevas"] = [c for c in camaras if normalizar_camara(c) in dif_agregadas]
-                    entrada["quitadas"] = [c for c in cam_anterior if normalizar_camara(c) in dif_quitadas]
+                    entrada["nuevas"] = [
+                        c for c in camaras if normalizar_camara(c) in dif_agregadas
+                    ]
+                    entrada["quitadas"] = [
+                        c for c in cam_anterior if normalizar_camara(c) in dif_quitadas
+                    ]
                 nuevos.append(entrada)
             existentes.extend(nuevos)
             servicio.trackings = existentes
@@ -440,12 +456,10 @@ def actualizar_tracking(
 def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada."""
 
-
     # Se utiliza un contexto ``with`` para asegurar el cierre de la sesión
     # sin necesidad de manejar excepciones de forma explícita.
     with SessionLocal() as session:
         fragmento = normalizar_camara(nombre_camara)
-
 
         # Primer intento de filtrado. Se castea ``Servicio.camaras`` a ``String``
         # para evitar problemas cuando se guarda como JSON o JSONB.
@@ -459,11 +473,8 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
         else:
             columna_normalizada = func.lower(camaras_str)
 
-        filtro = columna_normalizada.ilike(
-            f"%{normalizar_camara(nombre_camara)}%"
-        )
+        filtro = columna_normalizada.ilike(f"%{normalizar_camara(nombre_camara)}%")
         candidatos = session.query(Servicio).filter(filtro).all()
-
 
         # Si no se encontraron coincidencias con la cadena tal cual se recibió,
         # se recuperan todos los servicios para comparar en memoria utilizando
@@ -616,6 +627,3 @@ def obtener_tareas_servicio(servicio_id: int) -> list[TareaProgramada]:
             .filter(TareaServicio.servicio_id == servicio_id)
             .all()
         )
-
-
-

@@ -16,9 +16,17 @@ from tests.telegram_stub import Message, Update  # Registra las clases fake de t
 
 # Stubs de openai y jsonschema para importar gpt_handler sin dependencias
 openai_stub = ModuleType("openai")
+
+
 class AsyncOpenAI:
     def __init__(self, api_key=None):
-        self.chat = type("c", (), {"completions": type("comp", (), {"create": lambda *a, **k: None})()})()
+        self.chat = type(
+            "c",
+            (),
+            {"completions": type("comp", (), {"create": lambda *a, **k: None})()},
+        )()
+
+
 openai_stub.AsyncOpenAI = AsyncOpenAI
 sys.modules.setdefault("openai", openai_stub)
 
@@ -29,8 +37,12 @@ sys.modules.setdefault("jsonschema", jsonschema_stub)
 
 # Stub del registrador para evitar llamadas reales a la base
 registrador_stub = ModuleType("sandybot.registrador")
+
+
 async def responder_registrando(*a, **k):
     pass
+
+
 registrador_stub.responder_registrando = responder_registrando
 registrador_stub.registrar_conversacion = lambda *a, **k: None
 sys.modules.setdefault("sandybot.registrador", registrador_stub)
@@ -41,31 +53,37 @@ dotenv_stub.load_dotenv = lambda *a, **k: None
 sys.modules.setdefault("dotenv", dotenv_stub)
 
 # Variables de entorno necesarias
-os.environ.update({
-    "TELEGRAM_TOKEN": "x",
-    "OPENAI_API_KEY": "x",
-    "NOTION_TOKEN": "x",
-    "NOTION_DATABASE_ID": "x",
-    "DB_USER": "u",
-    "DB_PASSWORD": "p",
-    "SLACK_WEBHOOK_URL": "x",
-    "SUPERVISOR_DB_ID": "x",
-    "DB_HOST": "localhost",
-    "DB_PORT": "5432",
-    "DB_NAME": "sandy",
-})
+os.environ.update(
+    {
+        "TELEGRAM_TOKEN": "x",
+        "OPENAI_API_KEY": "x",
+        "NOTION_TOKEN": "x",
+        "NOTION_DATABASE_ID": "x",
+        "DB_USER": "u",
+        "DB_PASSWORD": "p",
+        "SLACK_WEBHOOK_URL": "x",
+        "SUPERVISOR_DB_ID": "x",
+        "DB_HOST": "localhost",
+        "DB_PORT": "5432",
+        "DB_NAME": "sandy",
+    }
+)
 
 # Base de datos en memoria
 import sqlalchemy
+
 orig_engine = sqlalchemy.create_engine
 sqlalchemy.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
 import sandybot.database as bd
+
 sqlalchemy.create_engine = orig_engine
 bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
 bd.Base.metadata.create_all(bind=bd.engine)
 
 # Parchar directorio temporal para capturar el .msg
 TEMP_DIR = None
+
+
 def _tmpdir():
     return str(TEMP_DIR)
 
@@ -92,11 +110,13 @@ def test_registrar_tarea_programada(tmp_path):
     spec.loader.exec_module(tarea_mod)
 
     enviados = {}
-    def fake_enviar(asunto, cuerpo, cid, **k):
+
+    def fake_enviar(asunto, cuerpo, cid, carrier=None, **k):
         enviados["asunto"] = asunto
         enviados["cuerpo"] = cuerpo
         enviados["cid"] = cid
         return True
+
     tarea_mod.enviar_correo = fake_enviar
 
     # Crear servicio previo
@@ -104,13 +124,15 @@ def test_registrar_tarea_programada(tmp_path):
 
     msg = Message("/registrar_tarea")
     update = Update(message=msg)
-    ctx = SimpleNamespace(args=[
-        "Cli",
-        "2024-01-02T08:00:00",
-        "2024-01-02T10:00:00",
-        "Mantenimiento",
-        str(servicio.id)
-    ])
+    ctx = SimpleNamespace(
+        args=[
+            "Cli",
+            "2024-01-02T08:00:00",
+            "2024-01-02T10:00:00",
+            "Mantenimiento",
+            str(servicio.id),
+        ]
+    )
 
     with bd.SessionLocal() as s:
         prev_tareas = s.query(bd.TareaProgramada).count()
