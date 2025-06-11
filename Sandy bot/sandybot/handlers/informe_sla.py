@@ -205,8 +205,17 @@ def _generar_documento_sla(
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
 
+    # Verificar columnas requeridas en el Excel de servicios
+    columnas_requeridas = {"SLA Entregado", "Dirección", "Horas Netas Reclamo"}
+    faltantes = columnas_requeridas - set(servicios_df.columns)
+    if faltantes:
+        logger.warning(
+            "Faltan columnas en Excel de servicios: %s",
+            ", ".join(sorted(faltantes)),
+        )
+
     # Columnas opcionales a incluir si existen
-    columnas_extra = [col for col in ("SLA Entregado", "Dirección", "Horas Netas Reclamo") if col in servicios_df]
+    columnas_extra = [col for col in columnas_requeridas if col in servicios_df]
 
     # Normaliza nombres de columna
     if "Servicio" not in reclamos_df.columns:
