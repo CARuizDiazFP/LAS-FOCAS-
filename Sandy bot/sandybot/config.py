@@ -41,10 +41,15 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self.LOG_DIR = self.BASE_DIR / "logs"
         self.HISTORICO_DIR = self.DATA_DIR / "historico"
 
+
         # Rutas historial/plantillas SLA
         self.SLA_HISTORIAL_DIR = Path(
             os.getenv("SLA_HISTORIAL_DIR", self.BASE_DIR / "templates" / "Historicos")
         )
+
+        # Plantillas y reportes de SLA
+        self.SLA_HISTORIAL_DIR = self.BASE_DIR / "templates" / "Historicos"
+
 
         # Crear carpetas necesarias (idempotente)
         for carpeta in (

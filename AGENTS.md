@@ -168,6 +168,10 @@ Definí también `SIGNATURE_PATH` para indicar la firma que se agrega a los mens
 Al registrar tareas se genera un aviso en formato `.MSG` y se envía de forma automática a los destinatarios correspondientes. Si tenés Outlook y la dependencia opcional `pywin32`, la firma se inserta y podés ajustar el mensaje antes de enviarlo.
 El comando `/procesar_correos` analiza esos `.MSG` y registra las tareas en la base sin intervención manual.
 
+### Informe de SLA
+
+La tabla principal del documento SLA siempre debe ordenarse de **mayor a menor** por la columna `SLA`. Cualquier cambio en el generador o las pruebas debe respetar este criterio.
+
 
 ### Convenciones para commits
 

@@ -74,7 +74,7 @@ no cuenta con el estilo `Title`, se utiliza `Heading 1` como alternativa.
 En el menú del bot existe un botón para reemplazar la plantilla de
 repetitividad y otro que permite exportar el informe final a PDF.
 Las plantillas de ejemplo se guardan en la carpeta `templates/` y cada versión
-anterior se mueve automáticamente a `templates/Historios` al presionar
+anterior se mueve automáticamente a `templates/Historicos` al presionar
 **Actualizar plantilla**. De esta forma la nueva base queda disponible para los
 próximos informes sin perder el historial.
 
@@ -110,6 +110,12 @@ Se incluyen dos modelos principales:
    `tipo_tarea`, `tiempo_afectacion`, `descripcion` y `carrier_id`.
 6. **TareaServicio**: vincula cada tarea programada con los servicios
    afectados mediante sus IDs.
+7. **Reclamo**: almacena los tickets asociados a un servicio. Guarda
+   número, fecha de inicio, fecha de cierre, tipo de solución y una
+   descripción de la solución.
+8. Las tablas `camaras` y `reclamos` cuentan con restricciones únicas que
+   evitan registrar dos veces la misma cámara o número de reclamo.
+   Además, al cargar el Excel de reclamos se ignoran las líneas repetidas.
 
 Antes de crear la instancia del bot se ejecuta `init_db()` desde
 `main.py`. Esta función crea las tablas y ejecuta
@@ -311,7 +317,7 @@ SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
 ```
 
 Las plantillas por defecto se guardan en `templates/`. Al presionar
-**Actualizar plantilla** el archivo actual se copia a `templates/Historios`
+**Actualizar plantilla** el archivo actual se copia a `templates/Historicos`
 y la nueva versión queda disponible para informes futuros.
 
 Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" y el proceso se cancelará.
@@ -320,7 +326,7 @@ Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" 
 
 1. Enviá el Excel con los **reclamos** y luego el de **servicios**.
 2. Una vez recibidos ambos, el bot muestra los botones **Procesar** y **Exportar a PDF**.
-3. Al presionar alguna opción se genera el documento en una ruta temporal con un nombre aleatorio.
+3. Al presionar alguna opción se genera el documento en una ruta temporal con un nombre aleatorio. La tabla principal de servicios se ordena de forma descendente por la columna **SLA**. Este criterio debe mantenerse en cada implementación.
    Si se llama a `_generar_documento_sla(exportar_pdf=True)` con `pywin32` en Windows o con `docx2pdf` en otros sistemas, también se guarda la versión PDF.
 4. Finalmente el archivo se envía por Telegram y se elimina automáticamente del sistema para evitar residuos.
 5. En cualquier momento se puede usar el botón **Actualizar plantilla** para cargar una nueva base en formato `.docx`.
@@ -333,7 +339,7 @@ Una vez generada la plantilla podés presionar el botón **Exportar PDF** o llam
 El flujo consiste en enviar primero el Excel de **reclamos**, luego el de **servicios**,
 presionar **Procesar** y finalmente optar por **Exportar PDF**.
 Recordá que la plantilla se puede reemplazar en cualquier momento con el botón **Actualizar plantilla**.
-Cuando uses esa opción, el archivo anterior se moverá a `templates/Historios` y la nueva plantilla quedará almacenada en `templates/`.
+Cuando uses esa opción, el archivo anterior se moverá a `templates/Historicos` y la nueva plantilla quedará almacenada en `templates/`.
 
 
 ## Enviar Excel por correo

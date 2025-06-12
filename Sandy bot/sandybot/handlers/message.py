@@ -26,6 +26,27 @@ from difflib import SequenceMatcher
 
 logger = logging.getLogger(__name__)
 
+# Diccionario para mostrar nombres amigables en la confirmación de flujos
+NOMBRES_FLUJO = {
+    "comparar_fo": "Comparar trazados FO",
+    "verificar_ingresos": "Verificar ingresos",
+    "cargar_tracking": "Cargar tracking",
+    "descargar_tracking": "Descargar tracking",
+    "descargar_camaras": "Descargar cámaras",
+    "enviar_camaras_mail": "Enviar cámaras por mail",
+    "id_carrier": "Identificar carrier",
+    "informe_repetitividad": "Informe de repetitividad",
+    "informe_sla": "Informe de SLA",
+    "analizar_incidencias": "Analizar incidencias",
+    "nueva_solicitud": "Nueva solicitud",
+    "start": "Menú de funciones",
+    "otro": "Otro flujo",
+}
+
+def _nombre_flujo(clave: str) -> str:
+    """Devuelve el nombre legible del flujo indicado."""
+    return NOMBRES_FLUJO.get(clave, clave)
+
 async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Maneja mensajes de texto del usuario"""
     user_id = update.effective_user.id
@@ -34,6 +55,41 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     mensaje_usuario = context.user_data.pop("voice_text", None) or update.message.text
 
     try:
+        # Si hay un flujo pendiente de confirmación procesamos primero esa respuesta
+        flujo_pendiente = context.user_data.get("confirmar_flujo")
+        if flujo_pendiente:
+            resp = normalizar_texto(mensaje_usuario)
+            if resp in ("si", "sí", "s", "ok", "dale"):
+                context.user_data.pop("confirmar_flujo", None)
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    f"Iniciando { _nombre_flujo(flujo_pendiente) }...",
+                    "sandy",
+                )
+                await _ejecutar_accion_natural(
+                    flujo_pendiente, update, context, mensaje_usuario
+                )
+            elif resp in ("no", "n", "cancelar"):
+                context.user_data.pop("confirmar_flujo", None)
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Operación cancelada.",
+                    "sandy",
+                )
+            else:
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Decí 'sí' o 'no' para confirmar.",
+                    "sandy",
+                )
+            return
+
         # Manejo de carga de tracking
         if UserState.get_mode(user_id) == "cargar_tracking":
             if context.user_data.get("confirmar_id"):
@@ -109,11 +165,15 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     )
                     return
             if accion:
-                handled = await _ejecutar_accion_natural(
-                    accion, update, context, mensaje_usuario
+                context.user_data["confirmar_flujo"] = accion
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    f"¿Deseás iniciar { _nombre_flujo(accion) }? (sí/no)",
+                    "sandy",
                 )
-                if handled:
-                    return
+                return
 
         if mode == "comparador":
             await _manejar_comparador(update, context, mensaje_usuario)

@@ -332,3 +332,61 @@ def test_crear_tarea_servicio_repetido():
             "Mantenimiento",
             [s.id, s.id],
         )
+
+
+def test_reclamos_por_servicio():
+    srv1 = bd.crear_servicio(nombre="SrvRec1", cliente="Cli")
+    srv2 = bd.crear_servicio(nombre="SrvRec2", cliente="Cli")
+    fecha = datetime(2024, 5, 1, 12)
+    cierre = datetime(2024, 5, 2, 14)
+    bd.crear_reclamo(
+        srv1.id,
+        "R1",
+        fecha_inicio=fecha,
+        fecha_cierre=cierre,
+        tipo_solucion="TS",
+        descripcion_solucion="Sol",
+    )
+    bd.crear_reclamo(srv2.id, "R2")
+
+    recs1 = bd.obtener_reclamos_servicio(srv1.id)
+    recs2 = bd.obtener_reclamos_servicio(srv2.id)
+
+    assert len(recs1) == 1
+    assert recs1[0].numero == "R1"
+    assert recs1[0].fecha_inicio == fecha
+    assert recs1[0].fecha_cierre == cierre
+    assert recs1[0].tipo_solucion == "TS"
+    assert recs1[0].descripcion_solucion == "Sol"
+    assert len(recs2) == 1
+    assert recs2[0].numero == "R2"
+
+
+def test_reclamo_unico():
+    """Reclamo con el mismo número no debe duplicarse."""
+    srv = bd.crear_servicio(nombre="SrvDup", cliente="Cli")
+    r1 = bd.crear_reclamo(srv.id, "DUP")
+    r2 = bd.crear_reclamo(srv.id, "DUP")
+    with bd.SessionLocal() as s:
+        filas = (
+            s.query(bd.Reclamo)
+            .filter(bd.Reclamo.servicio_id == srv.id)
+            .all()
+        )
+    assert len(filas) == 1
+    assert r1.id == r2.id
+
+
+def test_camara_unica():
+    """Cámara repetida para un servicio retorna el mismo registro."""
+    srv = bd.crear_servicio(nombre="SrvCam", cliente="Cli")
+    c1 = bd.crear_camara("Cam", srv.id)
+    c2 = bd.crear_camara("Cam", srv.id)
+    with bd.SessionLocal() as s:
+        filas = (
+            s.query(bd.Camara)
+            .filter(bd.Camara.id_servicio == srv.id)
+            .all()
+        )
+    assert len(filas) == 1
+    assert c1.id == c2.id
