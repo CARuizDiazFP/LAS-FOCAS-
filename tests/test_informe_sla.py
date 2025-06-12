@@ -345,6 +345,31 @@ def test_bloque_con_parrafos(tmp_path):
     assert any("Eventos" in Paragraph(p, doc).text for p in entre)
 
 
+def test_generar_con_ticket(tmp_path):
+    """Soporta alias 'N° de Ticket' en los reclamos."""
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame({
+        "Servicio": ["X"],
+        "N° de Ticket": [1],
+        "Número Línea": [10],
+        "Horas Netas Reclamo": ["0:00:00"],
+        "Tipo Solución Reclamo": ["X"],
+        "Fecha Inicio Reclamo": ["2024-01-01"],
+    }).to_excel(r, index=False)
+    pd.DataFrame({
+        "Tipo Servicio": ["X"],
+        "Número Línea": [10],
+        "Nombre Cliente": ["A"],
+        "Horas Reclamos Todos": [0],
+        "SLA": [0.8],
+    }).to_excel(s, index=False)
+    doc_path = handler._generar_documento_sla(str(r), str(s))
+    doc = Document(doc_path)
+    tabla3 = doc.tables[-1]
+    assert tabla3.rows[1].cells[1].text == "1"
+
+
 def test_pdf_no_nameerror(tmp_path):
     """Confirma que exportar a PDF no produce NameError."""
     handler = _importar_handler(tmp_path)
@@ -395,3 +420,16 @@ def test_guardar_reclamos(tmp_path):
     recs = bd.obtener_reclamos_servicio(srv.id)
     assert recs[0].tipo_solucion == "Cambio"
     assert recs[0].descripcion_solucion == "Detalle"
+
+
+def test_guardar_reclamos_ticket(tmp_path):
+    handler = _importar_handler(tmp_path)
+    srv = bd.crear_servicio(nombre="Srv2", cliente="Cli")
+    df = pd.DataFrame({
+        "Número Línea": [srv.id],
+        "N° de Ticket": ["11"],
+        "Fecha Inicio Problema Reclamo": ["2024-01-01"],
+    })
+    handler._guardar_reclamos(df)
+    recs = bd.obtener_reclamos_servicio(srv.id)
+    assert recs[0].numero == "11"

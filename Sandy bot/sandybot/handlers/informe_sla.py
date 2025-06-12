@@ -42,7 +42,12 @@ logger = logging.getLogger(__name__)
 
 def _guardar_reclamos(df: pd.DataFrame) -> None:
     """Registra en la base los reclamos del DataFrame."""
-    if "Número Reclamo" not in df.columns:
+    col_ticket = None
+    for c in ["Número Reclamo", "N° de Ticket"]:
+        if c in df.columns:
+            col_ticket = c
+            break
+    if not col_ticket:
         return
 
     col_servicio = None
@@ -55,7 +60,7 @@ def _guardar_reclamos(df: pd.DataFrame) -> None:
 
     for _, fila in df.iterrows():
         sid = fila.get(col_servicio)
-        numero = fila.get("Número Reclamo")
+        numero = fila.get(col_ticket)
         if pd.isna(sid) or pd.isna(numero):
             continue
         try:
@@ -100,7 +105,7 @@ def identificar_excel(path: str) -> str:
     df.columns = df.columns.str.replace(r"\s+", " ", regex=True).str.strip()
     columnas = set(df.columns)
 
-    if {"Número Reclamo", "Fecha Inicio Problema Reclamo"} & columnas:
+    if {"Número Reclamo", "N° de Ticket", "Fecha Inicio Problema Reclamo"} & columnas:
         return "reclamos"
     if {"SLA Entregado", "Número Primer Servicio"} & columnas:
         return "servicios"
@@ -326,6 +331,11 @@ def _generar_documento_sla(
         .str.replace(r"\s+", " ", regex=True)
         .str.strip()
     )
+    col_ticket = None
+    for c in ["Número Reclamo", "N° de Ticket"]:
+        if c in reclamos_df.columns:
+            col_ticket = c
+            break
     servicios_df = pd.read_excel(servicios_xlsx)
     _guardar_reclamos(reclamos_df)
     servicios_df.columns = (
@@ -444,9 +454,10 @@ def _generar_documento_sla(
     for t in doc.tables[1:]:
         t._tbl.getparent().remove(t._tbl)
 
+    ticket_col = col_ticket or "Número Reclamo"
     cols_r = [
         "Número Línea",
-        "Número Reclamo",
+        ticket_col,
         "Horas Netas Reclamo",
         "Tipo Solución Reclamo",
         "Fecha Inicio Reclamo",
@@ -477,8 +488,7 @@ def _generar_documento_sla(
             else:
                 recl_srv = pd.DataFrame()
 
-            if not recl_srv.empty:
-                col_ticket = "N° de Ticket" if "N° de Ticket" in reclamos_df.columns else "Número Reclamo"
+            if not recl_srv.empty and col_ticket:
                 unique_tickets = [str(t) for t in recl_srv[col_ticket].dropna().unique()]
                 ticket = ", ".join(unique_tickets)
             else:
@@ -526,7 +536,7 @@ def _generar_documento_sla(
                     tabla3._tbl.append(nueva)
                     c = tabla3.rows[-1].cells
                     c[0].text = str(fr["Número Línea"])
-                    c[1].text = str(fr["Número Reclamo"])
+                    c[1].text = str(fr[ticket_col])
                     td = _to_timedelta(fr["Horas Netas Reclamo"])
                     total += td
                     c[2].text = _fmt_td(td)
