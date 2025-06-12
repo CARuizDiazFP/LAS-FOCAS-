@@ -1,5 +1,6 @@
-# Nombre de archivo: tests/test_informe_sla.py
-# Ubicación: Sandy bot/tests/test_informe_sla.py
+# + Nombre de archivo: test_informe_sla.py
+# + Ubicación de archivo: tests/test_informe_sla.py
+# User-provided custom instructions
 # --------------------------------------------------------------------- #
 #  Suite de pruebas unificada y libre de conflictos para el handler SLA #
 # --------------------------------------------------------------------- #
@@ -144,7 +145,6 @@ async def _cambio_plantilla(tmp_path: Path):
     nueva = tmp_path / "new.docx"
     Document().save(nueva)
     msg = Message(document=ExcelDoc("new.docx", nueva))
-    msg.document = msg.documents[0]
     await handler.procesar_informe_sla(Update(message=msg), ctx)
 
     assert "actualizada" in captura["texto"].lower()
@@ -179,4 +179,29 @@ def test_exportar_pdf(tmp_path):
     pd.DataFrame({"Servicio": [1]}).to_excel(r, index=False)
     pd.DataFrame({"Servicio": [1]}).to_excel(s, index=False)
     ruta = handler._generar_documento_sla(str(r), str(s), exportar_pdf=True)
+    assert ruta.endswith(".pdf") or ruta.endswith(".docx")
+
+
+def test_tabla_orden_por_sla(tmp_path):
+    """Verifica que el servicio con menor SLA quede primero en la tabla."""
+    handler = _importar_handler(tmp_path)
+    recl = tmp_path / "re.xlsx"
+    serv = tmp_path / "se.xlsx"
+    pd.DataFrame({"Servicio": [1, 2], "Fecha": ["2024-01-01", "2024-01-01"]}).to_excel(recl, index=False)
+    pd.DataFrame({"Servicio": [1, 2], "SLA Entregado": [50, 30]}).to_excel(serv, index=False)
+    doc_path = handler._generar_documento_sla(str(recl), str(serv))
+    tabla = Document(doc_path).tables[0]
+    assert tabla.rows[1].cells[0].text == "2"
+
+
+def test_pdf_no_nameerror(tmp_path):
+    """Confirma que exportar a PDF no produce NameError."""
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame({"Servicio": [1]}).to_excel(r, index=False)
+    pd.DataFrame({"Servicio": [1]}).to_excel(s, index=False)
+    try:
+        ruta = handler._generar_documento_sla(str(r), str(s), exportar_pdf=True)
+    except NameError as e:
+        raise AssertionError(f"NameError inesperado: {e}")
     assert ruta.endswith(".pdf") or ruta.endswith(".docx")
