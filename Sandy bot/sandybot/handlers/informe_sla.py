@@ -10,6 +10,8 @@ import os
 import tempfile
 import locale
 from typing import Optional
+from pathlib import Path
+import shutil
 
 import pandas as pd
 from docx import Document
@@ -195,6 +197,13 @@ async def actualizar_plantilla_sla(update: Update, context: ContextTypes.DEFAULT
     try:
         f = await archivo.get_file()
         os.makedirs(os.path.dirname(RUTA_PLANTILLA), exist_ok=True)
+
+        if os.path.exists(RUTA_PLANTILLA):
+            fecha = pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+            nombre = f"{Path(RUTA_PLANTILLA).stem}_{fecha}{Path(RUTA_PLANTILLA).suffix}"
+            destino = Path(config.SLA_HISTORIAL_DIR) / nombre
+            shutil.move(RUTA_PLANTILLA, destino)
+
         await f.download_to_drive(RUTA_PLANTILLA)
         texto = "Plantilla de SLA actualizada."
         context.user_data.pop("cambiar_plantilla", None)
@@ -327,11 +336,11 @@ def _generar_documento_sla(
                 from docx2pdf import convert  # type: ignore
 
                 convert(ruta_docx, ruta_pdf)
-                converted = True
+                convertido = True
             except Exception:  # pragma: no cover
                 logger.warning("No fue posible convertir a PDF con docx2pdf")
 
-        if converted:
+        if convertido:
             os.remove(ruta_docx)
             return ruta_pdf
 

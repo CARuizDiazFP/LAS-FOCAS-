@@ -46,11 +46,16 @@ class Config:
         self.LOG_DIR = self.BASE_DIR / "logs"
         # Carpeta para conservar trackings anteriores
         self.HISTORICO_DIR = self.DATA_DIR / "historico"
+        # Carpeta para versiones previas de la plantilla SLA
+        self.SLA_HISTORIAL_DIR = Path(
+            os.getenv("SLA_HISTORIAL_DIR", self.DATA_DIR / "Historios")
+        )
 
         # Crear directorios necesarios
         self.DATA_DIR.mkdir(exist_ok=True)
         self.LOG_DIR.mkdir(exist_ok=True)
         self.HISTORICO_DIR.mkdir(exist_ok=True)
+        self.SLA_HISTORIAL_DIR.mkdir(exist_ok=True)
 
         # API Keys
         self.TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")

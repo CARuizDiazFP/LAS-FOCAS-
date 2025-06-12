@@ -58,6 +58,13 @@ def _importar_handler(tmp_path: Path):
     Document().save(plantilla)
 
     os.environ["SLA_TEMPLATE_PATH"] = str(plantilla)
+    hist = tmp_path / "Historios"
+    hist.mkdir()
+    os.environ["SLA_HISTORIAL_DIR"] = str(hist)
+
+    import importlib as _imp
+    import sandybot.config as cfg
+    _imp.reload(cfg)
 
     # Botón / teclado simple (stub)
     class _Btn:
@@ -144,11 +151,13 @@ async def _cambio_plantilla(tmp_path: Path):
     nueva = tmp_path / "new.docx"
     Document().save(nueva)
     msg = Message(document=ExcelDoc("new.docx", nueva))
-    msg.document = msg.documents[0]
+    msg.documents = [msg.document]
     await handler.procesar_informe_sla(Update(message=msg), ctx)
 
     assert "actualizada" in captura["texto"].lower()
     assert Path(handler.RUTA_PLANTILLA).read_bytes() == nueva.read_bytes()
+    hist_dir = Path(os.environ["SLA_HISTORIAL_DIR"])
+    assert any(hist_dir.iterdir())
 
 # ───────────── PRUEBA DE COLUMNAS OPCIONALES EN TABLA ─────────────────
 def _test_columnas_extra(handler, tmp_path: Path):
