@@ -290,6 +290,35 @@ def test_tablas_por_servicio(tmp_path):
     assert len(doc.tables) == 1 + 2 * 2
 
 
+def test_bloque_con_parrafos(tmp_path):
+    """Cada servicio debe incluir texto entre las tablas 2 y 3."""
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame({
+        "Servicio": ["X"],
+        "Número Reclamo": [1],
+        "Número Línea": [10],
+        "Horas Netas Reclamo": ["0:00:00"],
+        "Tipo Solución Reclamo": ["X"],
+        "Fecha Inicio Reclamo": ["2024-01-01"],
+    }).to_excel(r, index=False)
+    pd.DataFrame({
+        "Tipo Servicio": ["X"],
+        "Número Línea": [10],
+        "Nombre Cliente": ["A"],
+        "Horas Reclamos Todos": [0],
+        "SLA": [0.8],
+    }).to_excel(s, index=False)
+    doc_path = handler._generar_documento_sla(str(r), str(s), eventos="e", conclusion="c", propuesta="p")
+    doc = Document(doc_path)
+    body = doc._body._element
+    idx2 = body.index(doc.tables[1]._tbl)
+    idx3 = body.index(doc.tables[2]._tbl)
+    entre = [child for child in body[idx2 + 1:idx3] if child.tag.endswith("p")]
+    from docx.text.paragraph import Paragraph
+    assert any("Eventos" in Paragraph(p, doc).text for p in entre)
+
+
 def test_pdf_no_nameerror(tmp_path):
     """Confirma que exportar a PDF no produce NameError."""
     handler = _importar_handler(tmp_path)
