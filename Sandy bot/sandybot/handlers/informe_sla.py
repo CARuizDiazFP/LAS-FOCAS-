@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 def identificar_excel(path: str) -> str:
     """Clasifica el Excel como "reclamos" o "servicios"."""
     df = pd.read_excel(path, nrows=0)
+    df.columns = df.columns.str.replace(r"\s+", " ", regex=True).str.strip()
     columnas = set(df.columns)
 
     if {"Número Reclamo", "Fecha Inicio Problema Reclamo"} & columnas:
@@ -171,16 +172,20 @@ async def procesar_informe_sla(
                 else:
                     archivos[0] = tmp.name
 
-            if None in archivos:
-                n = 2 - archivos.count(None)
-                await responder_registrando(
-                    mensaje,
-                    user_id,
-                    doc.file_name,
-                    f"Recibido archivo {n}/2 ({tipo})",
-                    "informe_sla",
-                )
-                return
+        # Fin del procesamiento individual de adjuntos
+
+        # Luego de cargar todos los archivos recibidos,
+        # se verifica si falta alguno antes de continuar
+        if None in archivos:
+            n = 2 - archivos.count(None)
+            await responder_registrando(
+                mensaje,
+                user_id,
+                docs[-1].file_name,
+                f"Recibido archivo {n}/2 ({tipo})",
+                "informe_sla",
+            )
+            return
 
         # Si llegamos aquí, ambos archivos están presentes
 
@@ -247,12 +252,19 @@ def _generar_documento_sla(
     si ``exportar_pdf`` es ``True`` se intenta guardar una versión en PDF.
     """
     reclamos_df = pd.read_excel(reclamos_xlsx)
+    reclamos_df.columns = (
+        reclamos_df.columns
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
     servicios_df = pd.read_excel(servicios_xlsx)
     servicios_df.columns = (
         servicios_df.columns
         .str.replace(r"\s+", " ", regex=True)
         .str.strip()
     )
+    if "SLA Entregado" in servicios_df.columns and "SLA" not in servicios_df.columns:
+        servicios_df.rename(columns={"SLA Entregado": "SLA"}, inplace=True)
 
     def _to_timedelta(valor: object) -> pd.Timedelta:
         try:
@@ -331,8 +343,6 @@ def _generar_documento_sla(
         "SLA",
     ]
 
-    if "SLA" not in servicios_df.columns and "SLA Entregado" in servicios_df.columns:
-        servicios_df = servicios_df.rename(columns={"SLA Entregado": "SLA"})
 
     if "SLA" in servicios_df.columns:
         servicios_df["SLA"] = servicios_df["SLA"].apply(
