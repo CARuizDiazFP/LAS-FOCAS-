@@ -1,3 +1,6 @@
+# + Nombre de archivo: informe_sla.py
+# + Ubicación de archivo: Sandy bot/sandybot/handlers/informe_sla.py
+# User-provided custom instructions
 """Handler para generar informes de SLA."""
 
 from __future__ import annotations
@@ -88,7 +91,7 @@ async def procesar_informe_sla(
     # 2) Guardar plantilla nueva
     if context.user_data.get("cambiar_plantilla"):
         if getattr(mensaje, "document", None):
-            await _actualizar_plantilla_sla(mensaje, context)
+            await actualizar_plantilla_sla(mensaje, context)
         else:
             await responder_registrando(
                 mensaje, user_id, getattr(mensaje, "text", ""),
@@ -125,7 +128,10 @@ async def procesar_informe_sla(
         return
 
     # 4) Recepción de archivos Excel
-    docs = [d for d in (getattr(mensaje, "document", None), *getattr(mensaje, "documents", [])) if d]
+    docs = []
+    for d in (getattr(mensaje, "document", None), *getattr(mensaje, "documents", [])):
+        if d and d not in docs:
+            docs.append(d)
     if docs:
         for doc in docs:
             f = await doc.get_file()
@@ -177,7 +183,7 @@ async def procesar_informe_sla(
 
 
 # ──────────────────── ACTUALIZAR PLANTILLA SLA ───────────────────────
-async def _actualizar_plantilla_sla(mensaje, context):
+async def actualizar_plantilla_sla(mensaje, context):
     user_id = mensaje.from_user.id
     archivo = mensaje.document
     if not archivo.file_name.lower().endswith(".docx"):
