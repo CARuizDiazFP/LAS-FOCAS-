@@ -442,7 +442,9 @@ def _generar_documento_sla(
 
     for _, fila in df_tabla.iterrows():
         if template2 is not None:
-            doc._body._element.append(copy.deepcopy(template2))
+            sect = doc._body._element.sectPr
+            idx = doc._body._element.index(sect)
+            doc._body._element.insert(idx, copy.deepcopy(template2))
             tabla2 = doc.tables[-1]
             filtros = []
             if "Número Línea" in reclamos_df.columns:
@@ -456,32 +458,33 @@ def _generar_documento_sla(
                 recl_srv = reclamos_df[filtro]
             else:
                 recl_srv = pd.DataFrame()
+
             if not recl_srv.empty:
-                cliente = recl_srv.iloc[0].get(
-                    "Cliente",
-                    recl_srv.iloc[0].get("Nombre Cliente", fila.get("Nombre Cliente", "")),
-                )
-                ticket = recl_srv.iloc[0].get("N° de Ticket", recl_srv.iloc[0].get("Número Reclamo", ""))
-                domicilio = recl_srv.iloc[0].get("Domicilio", fila.get("Domicilio", ""))
+                col_ticket = "N° de Ticket" if "N° de Ticket" in reclamos_df.columns else "Número Reclamo"
+                unique_tickets = [str(t) for t in recl_srv[col_ticket].dropna().unique()]
+                ticket = ", ".join(unique_tickets)
             else:
-                cliente = fila.get("Nombre Cliente", "")
                 ticket = ""
-                domicilio = fila.get("Domicilio", "")
 
             info = {
-                "Servicio": fila.get("Tipo Servicio", ""),
+                "Servicio": fila["Número Línea"],
                 "SLA": f"{float(fila['SLA']) * 100:.2f}%",
-                "Cliente": cliente,
+                "Cliente": fila.get("Nombre Cliente", ""),
                 "N° de Ticket": ticket,
-                "Domicilio": domicilio,
+                "Domicilio": "",
             }
             for r in tabla2.rows:
                 key = r.cells[0].text.strip()
                 if key in info:
                     r.cells[1].text = str(info[key])
+        for etq, cont in etiquetas.items():
+            if cont:
+                doc.add_paragraph(f"{etq} {cont}")
 
         if template3 is not None:
-            doc._body._element.append(copy.deepcopy(template3))
+            sect = doc._body._element.sectPr
+            idx = doc._body._element.index(sect)
+            doc._body._element.insert(idx, copy.deepcopy(template3))
             tabla3 = doc.tables[-1]
             while len(tabla3.rows) > 1:
                 tabla3._tbl.remove(tabla3.rows[1]._tr)
@@ -521,10 +524,6 @@ def _generar_documento_sla(
                 c[4].text = ""
             elif faltantes:
                 logger.warning("Faltan columnas en reclamos.xlsx: %s", ", ".join(faltantes))
-
-        for etq, cont in etiquetas.items():
-            if cont:
-                doc.add_paragraph(f"{etq} {cont}")
 
     # Guardar DOCX
     fd, ruta_docx = tempfile.mkstemp(suffix=".docx")

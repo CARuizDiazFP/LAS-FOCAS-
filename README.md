@@ -323,7 +323,7 @@ Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" 
 
 1. Enviá el Excel con los **reclamos** y luego el de **servicios**.
 2. Una vez recibidos ambos, el bot muestra los botones **Procesar** y **Exportar a PDF**.
-3. Al presionar alguna opción se genera el documento en una ruta temporal con un nombre aleatorio. La tabla principal de servicios se ordena de forma descendente por la columna **SLA**.
+3. Al presionar alguna opción se genera el documento en una ruta temporal con un nombre aleatorio. La tabla principal de servicios se ordena de forma descendente por la columna **SLA**. Este criterio debe mantenerse en cada implementación.
    Si se llama a `_generar_documento_sla(exportar_pdf=True)` con `pywin32` en Windows o con `docx2pdf` en otros sistemas, también se guarda la versión PDF.
 4. Finalmente el archivo se envía por Telegram y se elimina automáticamente del sistema para evitar residuos.
 5. En cualquier momento se puede usar el botón **Actualizar plantilla** para cargar una nueva base en formato `.docx`.
