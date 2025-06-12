@@ -147,6 +147,21 @@ class Ingreso(Base):
         return f"<Ingreso(id={self.id}, camara={self.camara}, fecha={self.fecha})>"
 
 
+class Reclamo(Base):
+    """Reclamos abiertos para cada servicio."""
+
+    __tablename__ = "reclamos"
+
+    id = Column(Integer, primary_key=True)
+    servicio_id = Column(Integer, ForeignKey("servicios.id"), index=True)
+    numero = Column(String, index=True)
+    fecha_inicio = Column(DateTime, index=True, nullable=True)
+    descripcion = Column(String)
+
+    def __repr__(self) -> str:
+        return f"<Reclamo(id={self.id}, servicio={self.servicio_id}, numero={self.numero})>"
+
+
 class TareaProgramada(Base):
     """Tareas programadas que informan los carriers."""
 
@@ -298,6 +313,7 @@ def init_db():
     # ``bind=engine`` deja explícito que las tablas se crearán usando
     # la conexión configurada en ``engine``. Esto permite que el bot
     # genere la estructura necesaria de forma automática la primera vez.
+    # Se incluyen las tablas recientes como ``reclamos``.
     Base.metadata.create_all(bind=engine)
     ensure_servicio_columns()
     if engine.dialect.name == "postgresql":
@@ -584,6 +600,36 @@ def crear_ingreso(
         session.commit()
         session.refresh(ingreso)
         return ingreso
+
+
+def crear_reclamo(
+    servicio_id: int,
+    numero: str,
+    fecha_inicio: datetime | None = None,
+    descripcion: str | None = None,
+) -> Reclamo:
+    """Guarda un reclamo asociado a un servicio."""
+    with SessionLocal() as session:
+        reclamo = Reclamo(
+            servicio_id=servicio_id,
+            numero=numero,
+            fecha_inicio=fecha_inicio,
+            descripcion=descripcion,
+        )
+        session.add(reclamo)
+        session.commit()
+        session.refresh(reclamo)
+        return reclamo
+
+
+def obtener_reclamos_servicio(servicio_id: int) -> list[Reclamo]:
+    """Devuelve los reclamos de un servicio."""
+    with SessionLocal() as session:
+        return (
+            session.query(Reclamo)
+            .filter(Reclamo.servicio_id == servicio_id)
+            .all()
+        )
 
 
 def crear_tarea_programada(

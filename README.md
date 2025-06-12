@@ -110,6 +110,8 @@ Se incluyen dos modelos principales:
    `tipo_tarea`, `tiempo_afectacion`, `descripcion` y `carrier_id`.
 6. **TareaServicio**: vincula cada tarea programada con los servicios
    afectados mediante sus IDs.
+7. **Reclamo**: almacena los tickets asociados a un servicio. Guarda
+   número, fecha de inicio y una descripción opcional.
 
 Antes de crear la instancia del bot se ejecuta `init_db()` desde
 `main.py`. Esta función crea las tablas y ejecuta
