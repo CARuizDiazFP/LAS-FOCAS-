@@ -261,6 +261,27 @@ def test_tabla_orden_por_sla(tmp_path):
     assert tabla.rows[1].cells[4].text == "50.00%"
 
 
+def test_tablas_por_servicio(tmp_path):
+    """El documento final debe contener pares de tablas por servicio."""
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame({
+        "Servicio": ["X", "Y"],
+        "Número Reclamo": [1, 2],
+        "Número Línea": [10, 20],
+    }).to_excel(r, index=False)
+    pd.DataFrame({
+        "Tipo Servicio": ["X", "Y"],
+        "Número Línea": [10, 20],
+        "Nombre Cliente": ["A", "B"],
+        "Horas Reclamos Todos": [0, 0],
+        "SLA": [0.9, 0.8],
+    }).to_excel(s, index=False)
+    doc_path = handler._generar_documento_sla(str(r), str(s))
+    doc = Document(doc_path)
+    assert len(doc.tables) == 1 + 2 * 2
+
+
 def test_pdf_no_nameerror(tmp_path):
     """Confirma que exportar a PDF no produce NameError."""
     handler = _importar_handler(tmp_path)
