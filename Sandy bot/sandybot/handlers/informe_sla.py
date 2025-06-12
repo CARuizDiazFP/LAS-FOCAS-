@@ -235,16 +235,13 @@ def _generar_documento_sla(
     *,
     exportar_pdf: bool = False,
 ) -> str:
-    """Genera el documento SLA; si `exportar_pdf` es True intenta producir PDF."""
+    """Genera el documento SLA.
+
+    El contenido se vuelca en la tabla predefinida de la plantilla y,
+    si ``exportar_pdf`` es ``True`` se intenta guardar una versión en PDF.
+    """
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
-
-    # Columnas opcionales
-    extra_cols = [c for c in ("SLA Entregado", "Dirección", "Horas Netas Reclamo") if c in servicios_df]
-    faltantes = {"SLA Entregado", "Dirección", "Horas Netas Reclamo"} - set(servicios_df)
-    if faltantes:
-        logger.warning("Faltan columnas en servicios.xlsx: %s", ", ".join(sorted(faltantes)))
-
 
     # Formatea "Horas Netas Reclamo" si tiene valores numéricos
     if "Horas Netas Reclamo" in servicios_df.columns:
@@ -268,8 +265,6 @@ def _generar_documento_sla(
     if "Servicio" not in reclamos_df.columns:
 
         reclamos_df.rename(columns={reclamos_df.columns[0]: "Servicio"}, inplace=True)
-    if "Servicio" not in servicios_df:
-        servicios_df.rename(columns={servicios_df.columns[0]: "Servicio"}, inplace=True)
 
     # Fecha para título
     try:
@@ -289,14 +284,6 @@ def _generar_documento_sla(
 
     mes, anio = fecha.strftime("%B").upper(), fecha.strftime("%Y")
 
-    # Conteo de reclamos
-    resumen = reclamos_df.groupby("Servicio").size().reset_index(name="Reclamos")
-    # Ordenar servicios de menor a mayor SLA y unir con reclamos
-    if "SLA Entregado" in servicios_df.columns:
-        servicios_df = servicios_df.sort_values("SLA Entregado")
-
-    df = servicios_df.merge(resumen, on="Servicio", how="left")
-    df["Reclamos"] = df["Reclamos"].fillna(0).astype(int)
 
     # Documento base
     if not (RUTA_PLANTILLA and os.path.exists(RUTA_PLANTILLA)):
@@ -308,16 +295,38 @@ def _generar_documento_sla(
     except KeyError:
         doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
 
-    # Tabla principal
-    headers = ["Servicio", *extra_cols, "Reclamos"]
-    tbl = doc.add_table(rows=1, cols=len(headers), style="Table Grid")
-    for i, h in enumerate(headers):
-        tbl.rows[0].cells[i].text = h
+    # Tabla principal existente en la plantilla
+    if not doc.tables:
+        raise ValueError("La plantilla debe incluir una tabla para el SLA")
+    tabla = doc.tables[0]
 
-    for _, fila in df.iterrows():
-        row = tbl.add_row().cells
-        for i, h in enumerate(headers):
-            row[i].text = str(fila.get(h, ""))
+    while len(tabla.rows) > 1:
+        tabla._tbl.remove(tabla.rows[1]._tr)
+
+    columnas = [
+        "Tipo Servicio",
+        "Número Línea",
+        "Nombre Cliente",
+        "Horas Reclamos Todos",
+        "SLA",
+    ]
+
+    if "SLA" not in servicios_df.columns and "SLA Entregado" in servicios_df.columns:
+        servicios_df = servicios_df.rename(columns={"SLA Entregado": "SLA"})
+
+    faltantes = [c for c in columnas if c not in servicios_df.columns]
+    if faltantes:
+        raise ValueError(f"Faltan columnas en servicios.xlsx: {', '.join(faltantes)}")
+
+    df_tabla = servicios_df[columnas].sort_values("SLA")
+
+    for _, fila in df_tabla.iterrows():
+        celdas = tabla.add_row().cells
+        celdas[0].text = str(fila["Tipo Servicio"])
+        celdas[1].text = str(fila["Número Línea"])
+        celdas[2].text = str(fila["Nombre Cliente"])
+        celdas[3].text = str(fila["Horas Reclamos Todos"])
+        celdas[4].text = str(fila["SLA"])
 
     # Secciones texto
     etiquetas = {
