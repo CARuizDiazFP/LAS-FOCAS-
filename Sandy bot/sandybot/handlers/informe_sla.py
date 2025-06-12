@@ -1,3 +1,6 @@
+# Nombre de archivo: informe_sla.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/informe_sla.py
+# User-provided custom instructions: Siemple escribe en español y explica en detalles para que sirven las lineas modificadas, agregadas o quitadas.
 """Handler para generar informes de SLA."""
 
 from __future__ import annotations
