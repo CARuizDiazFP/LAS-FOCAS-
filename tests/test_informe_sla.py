@@ -138,14 +138,10 @@ async def _flujo_completo(tmp_path: Path):
     # /sla
     await handler.iniciar_informe_sla(Update(message=Message("/sla")), ctx)
 
-    # Reclamos
+    # Archivos de reclamos y servicios en una sola actualización
     recl = tmp_path / "recl.xlsx"
-    pd.DataFrame({"Servicio": ["Srv"], "Número Reclamo": [1]}).to_excel(recl, index=False)
-    await handler.procesar_informe_sla(Update(message=Message(document=ExcelDoc("recl.xlsx", recl))), ctx)
-    assert "archivo 1/2" in captura["texto"].lower()
-
-    # Servicios
     serv = tmp_path / "serv.xlsx"
+    pd.DataFrame({"Servicio": ["Srv"], "Número Reclamo": [1]}).to_excel(recl, index=False)
     pd.DataFrame(
         {
             "Tipo Servicio": ["Srv"],
@@ -155,16 +151,17 @@ async def _flujo_completo(tmp_path: Path):
             "SLA": [0.5],
         }
     ).to_excel(serv, index=False)
-    msg_serv = Message(document=ExcelDoc("serv.xlsx", serv))
-    await handler.procesar_informe_sla(Update(message=msg_serv), ctx)
+    msg = Message()
+    msg.documents = [ExcelDoc("recl.xlsx", recl), ExcelDoc("serv.xlsx", serv)]
+    await handler.procesar_informe_sla(Update(message=msg), ctx)
     assert captura["reply_markup"].inline_keyboard[0][0].callback_data == "sla_procesar"
 
     # Procesar
     captura.clear()
-    cb = SimpleNamespace(data="sla_procesar", message=msg_serv)
+    cb = SimpleNamespace(data="sla_procesar", message=msg)
     await handler.procesar_informe_sla(Update(callback_query=cb), ctx)
 
-    assert msg_serv.sent and not os.path.exists(tmp_path / msg_serv.sent)
+    assert msg.sent and not os.path.exists(tmp_path / msg.sent)
 
 # ───────────── CAMBIO DE PLANTILLA DESDE EL BOT ───────────────────────
 async def _cambio_plantilla(tmp_path: Path):
