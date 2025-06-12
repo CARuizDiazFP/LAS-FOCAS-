@@ -34,6 +34,19 @@ RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
 logger = logging.getLogger(__name__)
 
 
+def identificar_excel(path: str) -> str:
+    """Clasifica el Excel como "reclamos" o "servicios"."""
+    df = pd.read_excel(path, nrows=0)
+    columnas = set(df.columns)
+
+    if {"Número Reclamo", "Fecha Inicio Problema Reclamo"} & columnas:
+        return "reclamos"
+    if {"SLA Entregado", "Número Primer Servicio"} & columnas:
+        return "servicios"
+
+    raise ValueError(f"No se pudo identificar el tipo de Excel: {path}")
+
+
 # ───────────────────────── FLUJO DE INICIO ──────────────────────────
 async def iniciar_informe_sla(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """Activa modo *informe_sla* y solicita los dos Excel."""
@@ -137,15 +150,23 @@ async def procesar_informe_sla(
             f = await doc.get_file()
             with tempfile.NamedTemporaryFile(delete=False, suffix=".xlsx") as tmp:
                 await f.download_to_drive(tmp.name)
-                nombre = doc.file_name.lower()
-                if "recl" in nombre and archivos[0] is None:
-                    archivos[0] = tmp.name
-                elif "serv" in nombre and archivos[1] is None:
-                    archivos[1] = tmp.name
-                elif archivos[0] is None:
+
+            try:
+                tipo = identificar_excel(tmp.name)
+            except Exception as exc:  # pragma: no cover - en teoría no debería fallar
+                logger.warning("No se pudo clasificar %s: %s", doc.file_name, exc)
+                tipo = "reclamos" if archivos[0] is None else "servicios"
+
+            if tipo == "reclamos":
+                if archivos[0] is None:
                     archivos[0] = tmp.name
                 else:
                     archivos[1] = tmp.name
+            else:  # servicios
+                if archivos[1] is None:
+                    archivos[1] = tmp.name
+                else:
+                    archivos[0] = tmp.name
 
         if None in archivos:
             falta = "reclamos" if archivos[0] is None else "servicios"
