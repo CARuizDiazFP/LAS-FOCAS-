@@ -15,7 +15,7 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
 
-- `SLA_TEMPLATE_PATH`: ruta de la plantilla para el Informe de SLA. Si no se define, se usa `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+- `SLA_TEMPLATE_PATH`: ruta de la plantilla para el Informe de SLA. Si no se define, se usa `Sandy bot/templates/Template Informe SLA.docx`.
 
 - `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
@@ -76,7 +76,7 @@ repetitividad y otro que permite exportar el informe final a PDF.
 
 Para los reportes de nivel de servicio se utiliza un archivo Word
 configurable por `SLA_TEMPLATE_PATH`. Si la variable no está presente,
-se recurre a `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+se recurre a `Sandy bot/templates/Template Informe SLA.docx`.
 El sistema valida que la ruta indicada exista. En caso de no
 encontrarla se registra el mensaje **"Plantilla de SLA no encontrada"**
 y se lanza `ValueError`.
@@ -293,8 +293,8 @@ pip install -r requirements.txt
 
 ## Informe de SLA
 
-Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `C:\Metrotel\Sandy`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
-Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `Sandy bot/templates`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
+Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `Sandy bot/templates/Template Informe SLA.docx`.
 El archivo debe existir en formato `.docx`.
 
 El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecerá el botón **Procesar**, que genera el informe utilizando la plantilla configurada en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.

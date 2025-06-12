@@ -72,7 +72,7 @@ DB_NAME=sandybot
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 PLANTILLA_PATH=C:\Metrotel\Sandy\plantilla_informe.docx
-SLA_TEMPLATE_PATH=C:\Metrotel\Sandy\Template Informe SLA.docx
+SLA_TEMPLATE_PATH=Sandy bot/templates/Template Informe SLA.docx
 ```
 
 ## Uso
@@ -177,7 +177,7 @@ adicional.
      funciona en Windows. En otros sistemas puede generarse el archivo .docx
      sin esta modificación o realizar los cambios de forma manual.
 7. Informe de SLA
-   - Genera un resumen de nivel de servicio usando `Template Informe SLA.docx`
+   - Genera un resumen de nivel de servicio usando `Template Informe SLA.docx` ubicado por defecto en `Sandy bot/templates`
    - Podés iniciarlo desde el botón **Informe de SLA** o con `/informe_sla`
    - Solicita los Excel de reclamos y servicios, que pueden enviarse por separado
    - Una vez cargados los dos archivos aparecen los botones **Procesar** y **Exportar a PDF** para generar el informe según `SLA_TEMPLATE_PATH`
@@ -191,7 +191,7 @@ adicional.
 
 ## Informe de SLA
 
-Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`.
+Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`, ubicado por defecto en `Sandy bot/templates`.
 Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla`.
 El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Podés enviarlos por separado sin importar el orden.
 Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.

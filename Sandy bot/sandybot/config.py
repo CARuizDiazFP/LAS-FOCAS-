@@ -47,10 +47,14 @@ class Config:
         # Carpeta para conservar trackings anteriores
         self.HISTORICO_DIR = self.DATA_DIR / "historico"
 
+        # Plantillas y reportes de SLA
+        self.SLA_HISTORIAL_DIR = self.BASE_DIR / "templates" / "Historios"
+
         # Crear directorios necesarios
         self.DATA_DIR.mkdir(exist_ok=True)
         self.LOG_DIR.mkdir(exist_ok=True)
         self.HISTORICO_DIR.mkdir(exist_ok=True)
+        self.SLA_HISTORIAL_DIR.mkdir(parents=True, exist_ok=True)
 
         # API Keys
         self.TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
@@ -87,8 +91,9 @@ class Config:
         # "SLA_TEMPLATE_PATH" permite ajustar la ubicación sin tocar el código
         self.SLA_PLANTILLA_PATH = os.getenv(
             "SLA_TEMPLATE_PATH",
-            r"C:\\Metrotel\\Sandy\\Template Informe SLA.docx",
+            str(self.BASE_DIR / "templates" / "Template Informe SLA.docx"),
         )
+        Path(self.SLA_PLANTILLA_PATH).parent.mkdir(parents=True, exist_ok=True)
         # Firma opcional en correos
         self.SIGNATURE_PATH = os.getenv("SIGNATURE_PATH")
 

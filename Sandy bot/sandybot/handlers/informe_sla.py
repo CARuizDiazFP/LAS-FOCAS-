@@ -133,7 +133,10 @@ async def procesar_informe_sla(
         return
 
     # ─── Recepción de archivos Excel ────────────────────────────────
-    docs = [d for d in (getattr(mensaje, "document", None), *getattr(mensaje, "documents", [])) if d]
+    docs = []
+    for d in (getattr(mensaje, "document", None), *getattr(mensaje, "documents", [])):
+        if d and all(d is not x for x in docs):
+            docs.append(d)
     if docs:
         for doc in docs:
             archivo = await doc.get_file()
@@ -327,11 +330,11 @@ def _generar_documento_sla(
                 from docx2pdf import convert  # type: ignore
 
                 convert(ruta_docx, ruta_pdf)
-                converted = True
+                convertido = True
             except Exception:  # pragma: no cover
                 logger.warning("No fue posible convertir a PDF con docx2pdf")
 
-        if converted:
+        if convertido:
             os.remove(ruta_docx)
             return ruta_pdf
 
