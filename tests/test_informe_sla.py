@@ -193,6 +193,28 @@ async def _cambio_plantilla(tmp_path: Path):
     assert "actualizada" in captura["texto"].lower()
     assert Path(handler.RUTA_PLANTILLA).read_bytes() == nueva.read_bytes()
 
+async def _historial_plantilla(tmp_path: Path):
+    handler = _importar_handler(tmp_path)
+    hist_dir = Path(handler.config.SLA_HISTORIAL_DIR)
+    for f in hist_dir.iterdir():
+        f.unlink()
+    ctx = SimpleNamespace(user_data={})
+
+    await handler.iniciar_informe_sla(Update(message=Message("/sla")), ctx)
+
+    cb = SimpleNamespace(data="sla_cambiar_plantilla", message=Message())
+    await handler.procesar_informe_sla(Update(callback_query=cb), ctx)
+    original = Path(handler.RUTA_PLANTILLA).read_bytes()
+
+    nueva = tmp_path / "nueva.docx"
+    Document().save(nueva)
+    msg = Message(document=ExcelDoc("nueva.docx", nueva))
+    await handler.procesar_informe_sla(Update(message=msg), ctx)
+
+    archivos = list(hist_dir.iterdir())
+    assert len(archivos) == 1
+    assert archivos[0].read_bytes() == original
+
 # ───────────── PRUEBA DE COLUMNAS OPCIONALES EN TABLA ─────────────────
 def _test_columnas_extra(handler, tmp_path: Path):
     recl = tmp_path / "re.xlsx"
@@ -224,6 +246,10 @@ def test_flujo_completo(tmp_path):
 def test_actualizar_plantilla(tmp_path):
     captura.clear()
     asyncio.run(_cambio_plantilla(tmp_path))
+
+def test_historial_de_plantillas(tmp_path):
+    captura.clear()
+    asyncio.run(_historial_plantilla(tmp_path))
 
 def test_columnas_dinamicas(tmp_path):
     handler = _importar_handler(tmp_path)

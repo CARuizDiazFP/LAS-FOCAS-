@@ -48,7 +48,7 @@ class Config:
         self.HISTORICO_DIR = self.DATA_DIR / "historico"
 
         # Plantillas y reportes de SLA
-        self.SLA_HISTORIAL_DIR = self.BASE_DIR / "templates" / "Historios"
+        self.SLA_HISTORIAL_DIR = self.BASE_DIR / "templates" / "Historicos"
 
         # Crear directorios necesarios
         self.DATA_DIR.mkdir(exist_ok=True)
