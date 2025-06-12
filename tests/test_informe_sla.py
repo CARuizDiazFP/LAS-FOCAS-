@@ -64,9 +64,25 @@ def _importar_handler(tmp_path: Path):
         "Horas Reclamos Todos",
         "SLA",
     ]
-    tbl = doc.add_table(rows=1, cols=len(headers))
+    tbl1 = doc.add_table(rows=1, cols=len(headers))
     for i, h in enumerate(headers):
-        tbl.rows[0].cells[i].text = h
+        tbl1.rows[0].cells[i].text = h
+
+    tbl2 = doc.add_table(rows=5, cols=2)
+    for i, t in enumerate(["Servicio", "Cliente", "N° de Ticket", "Domicilio", "SLA"]):
+        tbl2.rows[i].cells[0].text = t
+
+    headers_r = [
+        "Número Línea",
+        "Número Reclamo",
+        "Horas Netas Reclamo",
+        "Tipo Solución Reclamo",
+        "Fecha Inicio Reclamo",
+    ]
+    tbl3 = doc.add_table(rows=1, cols=len(headers_r))
+    for i, h in enumerate(headers_r):
+        tbl3.rows[0].cells[i].text = h
+
     doc.save(plantilla)
 
     os.environ["SLA_TEMPLATE_PATH"] = str(plantilla)
@@ -126,7 +142,7 @@ async def _flujo_completo(tmp_path: Path):
     recl = tmp_path / "recl.xlsx"
     pd.DataFrame({"Servicio": ["Srv"], "Número Reclamo": [1]}).to_excel(recl, index=False)
     await handler.procesar_informe_sla(Update(message=Message(document=ExcelDoc("recl.xlsx", recl))), ctx)
-    assert "Falta el Excel de servicios" in captura["texto"]
+    assert "archivo 1/2" in captura["texto"].lower()
 
     # Servicios
     serv = tmp_path / "serv.xlsx"
@@ -136,7 +152,7 @@ async def _flujo_completo(tmp_path: Path):
             "Número Línea": [1],
             "Nombre Cliente": ["ACME"],
             "Horas Reclamos Todos": [0],
-            "SLA": [50],
+            "SLA": [0.5],
         }
     ).to_excel(serv, index=False)
     msg_serv = Message(document=ExcelDoc("serv.xlsx", serv))
@@ -180,7 +196,7 @@ def _test_columnas_extra(handler, tmp_path: Path):
             "Número Línea": [1],
             "Nombre Cliente": ["X"],
             "Horas Reclamos Todos": [0],
-            "SLA": [20],
+            "SLA": [0.2],
         }
     ).to_excel(serv, index=False)
     doc_path = handler._generar_documento_sla(str(recl), str(serv))
@@ -216,7 +232,7 @@ def test_exportar_pdf(tmp_path):
             "Número Línea": [1],
             "Nombre Cliente": ["X"],
             "Horas Reclamos Todos": [0],
-            "SLA": [40],
+            "SLA": [0.4],
         }
     ).to_excel(s, index=False)
     ruta = handler._generar_documento_sla(str(r), str(s), exportar_pdf=True)
@@ -224,7 +240,7 @@ def test_exportar_pdf(tmp_path):
 
 
 def test_tabla_orden_por_sla(tmp_path):
-    """Verifica que el servicio con menor SLA quede primero en la tabla."""
+    """Verifica orden descendente y formato de celdas."""
     handler = _importar_handler(tmp_path)
     recl = tmp_path / "re.xlsx"
     serv = tmp_path / "se.xlsx"
@@ -234,13 +250,15 @@ def test_tabla_orden_por_sla(tmp_path):
             "Tipo Servicio": ["A", "B"],
             "Número Línea": [1, 2],
             "Nombre Cliente": ["X", "Y"],
-            "Horas Reclamos Todos": [0, 0],
-            "SLA": [50, 30],
+            "Horas Reclamos Todos": ["1 days 02:30:00", "0 days 05:00:00"],
+            "SLA": [0.5, 0.3],
         }
     ).to_excel(serv, index=False)
     doc_path = handler._generar_documento_sla(str(recl), str(serv))
     tabla = Document(doc_path).tables[0]
-    assert tabla.rows[1].cells[0].text == "B"
+    assert tabla.rows[1].cells[0].text == "A"
+    assert tabla.rows[1].cells[3].text == "026:30:00"
+    assert tabla.rows[1].cells[4].text == "50.00%"
 
 
 def test_pdf_no_nameerror(tmp_path):
@@ -254,7 +272,7 @@ def test_pdf_no_nameerror(tmp_path):
             "Número Línea": [1],
             "Nombre Cliente": ["X"],
             "Horas Reclamos Todos": [0],
-            "SLA": [50],
+            "SLA": [0.5],
         }
     ).to_excel(s, index=False)
     try:
@@ -270,7 +288,7 @@ def test_identificar_excel(tmp_path):
     recl = tmp_path / "r.xlsx"
     serv = tmp_path / "s.xlsx"
     pd.DataFrame({"Número Reclamo": [1]}).to_excel(recl, index=False)
-    pd.DataFrame({"SLA Entregado": [50]}).to_excel(serv, index=False)
+    pd.DataFrame({"SLA Entregado": [0.5]}).to_excel(serv, index=False)
 
     assert handler.identificar_excel(str(recl)) == "reclamos"
     assert handler.identificar_excel(str(serv)) == "servicios"

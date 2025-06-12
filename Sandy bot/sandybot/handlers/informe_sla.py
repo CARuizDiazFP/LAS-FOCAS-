@@ -9,6 +9,7 @@ import logging
 import os
 import tempfile
 import locale
+import copy
 from types import SimpleNamespace
 from typing import Optional
 
@@ -155,7 +156,7 @@ async def procesar_informe_sla(
 
             try:
                 tipo = identificar_excel(tmp.name)
-            except Exception as exc:  # pragma: no cover - en teoría no debería fallar
+            except Exception as exc:  # pragma: no cover
                 logger.warning("No se pudo clasificar %s: %s", doc.file_name, exc)
                 tipo = "reclamos" if archivos[0] is None else "servicios"
 
@@ -164,19 +165,24 @@ async def procesar_informe_sla(
                     archivos[0] = tmp.name
                 else:
                     archivos[1] = tmp.name
-            else:  # servicios
+            else:
                 if archivos[1] is None:
                     archivos[1] = tmp.name
                 else:
                     archivos[0] = tmp.name
 
-        if None in archivos:
-            falta = "reclamos" if archivos[0] is None else "servicios"
-            await responder_registrando(
-                mensaje, user_id, docs[-1].file_name,
-                f"Archivo guardado. Falta el Excel de {falta}.", "informe_sla",
-            )
-            return
+            if None in archivos:
+                n = 2 - archivos.count(None)
+                await responder_registrando(
+                    mensaje,
+                    user_id,
+                    doc.file_name,
+                    f"Recibido archivo {n}/2 ({tipo})",
+                    "informe_sla",
+                )
+                return
+
+        # Si llegamos aquí, ambos archivos están presentes
 
         # Botones procesar Word / PDF
         try:
@@ -248,23 +254,32 @@ def _generar_documento_sla(
         .str.strip()
     )
 
+    def _to_timedelta(valor: object) -> pd.Timedelta:
+        try:
+            return pd.to_timedelta(valor)
+        except Exception:
+            try:
+                return pd.to_timedelta(float(str(valor).replace(",", ".")), unit="h")
+            except Exception:
+                return pd.Timedelta(0)
+
+    def _fmt_td(td: pd.Timedelta) -> str:
+        total_seconds = int(td.total_seconds())
+        horas = total_seconds // 3600
+        minutos = (total_seconds % 3600) // 60
+        segundos = total_seconds % 60
+        return f"{horas:03d}:{minutos:02d}:{segundos:02d}"
+
     # Formatea "Horas Netas Reclamo" si tiene valores numéricos
     if "Horas Netas Reclamo" in servicios_df.columns:
-        def _fmt_horas(valor: object) -> object:
-            if pd.isna(valor) or not any(ch.isdigit() for ch in str(valor)):
-                return valor
-            try:
-                td = pd.to_timedelta(valor)
-            except Exception:
-                try:
-                    td = pd.to_timedelta(float(str(valor).replace(",", ".")), unit="h")
-                except Exception:
-                    return valor
-            total_minutes = int(td.total_seconds() // 60)
-            horas, minutos = divmod(total_minutes, 60)
-            return f"{horas}.{minutos:02d}"
+        servicios_df["Horas Netas Reclamo"] = servicios_df["Horas Netas Reclamo"].apply(
+            lambda v: _fmt_td(_to_timedelta(v)) if not pd.isna(v) else v
+        )
 
-        servicios_df["Horas Netas Reclamo"] = servicios_df["Horas Netas Reclamo"].apply(_fmt_horas)
+    if "Horas Reclamos Todos" in servicios_df.columns:
+        servicios_df["Horas Reclamos Todos"] = servicios_df["Horas Reclamos Todos"].apply(
+            lambda v: _fmt_td(_to_timedelta(v))
+        )
 
     # Normaliza nombres de columna
     if "Servicio" not in reclamos_df.columns:
@@ -319,19 +334,86 @@ def _generar_documento_sla(
     if "SLA" not in servicios_df.columns and "SLA Entregado" in servicios_df.columns:
         servicios_df = servicios_df.rename(columns={"SLA Entregado": "SLA"})
 
+    if "SLA" in servicios_df.columns:
+        servicios_df["SLA"] = servicios_df["SLA"].apply(
+            lambda v: float(str(v).replace(",", ".")) if not pd.isna(v) else 0
+        )
+
     faltantes = [c for c in columnas if c not in servicios_df.columns]
     if faltantes:
         raise ValueError(f"Faltan columnas en servicios.xlsx: {', '.join(faltantes)}")
 
-    df_tabla = servicios_df[columnas].sort_values("SLA")
+    df_tabla = servicios_df[columnas].sort_values("SLA", ascending=False)
 
     for _, fila in df_tabla.iterrows():
-        celdas = tabla.add_row().cells
+        nueva = copy.deepcopy(tabla.rows[0]._tr)
+        tabla._tbl.append(nueva)
+        celdas = tabla.rows[-1].cells
         celdas[0].text = str(fila["Tipo Servicio"])
         celdas[1].text = str(fila["Número Línea"])
         celdas[2].text = str(fila["Nombre Cliente"])
         celdas[3].text = str(fila["Horas Reclamos Todos"])
-        celdas[4].text = str(fila["SLA"])
+        celdas[4].text = f"{float(fila['SLA']) * 100:.2f}%"
+
+    if len(doc.tables) > 1:
+        tabla2 = doc.tables[1]
+        info = {
+            "Servicio": servicios_df.iloc[0].get("Servicio", servicios_df.iloc[0].get("Tipo Servicio", "")),
+            "SLA": f"{float(servicios_df.iloc[0]['SLA']) * 100:.2f}%",
+            "Cliente": reclamos_df.iloc[0].get(
+                "Cliente",
+                reclamos_df.iloc[0].get(
+                    "Nombre Cliente",
+                    servicios_df.iloc[0].get("Nombre Cliente", ""),
+                ),
+            ),
+            "N° de Ticket": reclamos_df.iloc[0].get(
+                "N° de Ticket", reclamos_df.iloc[0].get("Número Reclamo", "")
+            ),
+            "Domicilio": reclamos_df.iloc[0].get(
+                "Domicilio", servicios_df.iloc[0].get("Domicilio", "")
+            ),
+        }
+        for r in tabla2.rows:
+            key = r.cells[0].text.strip()
+            if key in info:
+                r.cells[1].text = str(info[key])
+
+    if len(doc.tables) > 2:
+        tabla3 = doc.tables[2]
+        while len(tabla3.rows) > 1:
+            tabla3._tbl.remove(tabla3.rows[1]._tr)
+        cols_r = [
+            "Número Línea",
+            "Número Reclamo",
+            "Horas Netas Reclamo",
+            "Tipo Solución Reclamo",
+            "Fecha Inicio Reclamo",
+        ]
+        faltantes = [c for c in cols_r if c not in reclamos_df.columns]
+        total = pd.Timedelta(0)
+        if not faltantes:
+            for _, fila in reclamos_df[cols_r].iterrows():
+                nueva = copy.deepcopy(tabla3.rows[0]._tr)
+                tabla3._tbl.append(nueva)
+                c = tabla3.rows[-1].cells
+                c[0].text = str(fila["Número Línea"])
+                c[1].text = str(fila["Número Reclamo"])
+                td = _to_timedelta(fila["Horas Netas Reclamo"])
+                total += td
+                c[2].text = _fmt_td(td)
+                c[3].text = str(fila["Tipo Solución Reclamo"])
+                c[4].text = str(fila["Fecha Inicio Reclamo"])
+            nueva = copy.deepcopy(tabla3.rows[0]._tr)
+            tabla3._tbl.append(nueva)
+            c = tabla3.rows[-1].cells
+            c[0].text = "Total"
+            c[1].text = ""
+            c[2].text = _fmt_td(total)
+            c[3].text = ""
+            c[4].text = ""
+        else:
+            logger.warning("Faltan columnas en reclamos.xlsx: %s", ", ".join(faltantes))
 
     # Secciones texto
     etiquetas = {
