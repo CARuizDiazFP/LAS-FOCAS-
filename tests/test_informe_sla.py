@@ -56,7 +56,18 @@ sys.modules["sandybot.registrador"] = registrador_stub
 # ───────── FUNC. DE IMPORTACIÓN DINÁMICA DEL HANDLER ──────────────────
 def _importar_handler(tmp_path: Path):
     plantilla = tmp_path / "plantilla.docx"
-    Document().save(plantilla)
+    doc = Document()
+    headers = [
+        "Tipo Servicio",
+        "Número Línea",
+        "Nombre Cliente",
+        "Horas Reclamos Todos",
+        "SLA",
+    ]
+    tbl = doc.add_table(rows=1, cols=len(headers))
+    for i, h in enumerate(headers):
+        tbl.rows[0].cells[i].text = h
+    doc.save(plantilla)
 
     os.environ["SLA_TEMPLATE_PATH"] = str(plantilla)
 
@@ -119,7 +130,15 @@ async def _flujo_completo(tmp_path: Path):
 
     # Servicios
     serv = tmp_path / "serv.xlsx"
-    pd.DataFrame({"Servicio": ["Srv"], "SLA Entregado": [50]}).to_excel(serv, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["Srv"],
+            "Número Línea": [1],
+            "Nombre Cliente": ["ACME"],
+            "Horas Reclamos Todos": [0],
+            "SLA": [50],
+        }
+    ).to_excel(serv, index=False)
     msg_serv = Message(document=ExcelDoc("serv.xlsx", serv))
     await handler.procesar_informe_sla(Update(message=msg_serv), ctx)
     assert captura["reply_markup"].inline_keyboard[0][0].callback_data == "sla_procesar"
@@ -155,10 +174,24 @@ def _test_columnas_extra(handler, tmp_path: Path):
     recl = tmp_path / "re.xlsx"
     serv = tmp_path / "se.xlsx"
     pd.DataFrame({"Servicio": [1]}).to_excel(recl, index=False)
-    pd.DataFrame({"Servicio": [1], "Dirección": ["Calle 1"]}).to_excel(serv, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["A"],
+            "Número Línea": [1],
+            "Nombre Cliente": ["X"],
+            "Horas Reclamos Todos": [0],
+            "SLA": [20],
+        }
+    ).to_excel(serv, index=False)
     doc_path = handler._generar_documento_sla(str(recl), str(serv))
     headers = [c.text for c in Document(doc_path).tables[0].rows[0].cells]
-    assert headers == ["Servicio", "Dirección", "Reclamos"]
+    assert headers == [
+        "Tipo Servicio",
+        "Número Línea",
+        "Nombre Cliente",
+        "Horas Reclamos Todos",
+        "SLA",
+    ]
 
 # ───────────────────────── LISTA DE TESTS ─────────────────────────────
 def test_flujo_completo(tmp_path):
@@ -177,7 +210,15 @@ def test_exportar_pdf(tmp_path):
     handler = _importar_handler(tmp_path)
     r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
     pd.DataFrame({"Servicio": [1]}).to_excel(r, index=False)
-    pd.DataFrame({"Servicio": [1]}).to_excel(s, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["A"],
+            "Número Línea": [1],
+            "Nombre Cliente": ["X"],
+            "Horas Reclamos Todos": [0],
+            "SLA": [40],
+        }
+    ).to_excel(s, index=False)
     ruta = handler._generar_documento_sla(str(r), str(s), exportar_pdf=True)
     assert ruta.endswith(".pdf") or ruta.endswith(".docx")
 
@@ -188,10 +229,18 @@ def test_tabla_orden_por_sla(tmp_path):
     recl = tmp_path / "re.xlsx"
     serv = tmp_path / "se.xlsx"
     pd.DataFrame({"Servicio": [1, 2], "Fecha": ["2024-01-01", "2024-01-01"]}).to_excel(recl, index=False)
-    pd.DataFrame({"Servicio": [1, 2], "SLA Entregado": [50, 30]}).to_excel(serv, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["A", "B"],
+            "Número Línea": [1, 2],
+            "Nombre Cliente": ["X", "Y"],
+            "Horas Reclamos Todos": [0, 0],
+            "SLA": [50, 30],
+        }
+    ).to_excel(serv, index=False)
     doc_path = handler._generar_documento_sla(str(recl), str(serv))
     tabla = Document(doc_path).tables[0]
-    assert tabla.rows[1].cells[0].text == "2"
+    assert tabla.rows[1].cells[0].text == "B"
 
 
 def test_pdf_no_nameerror(tmp_path):
@@ -199,7 +248,15 @@ def test_pdf_no_nameerror(tmp_path):
     handler = _importar_handler(tmp_path)
     r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
     pd.DataFrame({"Servicio": [1]}).to_excel(r, index=False)
-    pd.DataFrame({"Servicio": [1]}).to_excel(s, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["A"],
+            "Número Línea": [1],
+            "Nombre Cliente": ["X"],
+            "Horas Reclamos Todos": [0],
+            "SLA": [50],
+        }
+    ).to_excel(s, index=False)
     try:
         ruta = handler._generar_documento_sla(str(r), str(s), exportar_pdf=True)
     except NameError as e:
