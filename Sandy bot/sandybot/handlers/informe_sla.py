@@ -65,8 +65,27 @@ def _guardar_reclamos(df: pd.DataFrame) -> None:
             if c in df.columns and not pd.isna(fila.get(c)):
                 fecha = pd.to_datetime(fila[c], errors="coerce")
                 break
-        descripcion = fila.get("Tipo Solución Reclamo")
-        bd.crear_reclamo(sid_int, str(numero), fecha_inicio=fecha, descripcion=descripcion)
+
+        cierre = None
+        if (
+            "Fecha Cierre Problema Reclamo" in df.columns
+            and not pd.isna(fila.get("Fecha Cierre Problema Reclamo"))
+        ):
+            cierre = pd.to_datetime(
+                fila["Fecha Cierre Problema Reclamo"], errors="coerce"
+            )
+
+        tipo_sol = fila.get("Tipo Solución Reclamo")
+        desc_sol = fila.get("Descripción Solución Reclamo")
+
+        bd.crear_reclamo(
+            sid_int,
+            str(numero),
+            fecha_inicio=fecha,
+            fecha_cierre=cierre,
+            tipo_solucion=tipo_sol,
+            descripcion_solucion=desc_sol,
+        )
 
 
 def identificar_excel(path: str) -> str:

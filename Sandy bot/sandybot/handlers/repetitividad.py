@@ -190,13 +190,17 @@ def generar_informe_y_modificar(ruta_excel):
         logger.error("Error leyendo el Excel %s: %s", ruta_excel, exc)
         raise ValueError("⚠️ No se pudo leer el Excel. Verificá el archivo.") from exc
 
+    cierre_col = 'Fecha Cierre Reclamo'
+    if 'Fecha Cierre Problema Reclamo' in casos_df.columns:
+        cierre_col = 'Fecha Cierre Problema Reclamo'
+
     columnas_a_conservar_casos = [
         'Número Reclamo',
         'Número Línea',
         'Tipo Servicio',
         'Nombre Cliente',
         'Fecha Inicio Reclamo',
-        'Fecha Cierre Reclamo',
+        cierre_col,
         'Tipo Solución Reclamo',
         'Descripción Solución Reclamo',
     ]
@@ -209,6 +213,8 @@ def generar_informe_y_modificar(ruta_excel):
         )
 
     casos_limpio = casos_df[columnas_a_conservar_casos]
+    if cierre_col != 'Fecha Cierre Reclamo':
+        casos_limpio.rename(columns={cierre_col: 'Fecha Cierre Reclamo'}, inplace=True)
     try:
         valor_fecha = casos_limpio['Fecha Cierre Reclamo'].dropna().iloc[0]
         fecha_cierre = pd.to_datetime(valor_fecha)
