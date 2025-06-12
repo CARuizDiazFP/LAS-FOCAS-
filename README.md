@@ -74,7 +74,7 @@ no cuenta con el estilo `Title`, se utiliza `Heading 1` como alternativa.
 En el menú del bot existe un botón para reemplazar la plantilla de
 repetitividad y otro que permite exportar el informe final a PDF.
 Las plantillas de ejemplo se guardan en la carpeta `templates/` y cada versión
-anterior se mueve automáticamente a `templates/Historios` al presionar
+anterior se mueve automáticamente a `templates/Historicos` al presionar
 **Actualizar plantilla**. De esta forma la nueva base queda disponible para los
 próximos informes sin perder el historial.
 
@@ -317,7 +317,7 @@ SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
 ```
 
 Las plantillas por defecto se guardan en `templates/`. Al presionar
-**Actualizar plantilla** el archivo actual se copia a `templates/Historios`
+**Actualizar plantilla** el archivo actual se copia a `templates/Historicos`
 y la nueva versión queda disponible para informes futuros.
 
 Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" y el proceso se cancelará.
@@ -339,7 +339,7 @@ Una vez generada la plantilla podés presionar el botón **Exportar PDF** o llam
 El flujo consiste en enviar primero el Excel de **reclamos**, luego el de **servicios**,
 presionar **Procesar** y finalmente optar por **Exportar PDF**.
 Recordá que la plantilla se puede reemplazar en cualquier momento con el botón **Actualizar plantilla**.
-Cuando uses esa opción, el archivo anterior se moverá a `templates/Historios` y la nueva plantilla quedará almacenada en `templates/`.
+Cuando uses esa opción, el archivo anterior se moverá a `templates/Historicos` y la nueva plantilla quedará almacenada en `templates/`.
 
 
 ## Enviar Excel por correo

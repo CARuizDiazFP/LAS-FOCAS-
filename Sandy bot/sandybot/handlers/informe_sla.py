@@ -10,6 +10,8 @@ import os
 import tempfile
 import locale
 import copy
+import shutil
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional
 
@@ -281,6 +283,18 @@ async def actualizar_plantilla_sla(mensaje, context):
     try:
         f = await archivo.get_file()
         os.makedirs(os.path.dirname(RUTA_PLANTILLA), exist_ok=True)
+
+        if os.path.exists(RUTA_PLANTILLA):
+            os.makedirs(config.SLA_HISTORIAL_DIR, exist_ok=True)
+            nombre = (
+                Path(RUTA_PLANTILLA).stem
+                + "_"
+                + pd.Timestamp.now().strftime("%Y%m%d_%H%M%S")
+                + Path(RUTA_PLANTILLA).suffix
+            )
+            destino = Path(config.SLA_HISTORIAL_DIR) / nombre
+            shutil.move(RUTA_PLANTILLA, destino)
+
         await f.download_to_drive(RUTA_PLANTILLA)
         texto = "Plantilla de SLA actualizada."
         context.user_data.pop("cambiar_plantilla", None)
