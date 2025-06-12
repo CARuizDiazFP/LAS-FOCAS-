@@ -332,3 +332,20 @@ def test_crear_tarea_servicio_repetido():
             "Mantenimiento",
             [s.id, s.id],
         )
+
+
+def test_reclamos_por_servicio():
+    srv1 = bd.crear_servicio(nombre="SrvRec1", cliente="Cli")
+    srv2 = bd.crear_servicio(nombre="SrvRec2", cliente="Cli")
+    fecha = datetime(2024, 5, 1, 12)
+    bd.crear_reclamo(srv1.id, "R1", fecha_inicio=fecha, descripcion="Desc")
+    bd.crear_reclamo(srv2.id, "R2")
+
+    recs1 = bd.obtener_reclamos_servicio(srv1.id)
+    recs2 = bd.obtener_reclamos_servicio(srv2.id)
+
+    assert len(recs1) == 1
+    assert recs1[0].numero == "R1"
+    assert recs1[0].fecha_inicio == fecha
+    assert len(recs2) == 1
+    assert recs2[0].numero == "R2"

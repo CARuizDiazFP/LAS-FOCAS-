@@ -30,11 +30,43 @@ from sandybot.config import config
 from ..utils import obtener_mensaje
 from .estado import UserState
 from ..registrador import responder_registrando, registrar_conversacion
+from .. import database as bd
 
 # Plantilla de Word definida en la configuración
 RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
 
 logger = logging.getLogger(__name__)
+
+
+def _guardar_reclamos(df: pd.DataFrame) -> None:
+    """Registra en la base los reclamos del DataFrame."""
+    if "Número Reclamo" not in df.columns:
+        return
+
+    col_servicio = None
+    for c in ["Servicio", "Número Línea", "Número Primer Servicio"]:
+        if c in df.columns:
+            col_servicio = c
+            break
+    if not col_servicio:
+        return
+
+    for _, fila in df.iterrows():
+        sid = fila.get(col_servicio)
+        numero = fila.get("Número Reclamo")
+        if pd.isna(sid) or pd.isna(numero):
+            continue
+        try:
+            sid_int = int(str(sid).replace(".0", ""))
+        except ValueError:
+            continue
+        fecha = None
+        for c in ["Fecha Inicio Reclamo", "Fecha Inicio Problema Reclamo"]:
+            if c in df.columns and not pd.isna(fila.get(c)):
+                fecha = pd.to_datetime(fila[c], errors="coerce")
+                break
+        descripcion = fila.get("Tipo Solución Reclamo")
+        bd.crear_reclamo(sid_int, str(numero), fecha_inicio=fecha, descripcion=descripcion)
 
 
 def identificar_excel(path: str) -> str:
@@ -248,6 +280,7 @@ def _generar_documento_sla(
     """
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
+    _guardar_reclamos(reclamos_df)
     servicios_df.columns = (
         servicios_df.columns
         .str.replace(r"\s+", " ", regex=True)
