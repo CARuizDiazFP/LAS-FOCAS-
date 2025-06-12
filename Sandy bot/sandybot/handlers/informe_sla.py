@@ -231,6 +231,24 @@ def _generar_documento_sla(
     # Columnas opcionales a incluir si existen
     columnas_extra = [col for col in columnas_requeridas if col in servicios_df]
 
+    # Formatea "Horas Netas Reclamo" si tiene valores numéricos
+    if "Horas Netas Reclamo" in servicios_df.columns:
+        def _fmt_horas(valor: object) -> object:
+            if pd.isna(valor) or not any(ch.isdigit() for ch in str(valor)):
+                return valor
+            try:
+                td = pd.to_timedelta(valor)
+            except Exception:
+                try:
+                    td = pd.to_timedelta(float(str(valor).replace(",", ".")), unit="h")
+                except Exception:
+                    return valor
+            total_minutes = int(td.total_seconds() // 60)
+            horas, minutos = divmod(total_minutes, 60)
+            return f"{horas}.{minutos:02d}"
+
+        servicios_df["Horas Netas Reclamo"] = servicios_df["Horas Netas Reclamo"].apply(_fmt_horas)
+
     # Normaliza nombres de columna
     if "Servicio" not in reclamos_df.columns:
         reclamos_df.rename(columns={reclamos_df.columns[0]: "Servicio"}, inplace=True)
@@ -258,6 +276,10 @@ def _generar_documento_sla(
 
     # Conteo de reclamos por servicio
     resumen = reclamos_df.groupby("Servicio").size().reset_index(name="Reclamos")
+    # Ordenar servicios de menor a mayor SLA y unir con reclamos
+    if "SLA Entregado" in servicios_df.columns:
+        servicios_df = servicios_df.sort_values("SLA Entregado")
+
     df = servicios_df.merge(resumen, on="Servicio", how="left")
     df["Reclamos"] = df["Reclamos"].fillna(0).astype(int)
 
@@ -327,11 +349,11 @@ def _generar_documento_sla(
                 from docx2pdf import convert  # type: ignore
 
                 convert(ruta_docx, ruta_pdf)
-                converted = True
+                convertido = True
             except Exception:  # pragma: no cover
                 logger.warning("No fue posible convertir a PDF con docx2pdf")
 
-        if converted:
+        if convertido:
             os.remove(ruta_docx)
             return ruta_pdf
 
