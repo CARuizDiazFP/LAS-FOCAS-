@@ -113,6 +113,9 @@ Se incluyen dos modelos principales:
 7. **Reclamo**: almacena los tickets asociados a un servicio. Guarda
    número, fecha de inicio, fecha de cierre, tipo de solución y una
    descripción de la solución.
+8. Las tablas `camaras` y `reclamos` cuentan con restricciones únicas que
+   evitan registrar dos veces la misma cámara o número de reclamo.
+   Además, al cargar el Excel de reclamos se ignoran las líneas repetidas.
 
 Antes de crear la instancia del bot se ejecuta `init_db()` desde
 `main.py`. Esta función crea las tablas y ejecuta

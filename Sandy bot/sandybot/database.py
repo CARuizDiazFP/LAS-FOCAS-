@@ -18,7 +18,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import declarative_base, sessionmaker
 from sqlalchemy.dialects.postgresql import JSONB
 import logging
-from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import json
 
 import pandas as pd
@@ -125,6 +125,10 @@ class Camara(Base):
     nombre = Column(String, index=True)
     id_servicio = Column(Integer, index=True)
 
+    __table_args__ = (
+        UniqueConstraint("id_servicio", "nombre", name="uix_camara_unica"),
+    )
+
     def __repr__(self) -> str:
         return (
             f"<Camara(id={self.id}, nombre={self.nombre}, servicio={self.id_servicio})>"
@@ -155,6 +159,10 @@ class Reclamo(Base):
     id = Column(Integer, primary_key=True)
     servicio_id = Column(Integer, ForeignKey("servicios.id"), index=True)
     numero = Column(String, index=True)
+
+    __table_args__ = (
+        UniqueConstraint("servicio_id", "numero", name="uix_reclamo_unico"),
+    )
     fecha_inicio = Column(DateTime, index=True, nullable=True)
     fecha_cierre = Column(DateTime, index=True, nullable=True)
     tipo_solucion = Column(String)
@@ -311,6 +319,30 @@ def ensure_servicio_columns() -> None:
                         "ALTER TABLE tareas_servicio "
                         "ADD CONSTRAINT uix_tarea_servicio "
                         "UNIQUE (tarea_id, servicio_id)"
+                    )
+                )
+
+    # 3️⃣ Restricciones únicas de cámaras y reclamos
+    if "camaras" in inspector.get_table_names():
+        uniques = {u["name"] for u in inspector.get_unique_constraints("camaras")}
+        if "uix_camara_unica" not in uniques:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE camaras "
+                        "ADD CONSTRAINT uix_camara_unica "
+                        "UNIQUE (id_servicio, nombre)"
+                    )
+                )
+    if "reclamos" in inspector.get_table_names():
+        uniques = {u["name"] for u in inspector.get_unique_constraints("reclamos")}
+        if "uix_reclamo_unico" not in uniques:
+            with engine.begin() as conn:
+                conn.execute(
+                    text(
+                        "ALTER TABLE reclamos "
+                        "ADD CONSTRAINT uix_reclamo_unico "
+                        "UNIQUE (servicio_id, numero)"
                     )
                 )
 
@@ -582,8 +614,20 @@ def crear_camara(nombre: str, id_servicio: int) -> Camara:
     with SessionLocal() as session:
         camara = Camara(nombre=nombre, id_servicio=id_servicio)
         session.add(camara)
-        session.commit()
-        session.refresh(camara)
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            camara = (
+                session.query(Camara)
+                .filter(
+                    Camara.id_servicio == id_servicio,
+                    Camara.nombre == nombre,
+                )
+                .first()
+            )
+        if camara:
+            session.refresh(camara)
         return camara
 
 
@@ -630,8 +674,20 @@ def crear_reclamo(
             descripcion=descripcion,
         )
         session.add(reclamo)
-        session.commit()
-        session.refresh(reclamo)
+        try:
+            session.commit()
+        except IntegrityError:
+            session.rollback()
+            reclamo = (
+                session.query(Reclamo)
+                .filter(
+                    Reclamo.servicio_id == servicio_id,
+                    Reclamo.numero == numero,
+                )
+                .first()
+            )
+        if reclamo:
+            session.refresh(reclamo)
         return reclamo
 
 
