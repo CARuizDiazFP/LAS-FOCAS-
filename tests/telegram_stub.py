@@ -9,6 +9,7 @@ class Message:
     def __init__(self, text="", document=None, voice=None):
         self.text = text
         self.document = document
+        self.documents = [document] if document else []
         self.documento = None
         self.voice = voice
         self.sent = None

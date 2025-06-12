@@ -60,6 +60,10 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
+Las plantillas utilizadas por el bot se ubican en `templates/`. Cuando actualizás
+una plantilla mediante el botón **Actualizar plantilla**, el archivo anterior se
+mueve a `templates/Historios` para conservar un registro de versiones.
+
 4. Crear archivo .env con las variables de entorno:
 ```
 TELEGRAM_TOKEN=your_telegram_token
@@ -82,6 +86,10 @@ Para iniciar el bot:
 ```bash
 python main.py
 ```
+
+Antes de ejecutarlo asegurate de correr `./setup_env.sh`. Este script crea el
+entorno virtual, instala las dependencias y configura `PYTHONPATH` para que el
+proyecto funcione correctamente.
 
 Al ejecutarse, `main.py` configura automáticamente el sistema de logging. Los
 mensajes se muestran en la consola y además se guardan en `logs/sandy.log` con
@@ -197,6 +205,8 @@ El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Pod
 Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
 El título del informe se adapta al mes correspondiente en español. Si el documento de plantilla no incluye el estilo `Title`, el bot emplea `Heading 1` como respaldo.
 También existe un botón **Actualizar plantilla** para reemplazar el documento base en cualquier momento.
+Al hacerlo el archivo actual se mueve a `templates/Historios` y la nueva plantilla
+queda disponible en `templates/` para los próximos informes.
 Si instalás `docx2pdf` o usás `pywin32` en Windows aparecerá el botón **Exportar PDF**, que llama a
 `_generar_documento_sla(exportar_pdf=True)` y crea la versión en ese formato.
 
