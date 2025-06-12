@@ -360,3 +360,33 @@ def test_reclamos_por_servicio():
     assert recs1[0].descripcion_solucion == "Sol"
     assert len(recs2) == 1
     assert recs2[0].numero == "R2"
+
+
+def test_reclamo_unico():
+    """Reclamo con el mismo número no debe duplicarse."""
+    srv = bd.crear_servicio(nombre="SrvDup", cliente="Cli")
+    r1 = bd.crear_reclamo(srv.id, "DUP")
+    r2 = bd.crear_reclamo(srv.id, "DUP")
+    with bd.SessionLocal() as s:
+        filas = (
+            s.query(bd.Reclamo)
+            .filter(bd.Reclamo.servicio_id == srv.id)
+            .all()
+        )
+    assert len(filas) == 1
+    assert r1.id == r2.id
+
+
+def test_camara_unica():
+    """Cámara repetida para un servicio retorna el mismo registro."""
+    srv = bd.crear_servicio(nombre="SrvCam", cliente="Cli")
+    c1 = bd.crear_camara("Cam", srv.id)
+    c2 = bd.crear_camara("Cam", srv.id)
+    with bd.SessionLocal() as s:
+        filas = (
+            s.query(bd.Camara)
+            .filter(bd.Camara.id_servicio == srv.id)
+            .all()
+        )
+    assert len(filas) == 1
+    assert c1.id == c2.id

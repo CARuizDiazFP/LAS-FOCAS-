@@ -60,6 +60,10 @@ def _guardar_reclamos(df: pd.DataFrame) -> None:
             sid_int = int(str(sid).replace(".0", ""))
         except ValueError:
             continue
+
+        existentes = bd.obtener_reclamos_servicio(sid_int)
+        if any(r.numero == str(numero) for r in existentes):
+            continue
         fecha = None
         for c in ["Fecha Inicio Reclamo", "Fecha Inicio Problema Reclamo"]:
             if c in df.columns and not pd.isna(fila.get(c)):
