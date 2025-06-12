@@ -17,11 +17,13 @@ from docx import Document
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
-# Dependencia opcional para exportar PDF en Windows
+# Dependencia opcional para exportar PDF y modificar DOCX en Windows
 try:  # pragma: no cover
     import win32com.client as win32  # type: ignore
+    import pythoncom  # type: ignore
 except Exception:  # pragma: no cover
     win32 = None
+    pythoncom = None
 
 from sandybot.config import config
 from ..utils import obtener_mensaje
@@ -317,6 +319,13 @@ def _generar_documento_sla(
     os.close(fd)
     doc.save(ruta_docx)
 
+    if win32 is not None:
+        modificar_sla_con_pythoncom(ruta_docx, mes, anio)
+    else:
+        logger.info(
+            "Omitiendo modificación por COM; esta funcionalidad solo está disponible en Windows."
+        )
+
     # Exportar PDF
     if exportar_pdf:
         ruta_pdf = os.path.splitext(ruta_docx)[0] + ".pdf"
@@ -348,3 +357,23 @@ def _generar_documento_sla(
             return ruta_pdf
 
     return ruta_docx
+
+
+def modificar_sla_con_pythoncom(path: str, mes: str, anio: str) -> None:
+    """Ajusta el título del documento SLA mediante COM en Windows."""
+    pythoncom.CoInitialize()
+    try:
+        word_app = win32.Dispatch("Word.Application")
+        word_app.Visible = False
+        doc = word_app.Documents.Open(path)
+        titulo = f"Informe SLA {mes} {anio}"
+        for shape in doc.Shapes:
+            if shape.TextFrame.HasText and "Informe SLA" in shape.TextFrame.TextRange.Text:
+                shape.TextFrame.TextRange.Text = titulo
+        doc.SaveAs(path)
+        doc.Close()
+        word_app.Quit()
+    except Exception as exc:
+        logger.error("Error al modificar SLA con COM: %s", exc)
+    finally:
+        pythoncom.CoUninitialize()
