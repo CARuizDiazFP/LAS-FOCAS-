@@ -115,3 +115,41 @@ def guardar_destinatarios(cliente: str, destinatarios: list[str]) -> bool:
             cli.destinatarios = destinatarios
         session.commit()
         return True
+
+
+def rellenar_tabla_sla(ruta_docx: str, datos: list[dict]) -> 'Document':
+    """Rellena la primera tabla de ``ruta_docx`` con los valores de ``datos``.
+
+    Se asume que la tabla de la plantilla posee cinco columnas en el orden:
+    ``Tipo Servicio``, ``Número Línea``, ``Nombre Cliente``,
+    ``Horas Reclamos Todos`` y ``SLA Entregado``.
+    """
+    from docx import Document
+    import pandas as pd
+
+    doc = Document(ruta_docx)
+    if not doc.tables:
+        raise ValueError("La plantilla debe incluir al menos una tabla")
+
+    tabla = doc.tables[0]
+
+    while len(tabla.rows) > 1:
+        tabla._tbl.remove(tabla.rows[1]._tr)
+
+    df = pd.DataFrame(datos, columns=[
+        "Tipo Servicio",
+        "Número Línea",
+        "Nombre Cliente",
+        "Horas Reclamos Todos",
+        "SLA Entregado",
+    ])
+
+    for _, fila in df.iterrows():
+        celdas = tabla.add_row().cells
+        celdas[0].text = str(fila["Tipo Servicio"])
+        celdas[1].text = str(fila["Número Línea"])
+        celdas[2].text = str(fila["Nombre Cliente"])
+        celdas[3].text = str(fila["Horas Reclamos Todos"])
+        celdas[4].text = str(fila["SLA Entregado"])
+
+    return doc
