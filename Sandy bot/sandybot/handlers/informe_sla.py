@@ -242,6 +242,11 @@ def _generar_documento_sla(
     """
     reclamos_df = pd.read_excel(reclamos_xlsx)
     servicios_df = pd.read_excel(servicios_xlsx)
+    servicios_df.columns = (
+        servicios_df.columns
+        .str.replace(r"\s+", " ", regex=True)
+        .str.strip()
+    )
 
     # Formatea "Horas Netas Reclamo" si tiene valores numéricos
     if "Horas Netas Reclamo" in servicios_df.columns:
