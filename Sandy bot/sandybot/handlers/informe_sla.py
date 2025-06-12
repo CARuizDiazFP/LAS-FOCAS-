@@ -351,85 +351,118 @@ def _generar_documento_sla(
         celdas = tabla.rows[-1].cells
         celdas[0].text = str(fila["Tipo Servicio"])
         celdas[1].text = str(fila["Número Línea"])
-        celdas[2].text = str(fila["Nombre Cliente"])
-        celdas[3].text = str(fila["Horas Reclamos Todos"])
+        celdas[2].text = str(fila.get("Nombre Cliente", ""))
+        celdas[3].text = str(fila.get("Horas Reclamos Todos", ""))
         celdas[4].text = f"{float(fila['SLA']) * 100:.2f}%"
 
+    template2 = template3 = None
     if len(doc.tables) > 1:
-        tabla2 = doc.tables[1]
-        info = {
-            "Servicio": servicios_df.iloc[0].get("Servicio", servicios_df.iloc[0].get("Tipo Servicio", "")),
-            "SLA": f"{float(servicios_df.iloc[0]['SLA']) * 100:.2f}%",
-            "Cliente": reclamos_df.iloc[0].get(
-                "Cliente",
-                reclamos_df.iloc[0].get(
-                    "Nombre Cliente",
-                    servicios_df.iloc[0].get("Nombre Cliente", ""),
-                ),
-            ),
-            "N° de Ticket": reclamos_df.iloc[0].get(
-                "N° de Ticket", reclamos_df.iloc[0].get("Número Reclamo", "")
-            ),
-            "Domicilio": reclamos_df.iloc[0].get(
-                "Domicilio", servicios_df.iloc[0].get("Domicilio", "")
-            ),
-        }
-        for r in tabla2.rows:
-            key = r.cells[0].text.strip()
-            if key in info:
-                r.cells[1].text = str(info[key])
-
+        template2 = copy.deepcopy(doc.tables[1]._tbl)
     if len(doc.tables) > 2:
-        tabla3 = doc.tables[2]
-        while len(tabla3.rows) > 1:
-            tabla3._tbl.remove(tabla3.rows[1]._tr)
-        cols_r = [
-            "Número Línea",
-            "Número Reclamo",
-            "Horas Netas Reclamo",
-            "Tipo Solución Reclamo",
-            "Fecha Inicio Reclamo",
-        ]
-        faltantes = [c for c in cols_r if c not in reclamos_df.columns]
-        total = pd.Timedelta(0)
-        if not faltantes:
-            for _, fila in reclamos_df[cols_r].iterrows():
-                nueva = copy.deepcopy(tabla3.rows[0]._tr)
-                tabla3._tbl.append(nueva)
-                c = tabla3.rows[-1].cells
-                c[0].text = str(fila["Número Línea"])
-                c[1].text = str(fila["Número Reclamo"])
-                td = _to_timedelta(fila["Horas Netas Reclamo"])
-                total += td
-                c[2].text = _fmt_td(td)
-                c[3].text = str(fila["Tipo Solución Reclamo"])
-                c[4].text = str(fila["Fecha Inicio Reclamo"])
-            nueva = copy.deepcopy(tabla3.rows[0]._tr)
-            tabla3._tbl.append(nueva)
-            c = tabla3.rows[-1].cells
-            c[0].text = "Total"
-            c[1].text = ""
-            c[2].text = _fmt_td(total)
-            c[3].text = ""
-            c[4].text = ""
-        else:
-            logger.warning("Faltan columnas en reclamos.xlsx: %s", ", ".join(faltantes))
+        template3 = copy.deepcopy(doc.tables[2]._tbl)
 
-    # Secciones texto
+    for t in doc.tables[1:]:
+        t._tbl.getparent().remove(t._tbl)
+
+    cols_r = [
+        "Número Línea",
+        "Número Reclamo",
+        "Horas Netas Reclamo",
+        "Tipo Solución Reclamo",
+        "Fecha Inicio Reclamo",
+    ]
+
     etiquetas = {
         "Eventos sucedidos de mayor impacto en SLA:": eventos,
         "Conclusión:": conclusion,
         "Propuesta de mejora:": propuesta,
     }
-    existentes = {p.text.split(":")[0] + ":" for p in doc.paragraphs}
-    for etq, cont in etiquetas.items():
-        if etq in existentes:
-            for p in doc.paragraphs:
-                if p.text.startswith(etq):
-                    p.text = f"{etq} {cont}"
-                    break
-        elif cont:
-            doc.add_paragraph(f"{etq} {cont}")
+
+    for _, fila in df_tabla.iterrows():
+        if template2 is not None:
+            doc._body._element.append(copy.deepcopy(template2))
+            tabla2 = doc.tables[-1]
+            filtros = []
+            if "Número Línea" in reclamos_df.columns:
+                filtros.append(reclamos_df["Número Línea"] == fila["Número Línea"])
+            if "Número Primer Servicio" in reclamos_df.columns:
+                filtros.append(reclamos_df["Número Primer Servicio"] == fila["Número Línea"])
+            if filtros:
+                filtro = filtros[0]
+                for f in filtros[1:]:
+                    filtro |= f
+                recl_srv = reclamos_df[filtro]
+            else:
+                recl_srv = pd.DataFrame()
+            if not recl_srv.empty:
+                cliente = recl_srv.iloc[0].get(
+                    "Cliente",
+                    recl_srv.iloc[0].get("Nombre Cliente", fila.get("Nombre Cliente", "")),
+                )
+                ticket = recl_srv.iloc[0].get("N° de Ticket", recl_srv.iloc[0].get("Número Reclamo", ""))
+                domicilio = recl_srv.iloc[0].get("Domicilio", fila.get("Domicilio", ""))
+            else:
+                cliente = fila.get("Nombre Cliente", "")
+                ticket = ""
+                domicilio = fila.get("Domicilio", "")
+
+            info = {
+                "Servicio": fila.get("Tipo Servicio", ""),
+                "SLA": f"{float(fila['SLA']) * 100:.2f}%",
+                "Cliente": cliente,
+                "N° de Ticket": ticket,
+                "Domicilio": domicilio,
+            }
+            for r in tabla2.rows:
+                key = r.cells[0].text.strip()
+                if key in info:
+                    r.cells[1].text = str(info[key])
+
+        if template3 is not None:
+            doc._body._element.append(copy.deepcopy(template3))
+            tabla3 = doc.tables[-1]
+            while len(tabla3.rows) > 1:
+                tabla3._tbl.remove(tabla3.rows[1]._tr)
+            filtros = []
+            if "Número Línea" in reclamos_df.columns:
+                filtros.append(reclamos_df["Número Línea"] == fila["Número Línea"])
+            if "Número Primer Servicio" in reclamos_df.columns:
+                filtros.append(reclamos_df["Número Primer Servicio"] == fila["Número Línea"])
+            if filtros:
+                filtro = filtros[0]
+                for f in filtros[1:]:
+                    filtro |= f
+                recl_srv = reclamos_df[filtro]
+            else:
+                recl_srv = pd.DataFrame()
+            faltantes = [c for c in cols_r if c not in recl_srv.columns]
+            total = pd.Timedelta(0)
+            if not faltantes:
+                for _, fr in recl_srv[cols_r].iterrows():
+                    nueva = copy.deepcopy(tabla3.rows[0]._tr)
+                    tabla3._tbl.append(nueva)
+                    c = tabla3.rows[-1].cells
+                    c[0].text = str(fr["Número Línea"])
+                    c[1].text = str(fr["Número Reclamo"])
+                    td = _to_timedelta(fr["Horas Netas Reclamo"])
+                    total += td
+                    c[2].text = _fmt_td(td)
+                    c[3].text = str(fr["Tipo Solución Reclamo"])
+                    c[4].text = str(fr["Fecha Inicio Reclamo"])
+                nueva = copy.deepcopy(tabla3.rows[0]._tr)
+                tabla3._tbl.append(nueva)
+                c = tabla3.rows[-1].cells
+                c[0].text = "Total"
+                c[1].text = ""
+                c[2].text = _fmt_td(total)
+                c[3].text = ""
+                c[4].text = ""
+            elif faltantes:
+                logger.warning("Faltan columnas en reclamos.xlsx: %s", ", ".join(faltantes))
+
+        for etq, cont in etiquetas.items():
+            if cont:
+                doc.add_paragraph(f"{etq} {cont}")
 
     # Guardar DOCX
     fd, ruta_docx = tempfile.mkstemp(suffix=".docx")
