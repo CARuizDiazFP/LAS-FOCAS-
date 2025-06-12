@@ -111,7 +111,8 @@ Se incluyen dos modelos principales:
 6. **TareaServicio**: vincula cada tarea programada con los servicios
    afectados mediante sus IDs.
 7. **Reclamo**: almacena los tickets asociados a un servicio. Guarda
-   número, fecha de inicio y una descripción opcional.
+   número, fecha de inicio, fecha de cierre, tipo de solución y una
+   descripción de la solución.
 
 Antes de crear la instancia del bot se ejecuta `init_db()` desde
 `main.py`. Esta función crea las tablas y ejecuta

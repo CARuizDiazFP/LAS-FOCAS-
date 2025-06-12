@@ -338,7 +338,15 @@ def test_reclamos_por_servicio():
     srv1 = bd.crear_servicio(nombre="SrvRec1", cliente="Cli")
     srv2 = bd.crear_servicio(nombre="SrvRec2", cliente="Cli")
     fecha = datetime(2024, 5, 1, 12)
-    bd.crear_reclamo(srv1.id, "R1", fecha_inicio=fecha, descripcion="Desc")
+    cierre = datetime(2024, 5, 2, 14)
+    bd.crear_reclamo(
+        srv1.id,
+        "R1",
+        fecha_inicio=fecha,
+        fecha_cierre=cierre,
+        tipo_solucion="TS",
+        descripcion_solucion="Sol",
+    )
     bd.crear_reclamo(srv2.id, "R2")
 
     recs1 = bd.obtener_reclamos_servicio(srv1.id)
@@ -347,5 +355,8 @@ def test_reclamos_por_servicio():
     assert len(recs1) == 1
     assert recs1[0].numero == "R1"
     assert recs1[0].fecha_inicio == fecha
+    assert recs1[0].fecha_cierre == cierre
+    assert recs1[0].tipo_solucion == "TS"
+    assert recs1[0].descripcion_solucion == "Sol"
     assert len(recs2) == 1
     assert recs2[0].numero == "R2"

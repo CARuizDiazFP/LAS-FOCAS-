@@ -156,10 +156,17 @@ class Reclamo(Base):
     servicio_id = Column(Integer, ForeignKey("servicios.id"), index=True)
     numero = Column(String, index=True)
     fecha_inicio = Column(DateTime, index=True, nullable=True)
+    fecha_cierre = Column(DateTime, index=True, nullable=True)
+    tipo_solucion = Column(String)
+    descripcion_solucion = Column(String)
     descripcion = Column(String)
 
     def __repr__(self) -> str:
-        return f"<Reclamo(id={self.id}, servicio={self.servicio_id}, numero={self.numero})>"
+        return (
+            "<Reclamo("
+            f"id={self.id}, servicio={self.servicio_id}, numero={self.numero}, "
+            f"tipo_solucion={self.tipo_solucion})>"
+        )
 
 
 class TareaProgramada(Base):
@@ -607,6 +614,9 @@ def crear_reclamo(
     numero: str,
     fecha_inicio: datetime | None = None,
     descripcion: str | None = None,
+    fecha_cierre: datetime | None = None,
+    tipo_solucion: str | None = None,
+    descripcion_solucion: str | None = None,
 ) -> Reclamo:
     """Guarda un reclamo asociado a un servicio."""
     with SessionLocal() as session:
@@ -614,6 +624,9 @@ def crear_reclamo(
             servicio_id=servicio_id,
             numero=numero,
             fecha_inicio=fecha_inicio,
+            fecha_cierre=fecha_cierre,
+            tipo_solucion=tipo_solucion,
+            descripcion_solucion=descripcion_solucion,
             descripcion=descripcion,
         )
         session.add(reclamo)

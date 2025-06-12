@@ -38,6 +38,17 @@ for v in [
 ]:
     os.environ.setdefault(v, "x")
 
+# Forzar que la base use SQLite en memoria
+import sqlalchemy
+from sqlalchemy.orm import sessionmaker
+
+orig_engine = sqlalchemy.create_engine
+sqlalchemy.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
+bd = importlib.import_module("sandybot.database")
+sqlalchemy.create_engine = orig_engine
+bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
+bd.Base.metadata.create_all(bind=bd.engine)
+
 # ──────────── STUB REGISTRADOR – CAPTURA RESPUESTAS DEL HANDLER ──────
 captura: dict[str, object] = {}
 
@@ -310,3 +321,22 @@ def test_identificar_excel(tmp_path):
 
     assert handler.identificar_excel(str(recl)) == "reclamos"
     assert handler.identificar_excel(str(serv)) == "servicios"
+
+
+def test_guardar_reclamos(tmp_path):
+    handler = _importar_handler(tmp_path)
+    srv = bd.crear_servicio(nombre="Srv", cliente="Cli")
+    df = pd.DataFrame(
+        {
+            "Número Línea": [srv.id],
+            "Número Reclamo": ["10"],
+            "Fecha Inicio Problema Reclamo": ["2024-01-01"],
+            "Fecha Cierre Problema Reclamo": ["2024-01-02"],
+            "Tipo Solución Reclamo": ["Cambio"],
+            "Descripción Solución Reclamo": ["Detalle"],
+        }
+    )
+    handler._guardar_reclamos(df)
+    recs = bd.obtener_reclamos_servicio(srv.id)
+    assert recs[0].tipo_solucion == "Cambio"
+    assert recs[0].descripcion_solucion == "Detalle"
