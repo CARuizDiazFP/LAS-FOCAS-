@@ -375,8 +375,9 @@ def _generar_documento_sla(
 
     # Normaliza nombres de columna
     if "Servicio" not in reclamos_df.columns:
-
-        reclamos_df.rename(columns={reclamos_df.columns[0]: "Servicio"}, inplace=True)
+        primera = reclamos_df.columns[0]
+        if primera not in ["Número Reclamo", "N° de Ticket"]:
+            reclamos_df.rename(columns={primera: "Servicio"}, inplace=True)
 
     # Fecha para título
     try:

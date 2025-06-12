@@ -433,3 +433,47 @@ def test_guardar_reclamos_ticket(tmp_path):
     handler._guardar_reclamos(df)
     recs = bd.obtener_reclamos_servicio(srv.id)
     assert recs[0].numero == "11"
+
+
+def test_reclamo_primer_columna(tmp_path):
+    """Acepta archivos con 'Número Reclamo' como primera columna."""
+    handler = _importar_handler(tmp_path)
+    srv = bd.crear_servicio(nombre="Srv3", cliente="Cli")
+    df = pd.DataFrame(
+        {
+            "Número Reclamo": ["22"],
+            "Número Línea": [srv.id],
+            "Fecha Inicio Problema Reclamo": ["2024-01-01"],
+        }
+    )
+    handler._guardar_reclamos(df)
+    recs = bd.obtener_reclamos_servicio(srv.id)
+    assert recs[0].numero == "22"
+
+
+def test_generar_reclamo_primer_columna(tmp_path):
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame(
+        {
+            "Número Reclamo": [1],
+            "Servicio": ["A"],
+            "Número Línea": [10],
+            "Horas Netas Reclamo": ["0:00:00"],
+            "Tipo Solución Reclamo": ["X"],
+            "Fecha Inicio Reclamo": ["2024-01-01"],
+        }
+    ).to_excel(r, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["A"],
+            "Número Línea": [10],
+            "Nombre Cliente": ["A"],
+            "Horas Reclamos Todos": [0],
+            "SLA": [0.9],
+        }
+    ).to_excel(s, index=False)
+    doc_path = handler._generar_documento_sla(str(r), str(s))
+    doc = Document(doc_path)
+    tabla3 = doc.tables[-1]
+    assert tabla3.rows[1].cells[1].text == "1"
