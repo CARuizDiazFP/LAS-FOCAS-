@@ -60,6 +60,10 @@ source venv/bin/activate  # Linux/Mac
 pip install -r requirements.txt
 ```
 
+Las plantillas utilizadas por el bot se ubican en `templates/`. Cuando actualizás
+una plantilla mediante el botón **Actualizar plantilla**, el archivo anterior se
+mueve a `templates/Historios` para conservar un registro de versiones.
+
 4. Crear archivo .env con las variables de entorno:
 ```
 TELEGRAM_TOKEN=your_telegram_token
@@ -72,7 +76,7 @@ DB_NAME=sandybot
 DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 PLANTILLA_PATH=C:\Metrotel\Sandy\plantilla_informe.docx
-SLA_TEMPLATE_PATH=C:\Metrotel\Sandy\Template Informe SLA.docx
+SLA_TEMPLATE_PATH=Sandy bot/templates/Template Informe SLA.docx
 ```
 
 ## Uso
@@ -82,6 +86,10 @@ Para iniciar el bot:
 ```bash
 python main.py
 ```
+
+Antes de ejecutarlo asegurate de correr `./setup_env.sh`. Este script crea el
+entorno virtual, instala las dependencias y configura `PYTHONPATH` para que el
+proyecto funcione correctamente.
 
 Al ejecutarse, `main.py` configura automáticamente el sistema de logging. Los
 mensajes se muestran en la consola y además se guardan en `logs/sandy.log` con
@@ -177,7 +185,7 @@ adicional.
      funciona en Windows. En otros sistemas puede generarse el archivo .docx
      sin esta modificación o realizar los cambios de forma manual.
 7. Informe de SLA
-   - Genera un resumen de nivel de servicio usando `Template Informe SLA.docx`
+   - Genera un resumen de nivel de servicio usando `Template Informe SLA.docx` ubicado por defecto en `Sandy bot/templates`
    - Podés iniciarlo desde el botón **Informe de SLA** o con `/informe_sla`
    - Solicita los Excel de reclamos y servicios, que pueden enviarse por separado
    - Una vez cargados los dos archivos aparecen los botones **Procesar** y **Exportar a PDF** para generar el informe según `SLA_TEMPLATE_PATH`
@@ -191,12 +199,14 @@ adicional.
 
 ## Informe de SLA
 
-Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`.
+Esta opcion genera un documento de nivel de servicio basado en `Template Informe SLA.docx`, ubicado por defecto en `Sandy bot/templates`.
 Podes iniciarla desde el boton **Informe de SLA** o con el comando `/informe_sla`.
 El bot pedirá primero el Excel de **reclamos** y luego el de **servicios**. Podés enviarlos por separado sin importar el orden.
 Cuando ambos estén disponibles aparecerá un botón **Procesar**, que genera el informe usando la plantilla definida en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los textos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
 El título del informe se adapta al mes correspondiente en español. Si el documento de plantilla no incluye el estilo `Title`, el bot emplea `Heading 1` como respaldo.
 También existe un botón **Actualizar plantilla** para reemplazar el documento base en cualquier momento.
+Al hacerlo el archivo actual se mueve a `templates/Historios` y la nueva plantilla
+queda disponible en `templates/` para los próximos informes.
 Si instalás `docx2pdf` o usás `pywin32` en Windows aparecerá el botón **Exportar PDF**, que llama a
 `_generar_documento_sla(exportar_pdf=True)` y crea la versión en ese formato.
 

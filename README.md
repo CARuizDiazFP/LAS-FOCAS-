@@ -8,6 +8,8 @@ adjuntos `.msg` y opcionalmente `pywin32` en Windows o `docx2pdf` en otros siste
 Estas librerías permiten insertar la firma, generar un `.MSG` real desde Outlook y exportar informes a PDF. Desde esta versión el bot también acepta
 mensajes de voz, los descarga y los transcribe automáticamente utilizando la API
 de OpenAI.
+Antes de lanzar `pytest` o iniciar el bot es imprescindible ejecutar
+`./setup_env.sh` para crear el entorno virtual e instalar todas las dependencias.
 
 ## Variables de entorno
 
@@ -15,7 +17,7 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
 
-- `SLA_TEMPLATE_PATH`: ruta de la plantilla para el Informe de SLA. Si no se define, se usa `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+- `SLA_TEMPLATE_PATH`: ruta de la plantilla para el Informe de SLA. Si no se define, se usa `Sandy bot/templates/Template Informe SLA.docx`.
 
 - `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
@@ -71,12 +73,16 @@ El título del documento se ajusta al mes actual en español y, si la plantilla
 no cuenta con el estilo `Title`, se utiliza `Heading 1` como alternativa.
 En el menú del bot existe un botón para reemplazar la plantilla de
 repetitividad y otro que permite exportar el informe final a PDF.
+Las plantillas de ejemplo se guardan en la carpeta `templates/` y cada versión
+anterior se mueve automáticamente a `templates/Historios` al presionar
+**Actualizar plantilla**. De esta forma la nueva base queda disponible para los
+próximos informes sin perder el historial.
 
 ## Plantilla del informe de SLA
 
 Para los reportes de nivel de servicio se utiliza un archivo Word
 configurable por `SLA_TEMPLATE_PATH`. Si la variable no está presente,
-se recurre a `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+se recurre a `Sandy bot/templates/Template Informe SLA.docx`.
 El sistema valida que la ruta indicada exista. En caso de no
 encontrarla se registra el mensaje **"Plantilla de SLA no encontrada"**
 y se lanza `ValueError`.
@@ -293,8 +299,8 @@ pip install -r requirements.txt
 
 ## Informe de SLA
 
-Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `C:\Metrotel\Sandy`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
-Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `C:\Metrotel\Sandy\Template Informe SLA.docx`.
+Este flujo genera un reporte basado en el documento `Template Informe SLA.docx`, ubicado por defecto en `Sandy bot/templates`. Para iniciarlo presioná **Informe de SLA** en el menú principal o ejecutá `/informe_sla`.
+Al activarse se usa la plantilla indicada por `SLA_TEMPLATE_PATH`. Si no se define, se toma `Sandy bot/templates/Template Informe SLA.docx`.
 El archivo debe existir en formato `.docx`.
 
 El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**. Estos archivos se pueden enviar por separado. Una vez que el bot recibe ambos aparecerá el botón **Procesar**, que genera el informe utilizando la plantilla configurada en `SLA_TEMPLATE_PATH`. El documento se crea automáticamente con los campos de **Eventos destacados**, **Conclusión** y **Propuesta de mejora** en blanco.
@@ -303,6 +309,10 @@ El bot solicitará primero el Excel de **reclamos** y luego el de **servicios**.
 ```env
 SLA_TEMPLATE_PATH=/ruta/personalizada/Template SLA.docx
 ```
+
+Las plantillas por defecto se guardan en `templates/`. Al presionar
+**Actualizar plantilla** el archivo actual se copia a `templates/Historios`
+y la nueva versión queda disponible para informes futuros.
 
 Si la ruta no es válida se mostrará el error "Plantilla de SLA no encontrada" y el proceso se cancelará.
 
@@ -323,6 +333,7 @@ Una vez generada la plantilla podés presionar el botón **Exportar PDF** o llam
 El flujo consiste en enviar primero el Excel de **reclamos**, luego el de **servicios**,
 presionar **Procesar** y finalmente optar por **Exportar PDF**.
 Recordá que la plantilla se puede reemplazar en cualquier momento con el botón **Actualizar plantilla**.
+Cuando uses esa opción, el archivo anterior se moverá a `templates/Historios` y la nueva plantilla quedará almacenada en `templates/`.
 
 
 ## Enviar Excel por correo
