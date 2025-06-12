@@ -113,13 +113,13 @@ async def _flujo_completo(tmp_path: Path):
 
     # Reclamos
     recl = tmp_path / "recl.xlsx"
-    pd.DataFrame({"Servicio": ["Srv"], "Fecha": ["2024-01-01"]}).to_excel(recl, index=False)
+    pd.DataFrame({"Servicio": ["Srv"], "Número Reclamo": [1]}).to_excel(recl, index=False)
     await handler.procesar_informe_sla(Update(message=Message(document=ExcelDoc("recl.xlsx", recl))), ctx)
     assert "Falta el Excel de servicios" in captura["texto"]
 
     # Servicios
     serv = tmp_path / "serv.xlsx"
-    pd.DataFrame({"Servicio": ["Srv"]}).to_excel(serv, index=False)
+    pd.DataFrame({"Servicio": ["Srv"], "SLA Entregado": [50]}).to_excel(serv, index=False)
     msg_serv = Message(document=ExcelDoc("serv.xlsx", serv))
     await handler.procesar_informe_sla(Update(message=msg_serv), ctx)
     assert captura["reply_markup"].inline_keyboard[0][0].callback_data == "sla_procesar"
@@ -205,3 +205,15 @@ def test_pdf_no_nameerror(tmp_path):
     except NameError as e:
         raise AssertionError(f"NameError inesperado: {e}")
     assert ruta.endswith(".pdf") or ruta.endswith(".docx")
+
+
+def test_identificar_excel(tmp_path):
+    handler = _importar_handler(tmp_path)
+
+    recl = tmp_path / "r.xlsx"
+    serv = tmp_path / "s.xlsx"
+    pd.DataFrame({"Número Reclamo": [1]}).to_excel(recl, index=False)
+    pd.DataFrame({"SLA Entregado": [50]}).to_excel(serv, index=False)
+
+    assert handler.identificar_excel(str(recl)) == "reclamos"
+    assert handler.identificar_excel(str(serv)) == "servicios"
