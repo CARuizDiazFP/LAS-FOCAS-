@@ -314,9 +314,15 @@ def _generar_documento_sla(
     doc = Document(RUTA_PLANTILLA)
     cuerpo = doc._body._element
 
+
+    # El título en la plantilla está en un cuadro de texto.
+    # Si hubiera algún párrafo con ese mismo contenido se elimina
+    # para evitar duplicados como "1. Informe SLA ...".
     for p in list(doc.paragraphs):
         if "Informe SLA" in p.text:
             cuerpo.remove(p._p)
+
+
     # ── Tabla principal (se asume que la plantilla contiene ≥1 tabla) ──
     if not doc.tables:
         raise ValueError("La plantilla debe incluir una tabla para el SLA")
@@ -435,17 +441,38 @@ def _generar_documento_sla(
     col_ticket = next((c for c in ("Número Reclamo", "N° de Ticket") if c in reclamos_df.columns), None)
     col_match = "Número Línea" if "Número Línea" in reclamos_df.columns else None
 
+    def _buscar_col(df: pd.DataFrame, nombres: Sequence[str]) -> Optional[str]:
+        """Devuelve la primera columna coincidente (ignorando acentos y mayúsculas)."""
+        def _norm(text: str) -> str:
+            return (
+                text.lower()
+                .replace("á", "a")
+                .replace("é", "e")
+                .replace("í", "i")
+                .replace("ó", "o")
+                .replace("ú", "u")
+                .replace("ñ", "n")
+            )
+
+        normalizadas = { _norm(c): c for c in df.columns }
+        for nombre in nombres:
+            key = _norm(nombre)
+            if key in normalizadas:
+                return normalizadas[key]
+        return None
+
     total_servicios = len(servicios_ordenados)
     for idx_srv, (_, srv) in enumerate(servicios_ordenados.iterrows()):
         # Tabla 2 con datos del servicio
         elem2 = copy.deepcopy(tabla2_tpl)
         cuerpo.append(elem2)
         t2 = doc.tables[-1]
+        col_dir = _buscar_col(servicios_df, ["Dirección Servicio", "Direccion Servicio", "Domicilio"])
         valores = {
             "servicio": f"{srv.get('Tipo Servicio', '')} {srv.get('Número Línea', '')}",
             "cliente": str(srv.get('Nombre Cliente', "")),
             "ticket": "",
-            "domicilio": str(srv.get('Dirección Servicio', "")),
+            "domicilio": str(srv.get(col_dir, "")) if col_dir else "",
             "sla": str(srv.get('SLA', srv.get('SLA Entregado', "")))
         }
         if col_ticket and col_match:
