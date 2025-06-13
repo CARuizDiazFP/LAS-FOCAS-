@@ -63,6 +63,14 @@ def test_buscar_servicios_por_camara():
     res1 = bd.buscar_servicios_por_camara("camara central")
     assert {s.nombre for s in res1} == {"S1"}
 
+    # Búsqueda exacta encerrando el nombre entre comillas
+    res_exact = bd.buscar_servicios_por_camara("camara central", exacto=True)
+    assert {s.nombre for s in res_exact} == {"S1"}
+
+    # "central" solo debería coincidir si no se exige exactitud
+    res_no = bd.buscar_servicios_por_camara("central", exacto=True)
+    assert res_no == []
+
     res2 = bd.buscar_servicios_por_camara("gral. san martin")
     assert {s.nombre for s in res2} == {"S3"}
 
@@ -85,6 +93,9 @@ def test_buscar_servicios_por_camara_jsonb():
 
     res = bd.buscar_servicios_por_camara("camara jsonb")
     assert {s.nombre for s in res} == {"SJ1"}
+
+    res_exact = bd.buscar_servicios_por_camara("camara jsonb", exacto=True)
+    assert {s.nombre for s in res_exact} == {"SJ1"}
 
 
 def test_exportar_camaras_servicio(tmp_path):
