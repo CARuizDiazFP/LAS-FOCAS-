@@ -59,6 +59,7 @@ def test_flujos_nuevos():
         "analizar_incidencias",
         "nueva_solicitud",
         "informe_sla",
+        "identificador_tarea",
     ]
     for flujo in nuevos:
         assert _clasificar(flujo) == flujo
@@ -83,6 +84,7 @@ def _detectar(texto: str) -> str:
         "sandybot.handlers.cargar_tracking": ModuleType("sandybot.handlers.cargar_tracking"),
         "sandybot.handlers.repetitividad": ModuleType("sandybot.handlers.repetitividad"),
         "sandybot.handlers.id_carrier": ModuleType("sandybot.handlers.id_carrier"),
+        "sandybot.handlers.identificador_tarea": ModuleType("sandybot.handlers.identificador_tarea"),
         "sandybot.handlers.informe_sla": ModuleType("sandybot.handlers.informe_sla"),
     }
 
@@ -106,6 +108,7 @@ def _detectar(texto: str) -> str:
     stubs["sandybot.handlers.cargar_tracking"].iniciar_carga_tracking = _a
     stubs["sandybot.handlers.repetitividad"].iniciar_repetitividad = _a
     stubs["sandybot.handlers.id_carrier"].iniciar_identificador_carrier = _a
+    stubs["sandybot.handlers.identificador_tarea"].iniciar_identificador_tarea = _a
     stubs["sandybot.handlers.informe_sla"].iniciar_informe_sla = _a
 
     class CT:
@@ -148,6 +151,7 @@ def test_variantes_diccionario():
         "env cams mail": "enviar_camaras_mail",
         "verfiar ingrsos": "verificar_ingresos",
         "inf sla": "informe_sla",
+        "ident tarea": "identificador_tarea",
     }
 
     for texto, esperado in ejemplos.items():

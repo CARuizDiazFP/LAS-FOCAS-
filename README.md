@@ -245,6 +245,12 @@ Con `/detectar_tarea <cliente> [carrier]` podés pegar el mail o adjuntar el arc
 Sandy utiliza GPT para extraer inicio, fin, tipo y los IDs de servicio.
 Al crear la tarea genera también un `.MSG` con el texto listo para enviar.
 
+### Identificador de tarea programada
+
+En el menú principal tenés el botón **🔍 Identificar tarea programada**.
+Al seleccionarlo adjuntás el correo `.MSG` y escribís el cliente y, opcionalmente, el carrier.
+Sandy analizará el archivo, registrará la ventana y enviará el `.MSG` generado con todos los datos.
+
 
 ## Carga de tracking
 

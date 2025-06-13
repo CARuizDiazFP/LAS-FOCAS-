@@ -43,6 +43,10 @@ from .carriers import (
 from .tarea_programada import registrar_tarea_programada
 from .detectar_tarea_mail import detectar_tarea_mail
 from .procesar_correos import procesar_correos
+from .identificador_tarea import (
+    iniciar_identificador_tarea,
+    procesar_identificador_tarea,
+)
 from .reenviar_aviso import reenviar_aviso
 from .listar_tareas import listar_tareas
 from .supermenu import (
@@ -76,6 +80,8 @@ __all__ = [
     "procesar_envio_camaras_mail",
     "iniciar_identificador_carrier",
     "procesar_identificador_carrier",
+    "iniciar_identificador_tarea",
+    "procesar_identificador_tarea",
     "iniciar_incidencias",
     "procesar_incidencias",
     "iniciar_informe_sla",
