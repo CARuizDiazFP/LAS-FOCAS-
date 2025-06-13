@@ -312,11 +312,20 @@ def _generar_documento_sla(
     if not Path(RUTA_PLANTILLA).exists():
         raise ValueError(f"Plantilla de SLA no encontrada: {RUTA_PLANTILLA}")
     doc = Document(RUTA_PLANTILLA)
+    cuerpo = doc._body._element
 
+    # Quitar cualquier título previo para evitar duplicados
+    for p in list(doc.paragraphs):
+        if "Informe SLA" in p.text:
+            cuerpo.remove(p._p)
+
+    # Insertar un único encabezado al inicio del documento
     try:
-        doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
-    except KeyError:
-        doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
+        titulo = doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
+    except KeyError:  # pragma: no cover - compatibilidad con estilos
+        titulo = doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
+    cuerpo.remove(titulo._p)
+    cuerpo.insert(0, titulo._p)
 
     # ── Tabla principal (se asume que la plantilla contiene ≥1 tabla) ──
     if not doc.tables:
@@ -386,7 +395,8 @@ def _generar_documento_sla(
     col_ticket = next((c for c in ("Número Reclamo", "N° de Ticket") if c in reclamos_df.columns), None)
     col_match = "Número Línea" if "Número Línea" in reclamos_df.columns else None
 
-    for _, srv in servicios_ordenados.iterrows():
+    total_servicios = len(servicios_ordenados)
+    for idx_srv, (_, srv) in enumerate(servicios_ordenados.iterrows()):
         # Tabla 2 con datos del servicio
         elem2 = copy.deepcopy(tabla2_tpl)
         cuerpo.append(elem2)
@@ -445,6 +455,12 @@ def _generar_documento_sla(
             cells[2].text = str(rec.get("Horas Netas Reclamo", ""))
             cells[3].text = str(rec.get("Tipo Solución Reclamo", ""))
             cells[4].text = str(rec.get("Fecha Inicio Reclamo", ""))
+
+        # Salto de página entre servicios
+        if idx_srv < total_servicios - 1:
+            salto = doc.add_page_break()
+            cuerpo.remove(salto._p)
+            cuerpo.insert(cuerpo.index(elem3) + 1, salto._p)
 
     # ── Guardar DOCX temporal ───────────────────────────────────────
     fd, ruta_docx = tempfile.mkstemp(suffix=".docx")

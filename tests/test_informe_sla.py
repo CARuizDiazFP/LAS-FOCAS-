@@ -445,3 +445,31 @@ def test_guardar_reclamos_ticket(tmp_path):
     handler._guardar_reclamos(df)
     recs = bd.obtener_reclamos_servicio(srv.id)
     assert recs[0].numero == "11"
+
+
+def test_titulo_unico_y_saltos(tmp_path):
+    """El documento debe incluir un solo título y saltos entre servicios."""
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame({
+        "Servicio": ["A", "B"],
+        "Número Reclamo": [1, 2],
+        "Número Línea": [10, 20],
+    }).to_excel(r, index=False)
+    pd.DataFrame({
+        "Tipo Servicio": ["A", "B"],
+        "Número Línea": [10, 20],
+        "Nombre Cliente": ["X", "Y"],
+        "Horas Reclamos Todos": [0, 0],
+        "SLA": [0.9, 0.8],
+    }).to_excel(s, index=False)
+
+    doc_path = handler._generar_documento_sla(str(r), str(s))
+    doc = Document(doc_path)
+
+    titulos = [p.text for p in doc.paragraphs if "Informe SLA" in p.text]
+    assert len(titulos) == 1
+
+    saltos = doc._element.xml.count('w:type="page"')
+    filas = pd.read_excel(s)
+    assert saltos == len(filas) - 1
