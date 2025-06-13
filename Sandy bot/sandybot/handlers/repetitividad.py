@@ -182,7 +182,12 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
 
 
 def generar_informe_y_modificar(ruta_excel):
-    locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            break
+        except locale.Error:
+            continue
 
     try:
         casos_df = pd.read_excel(ruta_excel)
