@@ -432,7 +432,13 @@ async def procesar_correo_a_tarea(
         raise ValueError("No se pudo extraer la tarea del correo") from exc
 
     def _parse_fecha(valor: str) -> datetime:
-        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        formatos = (
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d %H:%M:%S",
+            "%d/%m/%Y %H:%M",
+            "%d/%m/%Y %H:%M:%S",
+        )
+        for fmt in formatos:
             try:
                 return datetime.strptime(valor.replace("T", " "), fmt)
             except ValueError:
