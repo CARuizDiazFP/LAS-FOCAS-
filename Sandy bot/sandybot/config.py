@@ -50,10 +50,6 @@ class Config:  # pylint: disable=too-many-instance-attributes
             os.getenv("SLA_HISTORIAL_DIR", self.BASE_DIR / "templates" / "Historicos")
         )
 
-        # Plantillas y reportes de SLA
-        self.SLA_HISTORIAL_DIR = self.BASE_DIR / "templates" / "Historicos"
-
-
         # Crear carpetas necesarias (idempotente)
         for carpeta in (
             self.DATA_DIR,
