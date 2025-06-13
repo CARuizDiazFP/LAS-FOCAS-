@@ -505,6 +505,10 @@ async def procesar_correo_a_tarea(
             else:
                 logger.warning("Servicio %s no encontrado", ident)
 
+        if not servicios:
+            logger.warning("No se localizaron servicios en el correo")
+            raise ValueError("No se encontraron servicios")
+
         tarea = crear_tarea_programada(
             inicio,
             fin,
