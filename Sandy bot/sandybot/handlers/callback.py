@@ -20,6 +20,7 @@ from .cargar_tracking import iniciar_carga_tracking, guardar_tracking_servicio
 from ..database import obtener_servicio
 from ..registrador import registrar_conversacion
 from ..utils import obtener_mensaje  # Si se necesitara en el futuro
+from .message import _ejecutar_accion_natural, _nombre_flujo
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,24 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
     data = query.data
     user_id = query.from_user.id
+
+    # ────────────────────────── CONFIRMAR SÍ/NO ───────────────────────────
+    if data == "confirmar_flujo_si":
+        flujo = context.user_data.pop("confirmar_flujo", None)
+        registrar_conversacion(user_id, "confirmar_flujo_si", "Confirmar", "callback")
+        if flujo:
+            await query.edit_message_text(
+                f"Iniciando { _nombre_flujo(flujo) }..."
+            )
+            await _ejecutar_accion_natural(flujo, update, context, "")
+        else:
+            await query.edit_message_text("Operación no válida.")
+        return
+    elif data == "confirmar_flujo_no":
+        context.user_data.pop("confirmar_flujo", None)
+        registrar_conversacion(user_id, "confirmar_flujo_no", "Cancelar", "callback")
+        await query.edit_message_text("Operación cancelada.")
+        return
 
     # ───────────────────────────── COMPARADOR FO ────────────────────────────
     if data == "comparar_fo":
