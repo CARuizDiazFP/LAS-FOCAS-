@@ -16,27 +16,12 @@ import tempfile
 
 # ─────────────────────────── PATH DE PROYECTO ─────────────────────────
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 # ────────────────────────── STUB TELEGRAM BASE ────────────────────────
 from tests.telegram_stub import Message, Update, CallbackQuery  # type: ignore
 
 # ─────────────────── VARIABLES DE ENTORNO MÍNIMAS ─────────────────────
-dotenv_stub = ModuleType("dotenv")
-dotenv_stub.load_dotenv = lambda *a, **k: None
-sys.modules.setdefault("dotenv", dotenv_stub)
-
-for v in [
-    "TELEGRAM_TOKEN",
-    "OPENAI_API_KEY",
-    "NOTION_TOKEN",
-    "NOTION_DATABASE_ID",
-    "DB_USER",
-    "DB_PASSWORD",
-    "SLACK_WEBHOOK_URL",
-    "SUPERVISOR_DB_ID",
-]:
-    os.environ.setdefault(v, "x")
+# Las variables de entorno necesarias se definen en la fixture global
 
 # Forzar que la base use SQLite en memoria
 import sqlalchemy

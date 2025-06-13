@@ -8,11 +8,9 @@ from types import ModuleType, SimpleNamespace
 from pathlib import Path
 from datetime import datetime
 from sqlalchemy.orm import sessionmaker
-import os
 import tempfile
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 from tests.telegram_stub import Message, Update  # Registra las clases fake de telegram
 
@@ -30,20 +28,7 @@ jsonschema_stub.validate = lambda *a, **k: None
 jsonschema_stub.ValidationError = type("ValidationError", (Exception,), {})
 sys.modules.setdefault("jsonschema", jsonschema_stub)
 
-# Variables de entorno necesarias
-os.environ.update({
-    "TELEGRAM_TOKEN": "x",
-    "OPENAI_API_KEY": "x",
-    "NOTION_TOKEN": "x",
-    "NOTION_DATABASE_ID": "x",
-    "DB_USER": "u",
-    "DB_PASSWORD": "p",
-    "SLACK_WEBHOOK_URL": "x",
-    "SUPERVISOR_DB_ID": "x",
-    "DB_HOST": "localhost",
-    "DB_PORT": "5432",
-    "DB_NAME": "sandy",
-})
+# Variables de entorno necesarias se establecen en la fixture global
 
 # Base de datos en memoria
 import sqlalchemy

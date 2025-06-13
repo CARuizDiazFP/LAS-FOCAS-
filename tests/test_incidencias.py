@@ -11,7 +11,6 @@ from docx import Document
 
 # Preparar rutas para importar el paquete
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 # Stub del módulo telegram requerido por sandybot.utils
 telegram_stub = ModuleType("telegram")
@@ -30,10 +29,6 @@ telegram_stub.Update = Update
 telegram_stub.Message = Message
 sys.modules.setdefault("telegram", telegram_stub)
 
-# Stub de dotenv requerido por config
-dotenv_stub = ModuleType("dotenv")
-dotenv_stub.load_dotenv = lambda *a, **k: None
-sys.modules.setdefault("dotenv", dotenv_stub)
 
 # Stub de openai para evitar llamadas reales
 openai_stub = ModuleType("openai")
@@ -49,19 +44,7 @@ jsonschema_stub.validate = lambda *a, **k: None
 jsonschema_stub.ValidationError = type("ValidationError", (Exception,), {})
 sys.modules.setdefault("jsonschema", jsonschema_stub)
 
-# Variables de entorno mínimas para Config
-import os
-for var in [
-    "TELEGRAM_TOKEN",
-    "OPENAI_API_KEY",
-    "NOTION_TOKEN",
-    "NOTION_DATABASE_ID",
-    "DB_USER",
-    "DB_PASSWORD",
-    "SLACK_WEBHOOK_URL",
-    "SUPERVISOR_DB_ID",
-]:
-    os.environ.setdefault(var, "x")
+# Variables de entorno mínimas para Config definidas en la fixture
 
 # Importar módulos de SandyBot
 config_mod = importlib.import_module("sandybot.config")

@@ -8,7 +8,6 @@ from types import ModuleType, SimpleNamespace
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 # Stub telegram con soporte de mensajes de voz
 telegram_stub = ModuleType("telegram")
@@ -46,17 +45,9 @@ dotenv_stub = ModuleType("dotenv")
 dotenv_stub.load_dotenv = lambda *a, **k: None
 sys.modules.setdefault("dotenv", dotenv_stub)
 
-# Variables de entorno mínimas
+# Variables de entorno adicionales
 import os
 for var in [
-    "TELEGRAM_TOKEN",
-    "OPENAI_API_KEY",
-    "NOTION_TOKEN",
-    "NOTION_DATABASE_ID",
-    "SLACK_WEBHOOK_URL",
-    "SUPERVISOR_DB_ID",
-    "DB_USER",
-    "DB_PASSWORD",
     "SMTP_HOST",
     "SMTP_PORT",
     "SMTP_USER",

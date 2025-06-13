@@ -9,7 +9,6 @@ import asyncio
 
 # Preparar rutas para importar el paquete
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 # Stub de telegram con las clases mínimas utilizadas por el código. De esta
 # forma evitamos la dependencia real de ``python-telegram-bot`` en las pruebas.
@@ -56,21 +55,10 @@ jsonschema_stub.validate = validate
 jsonschema_stub.ValidationError = ValidationError
 sys.modules.setdefault("jsonschema", jsonschema_stub)
 
-# Stub del paquete dotenv requerido por config
-dotenv_stub = ModuleType("dotenv")
-dotenv_stub.load_dotenv = lambda *a, **k: None
-sys.modules.setdefault("dotenv", dotenv_stub)
 
 # Variables de entorno mínimas para instanciar Config
-import os
-os.environ.setdefault("TELEGRAM_TOKEN", "x")
-os.environ.setdefault("OPENAI_API_KEY", "x")
-os.environ.setdefault("NOTION_TOKEN", "x")
-os.environ.setdefault("NOTION_DATABASE_ID", "x")
-os.environ.setdefault("DB_USER", "x")
-os.environ.setdefault("DB_PASSWORD", "x")
-os.environ.setdefault("SLACK_WEBHOOK_URL", "x")
-os.environ.setdefault("SUPERVISOR_DB_ID", "x")
+import os  # Se usa para modificar variables en otras pruebas
+# Las variables mínimas se definen en la fixture global
 
 # Importar módulos de SandyBot
 config_mod = importlib.import_module("sandybot.config")
