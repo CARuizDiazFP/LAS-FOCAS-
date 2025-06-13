@@ -8,26 +8,11 @@ from types import ModuleType
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 # Stub de dotenv necesario para importar config
 dotenv_stub = ModuleType("dotenv")
 dotenv_stub.load_dotenv = lambda *a, **k: None
 sys.modules.setdefault("dotenv", dotenv_stub)
-
-# Variables de entorno minimas
-import os
-for var in [
-    "TELEGRAM_TOKEN",
-    "OPENAI_API_KEY",
-    "NOTION_TOKEN",
-    "NOTION_DATABASE_ID",
-    "DB_USER",
-    "DB_PASSWORD",
-    "SLACK_WEBHOOK_URL",
-    "SUPERVISOR_DB_ID",
-]:
-    os.environ.setdefault(var, "x")
 
 # Importar configuración
 importlib.import_module("sandybot.config")

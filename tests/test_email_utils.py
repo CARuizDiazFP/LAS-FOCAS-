@@ -11,13 +11,7 @@ from datetime import datetime
 
 # Preparar rutas
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 import tests.telegram_stub  # Registra las clases fake de telegram
-
-# Stub de dotenv para Config
-dotenv_stub = types.ModuleType("dotenv")
-dotenv_stub.load_dotenv = lambda *a, **k: None
-sys.modules.setdefault("dotenv", dotenv_stub)
 
 # Stub de smtplib para verificar el envío
 smtp_stub = types.ModuleType("smtplib")
@@ -54,17 +48,9 @@ smtp_stub.SMTP = SMTP
 smtp_stub.SMTP_SSL = SMTP
 sys.modules["smtplib"] = smtp_stub
 
-# Variables de entorno mínimas
+# Variables de entorno adicionales para email_utils
 os.environ.update(
     {
-        "TELEGRAM_TOKEN": "x",
-        "OPENAI_API_KEY": "x",
-        "NOTION_TOKEN": "x",
-        "NOTION_DATABASE_ID": "x",
-        "DB_USER": "u",
-        "DB_PASSWORD": "p",
-        "SLACK_WEBHOOK_URL": "x",
-        "SUPERVISOR_DB_ID": "x",
         "SMTP_HOST": "smtp.example.com",
         "SMTP_PORT": "25",
         "SMTP_USER": "bot@example.com",

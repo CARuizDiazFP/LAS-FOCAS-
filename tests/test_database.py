@@ -1,7 +1,6 @@
 # + Nombre de archivo: test_database.py
 # + Ubicación de archivo: tests/test_database.py
 # User-provided custom instructions
-import os
 import sys
 import importlib
 from pathlib import Path
@@ -15,32 +14,8 @@ from sqlalchemy.orm import sessionmaker
 
 # Agregar ruta del paquete
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 import tests.telegram_stub  # Registra las clases fake de telegram
-
-# Stub de dotenv requerido por config
-dotenv_stub = importlib.util.module_from_spec(
-    importlib.machinery.ModuleSpec("dotenv", None)
-)
-dotenv_stub.load_dotenv = lambda *a, **k: None
-sys.modules.setdefault("dotenv", dotenv_stub)
-
-# Variables de entorno necesarias para Config
-required_vars = {
-    "TELEGRAM_TOKEN": "x",
-    "OPENAI_API_KEY": "x",
-    "NOTION_TOKEN": "x",
-    "NOTION_DATABASE_ID": "x",
-    "DB_USER": "user",
-    "DB_PASSWORD": "pass",
-    "SLACK_WEBHOOK_URL": "x",
-    "SUPERVISOR_DB_ID": "x",
-    "DB_HOST": "localhost",
-    "DB_PORT": "5432",
-    "DB_NAME": "sandy",
-}
-os.environ.update(required_vars)
 
 # Forzar que ``sandybot.database`` utilice SQLite en memoria
 import sqlalchemy

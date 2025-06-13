@@ -2,7 +2,6 @@
 # + Ubicación de archivo: tests/test_userstate.py
 # User-provided custom instructions
 import sys
-import os
 import importlib
 import json
 from datetime import datetime, timedelta
@@ -11,7 +10,6 @@ from types import ModuleType
 
 # Preparar entorno de importacion
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 # Stub del modulo dotenv requerido por config
 dotenv_stub = ModuleType("dotenv")
@@ -116,17 +114,7 @@ registrador_stub.responder_registrando = responder_registrando
 sys.modules.setdefault("sandybot.registrador", registrador_stub)
 
 # Variables requeridas por Config
-for var in [
-    "TELEGRAM_TOKEN",
-    "OPENAI_API_KEY",
-    "NOTION_TOKEN",
-    "NOTION_DATABASE_ID",
-    "DB_USER",
-    "DB_PASSWORD",
-    "SLACK_WEBHOOK_URL",
-    "SUPERVISOR_DB_ID",
-]:
-    os.environ.setdefault(var, "x")
+# Variables definidas en la fixture global
 
 # Importar config despues de establecer las variables
 config_mod = importlib.import_module("sandybot.config")
