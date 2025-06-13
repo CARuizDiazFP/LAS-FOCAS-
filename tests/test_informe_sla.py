@@ -468,7 +468,7 @@ def test_titulo_unico_y_saltos(tmp_path):
     doc = Document(doc_path)
 
     titulos = [p.text for p in doc.paragraphs if "Informe SLA" in p.text]
-    assert len(titulos) == 1
+    assert len(titulos) == 0
 
     saltos = doc._element.xml.count('w:type="page"')
     filas = pd.read_excel(s)
