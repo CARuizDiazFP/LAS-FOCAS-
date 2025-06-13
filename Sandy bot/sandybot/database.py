@@ -509,8 +509,14 @@ def actualizar_tracking(
         session.commit()
 
 
-def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
-    """Devuelve los servicios que contienen la cámara indicada."""
+def buscar_servicios_por_camara(nombre_camara: str, exacto: bool = False) -> list[Servicio]:
+    """Devuelve los servicios que contienen la cámara indicada.
+
+    :param nombre_camara: Texto a buscar en las cámaras registradas.
+    :param exacto: Si es ``True`` solo se consideran coincidencias exactas tras
+        normalizar los nombres. De lo contrario se permite que la cadena
+        buscada sea un fragmento de la cámara o viceversa.
+    """
 
     # Se utiliza un contexto ``with`` para asegurar el cierre de la sesión
     # sin necesidad de manejar excepciones de forma explícita.
@@ -548,7 +554,10 @@ def buscar_servicios_por_camara(nombre_camara: str) -> list[Servicio]:
 
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
-                if fragmento in c_norm or c_norm in fragmento:
+                coincidencia = fragmento == c_norm if exacto else (
+                    fragmento in c_norm or c_norm in fragmento
+                )
+                if coincidencia:
                     resultados.append(servicio)
                     break
         return resultados

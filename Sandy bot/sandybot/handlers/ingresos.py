@@ -62,9 +62,17 @@ async def verificar_camara(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return
 
     nombre_camara = mensaje.text.strip()
+    exacto = False
+    if (
+        (nombre_camara.startswith("'") and nombre_camara.endswith("'"))
+        or (nombre_camara.startswith('"') and nombre_camara.endswith('"'))
+    ):
+        nombre_camara = nombre_camara[1:-1]
+        exacto = True
+
     from ..database import buscar_servicios_por_camara
 
-    servicios = buscar_servicios_por_camara(nombre_camara)
+    servicios = buscar_servicios_por_camara(nombre_camara, exacto=exacto)
 
     if not servicios:
         await responder_registrando(
@@ -354,7 +362,15 @@ async def procesar_ingresos_excel(
 
         lineas = []
         for cam in camaras:
-            servicios = buscar_servicios_por_camara(cam)
+            exacto = False
+            texto = cam
+            if (
+                (texto.startswith("'") and texto.endswith("'"))
+                or (texto.startswith('"') and texto.endswith('"'))
+            ):
+                texto = texto[1:-1]
+                exacto = True
+            servicios = buscar_servicios_por_camara(texto, exacto=exacto)
             if not servicios:
                 lineas.append(f"{cam}: sin coincidencias")
             elif len(servicios) == 1:
