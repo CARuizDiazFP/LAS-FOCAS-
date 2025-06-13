@@ -467,31 +467,48 @@ def _generar_documento_sla(
         elem2 = copy.deepcopy(tabla2_tpl)
         cuerpo.append(elem2)
         t2 = doc.tables[-1]
-        col_dir = _buscar_col(servicios_df, ["Dirección Servicio", "Direccion Servicio", "Domicilio"])
+        col_dir = _buscar_col(
+            servicios_df,
+            ["Dirección Servicio", "Direccion Servicio", "Domicilio"],
+        )
+        sla_val = srv.get("SLA", srv.get("SLA Entregado", ""))
+        try:
+            sla_float = float(str(sla_val).replace(",", "."))
+            sla_text = f"{sla_float * 100:.2f}%"
+        except Exception:
+            sla_text = str(sla_val)
+
         valores = {
             "servicio": f"{srv.get('Tipo Servicio', '')} {srv.get('Número Línea', '')}",
-            "cliente": str(srv.get('Nombre Cliente', "")),
+            "cliente": str(srv.get("Nombre Cliente", "")),
             "ticket": "",
             "domicilio": str(srv.get(col_dir, "")) if col_dir else "",
-            "sla": str(srv.get('SLA', srv.get('SLA Entregado', "")))
+            "sla": sla_text,
         }
         if col_ticket and col_match:
             mask = reclamos_df[col_match] == srv.get(col_match)
             tickets = [str(t) for t in reclamos_df.loc[mask, col_ticket].dropna().unique()]
             valores["ticket"] = ", ".join(tickets)
 
-        for row in t2.rows:
-            titulo = row.cells[0].text.lower()
-            if "servicio" in titulo:
-                row.cells[1].text = valores["servicio"].strip()
-            elif "cliente" in titulo:
-                row.cells[1].text = valores["cliente"]
-            elif "ticket" in titulo or "reclamo" in titulo:
-                row.cells[1].text = valores["ticket"]
-            elif "domicilio" in titulo:
-                row.cells[1].text = valores["domicilio"]
-            elif "sla" in titulo:
-                row.cells[1].text = valores["sla"]
+        def _colocar(etiqueta: str, valor: str) -> None:
+            etiqueta = etiqueta.lower()
+            for fila in t2.rows:
+                for idx, celda in enumerate(fila.cells):
+                    cont = celda.text.lower()
+                    if etiqueta in cont:
+                        if len(fila.cells) > idx + 1 and not fila.cells[idx + 1].text.strip():
+                            fila.cells[idx + 1].text = valor
+                        else:
+                            base = celda.text.split(":")[0].strip(": ")
+                            celda.text = f"{base}: {valor}"
+                        return
+
+        _colocar("servicio", valores["servicio"].strip())
+        _colocar("cliente", valores["cliente"])
+        _colocar("ticket", valores["ticket"])
+        _colocar("reclamo", valores["ticket"])
+        _colocar("domicilio", valores["domicilio"])
+        _colocar("sla", valores["sla"])
 
         # Párrafos informativos replicados desde la plantilla
         idx = cuerpo.index(elem2)

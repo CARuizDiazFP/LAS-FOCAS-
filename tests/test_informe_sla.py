@@ -382,6 +382,34 @@ def test_generar_con_ticket(tmp_path):
     assert tabla3.rows[1].cells[1].text == "1"
 
 
+def test_tabla2_completa(tmp_path):
+    """Verifica que la Tabla 2 se llene con todos los valores."""
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "re.xlsx", tmp_path / "se.xlsx"
+    pd.DataFrame({
+        "Servicio": ["X", "X"],
+        "Número Reclamo": [1, 2],
+        "Número Línea": [10, 10],
+    }).to_excel(r, index=False)
+    pd.DataFrame({
+        "Tipo Servicio": ["X"],
+        "Número Línea": [10],
+        "Nombre Cliente": ["A"],
+        "Dirección Servicio": ["Calle 123"],
+        "Horas Reclamos Todos": [0],
+        "SLA Entregado": [0.5],
+    }).to_excel(s, index=False)
+
+    doc_path = handler._generar_documento_sla(str(r), str(s))
+    t2 = Document(doc_path).tables[1]
+
+    assert t2.rows[0].cells[1].text == "X 10"
+    assert t2.rows[1].cells[1].text == "A"
+    assert t2.rows[2].cells[1].text == "1, 2"
+    assert t2.rows[3].cells[1].text == "Calle 123"
+    assert t2.rows[4].cells[1].text == "50.00%"
+
+
 def test_pdf_no_nameerror(tmp_path):
     """Confirma que exportar a PDF no produce NameError."""
     handler = _importar_handler(tmp_path)
