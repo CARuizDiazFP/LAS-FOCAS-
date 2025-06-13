@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional
 from pathlib import Path
 from telegram import Update, Message
 import re
+from .config import config
 
 logger = logging.getLogger(__name__)
 
@@ -153,3 +154,19 @@ def rellenar_tabla_sla(ruta_docx: str, datos: list[dict]) -> 'Document':
         celdas[4].text = str(fila["SLA Entregado"])
 
     return doc
+
+
+def incrementar_contador(clave: str) -> int:
+    """Obtiene el próximo número diario para ``clave``.
+
+    Se almacena un contador por día en ``config.ARCHIVO_CONTADOR`` y se
+    incrementa al invocar la función.  El valor actualizado se guarda
+    de inmediato y se devuelve el número resultante.
+    """
+    fecha = datetime.now().strftime("%d%m%Y")
+    data = cargar_json(config.ARCHIVO_CONTADOR)
+    key = f"{clave}_{fecha}"
+    numero = data.get(key, 0) + 1
+    data[key] = numero
+    guardar_json(data, config.ARCHIVO_CONTADOR)
+    return numero

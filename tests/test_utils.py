@@ -60,3 +60,13 @@ def test_obtener_mensaje_callback():
     msg = Message("hola")
     update = Update(callback_query=CallbackQuery(message=msg))
     assert utils.obtener_mensaje(update) is msg
+
+
+def test_incrementar_contador(tmp_path):
+    utils.config.ARCHIVO_CONTADOR = tmp_path / "cont.json"
+    n1 = utils.incrementar_contador("t")
+    n2 = utils.incrementar_contador("t")
+    hoy = utils.datetime.now().strftime("%d%m%Y")
+    data = json.load(open(utils.config.ARCHIVO_CONTADOR, "r", encoding="utf-8"))
+    assert n1 == 1 and n2 == 2
+    assert data[f"t_{hoy}"] == 2
