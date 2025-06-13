@@ -314,18 +314,23 @@ def _generar_documento_sla(
     doc = Document(RUTA_PLANTILLA)
     cuerpo = doc._body._element
 
-    # Quitar cualquier título previo para evitar duplicados
-    for p in list(doc.paragraphs):
+    # Reemplazar o insertar el título sin duplicados
+    titulo_encontrado = None
+    for p in doc.paragraphs:
         if "Informe SLA" in p.text:
-            cuerpo.remove(p._p)
+            titulo_encontrado = p
+            break
 
-    # Insertar un único encabezado al inicio del documento
-    try:
-        titulo = doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
-    except KeyError:  # pragma: no cover - compatibilidad con estilos
-        titulo = doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
-    cuerpo.remove(titulo._p)
-    cuerpo.insert(0, titulo._p)
+    nuevo_titulo = f"Informe SLA {mes} {anio}"
+    if titulo_encontrado:
+        titulo_encontrado.text = nuevo_titulo
+    else:
+        try:
+            titulo = doc.add_heading(nuevo_titulo, level=0)
+        except KeyError:  # pragma: no cover - compatibilidad con estilos
+            titulo = doc.add_heading(nuevo_titulo, level=1)
+        cuerpo.remove(titulo._p)
+        cuerpo.insert(0, titulo._p)
 
     # ── Tabla principal (se asume que la plantilla contiene ≥1 tabla) ──
     if not doc.tables:
@@ -338,7 +343,29 @@ def _generar_documento_sla(
         raise ValueError("La plantilla debe incluir tres tablas")
     tabla2_tpl, tabla3_tpl = [copy.deepcopy(t._tbl) for t in tablas_plantilla]
     cuerpo = doc._body._element
-    # Eliminar ejemplos originales
+
+    # Párrafos entre las tablas 2 y 3 para replicar el bloque
+    idx_t2 = cuerpo.index(doc.tables[1]._tbl)
+    idx_t3 = cuerpo.index(doc.tables[2]._tbl)
+    parrafos_tpl = []
+    estilos_tpl = []
+    from docx.text.paragraph import Paragraph
+    for elem in list(cuerpo[idx_t2 + 1: idx_t3]):
+        if elem.tag.endswith("p"):
+            p = Paragraph(elem, doc)
+            parrafos_tpl.append(p.text)
+            estilos_tpl.append(p.style.name if p.style else None)
+        cuerpo.remove(elem)
+
+    if not parrafos_tpl:
+        parrafos_tpl = [
+            "Eventos sucedidos de mayor impacto en SLA:",
+            "Conclusión:",
+            "Propuesta de mejora:",
+        ]
+        estilos_tpl = [None] * len(parrafos_tpl)
+
+    # Eliminar ejemplos originales de tablas
     cuerpo.remove(doc.tables[2]._tbl)
     cuerpo.remove(doc.tables[1]._tbl)
 
@@ -454,14 +481,17 @@ def _generar_documento_sla(
             elif "sla" in titulo:
                 row.cells[1].text = valores["sla"]
 
-        # Párrafos informativos
+        # Párrafos informativos replicados desde la plantilla
         idx = cuerpo.index(elem2)
-        for etq, txt in [
-            ("Eventos sucedidos de mayor impacto en SLA:", eventos),
-            ("Conclusión:", conclusion),
-            ("Propuesta de mejora:", propuesta),
-        ]:
-            p = doc.add_paragraph(f"{etq} {txt}")
+        for base, estilo in zip(parrafos_tpl, estilos_tpl):
+            texto = base
+            if "Eventos" in base:
+                texto = f"Eventos sucedidos de mayor impacto en SLA: {eventos}".strip()
+            elif "Conclusión" in base:
+                texto = f"Conclusión: {conclusion}".strip()
+            elif "Propuesta" in base:
+                texto = f"Propuesta de mejora: {propuesta}".strip()
+            p = doc.add_paragraph(texto, style=estilo)
             cuerpo.remove(p._p)
             cuerpo.insert(idx + 1, p._p)
             idx += 1
@@ -470,6 +500,7 @@ def _generar_documento_sla(
         elem3 = copy.deepcopy(tabla3_tpl)
         cuerpo.insert(idx + 1, elem3)
         t3 = doc.tables[-1]
+        t3.style = "Table Grid"
         while len(t3.rows) > 1:
             t3._tbl.remove(t3.rows[1]._tr)
         if col_match:
