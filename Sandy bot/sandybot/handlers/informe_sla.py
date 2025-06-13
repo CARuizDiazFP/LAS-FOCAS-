@@ -314,12 +314,14 @@ def _generar_documento_sla(
     doc = Document(RUTA_PLANTILLA)
     cuerpo = doc._body._element
 
+
     # El título en la plantilla está en un cuadro de texto.
     # Si hubiera algún párrafo con ese mismo contenido se elimina
     # para evitar duplicados como "1. Informe SLA ...".
     for p in list(doc.paragraphs):
         if "Informe SLA" in p.text:
             cuerpo.remove(p._p)
+
 
     # ── Tabla principal (se asume que la plantilla contiene ≥1 tabla) ──
     if not doc.tables:
