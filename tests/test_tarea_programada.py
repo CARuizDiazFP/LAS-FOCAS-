@@ -8,12 +8,10 @@ from types import ModuleType, SimpleNamespace
 from pathlib import Path
 from datetime import datetime
 from sqlalchemy.orm import sessionmaker
-import os
 import tempfile
 
 # Preparar ruta del paquete
 ROOT_DIR = Path(__file__).resolve().parents[1]
-sys.path.append(str(ROOT_DIR / "Sandy bot"))
 
 from tests.telegram_stub import Message, Update  # Registra las clases fake de telegram
 
@@ -54,23 +52,7 @@ sys.modules.setdefault("sandybot.registrador", registrador_stub)
 dotenv_stub = ModuleType("dotenv")
 dotenv_stub.load_dotenv = lambda *a, **k: None
 sys.modules.setdefault("dotenv", dotenv_stub)
-
-# Variables de entorno necesarias
-os.environ.update(
-    {
-        "TELEGRAM_TOKEN": "x",
-        "OPENAI_API_KEY": "x",
-        "NOTION_TOKEN": "x",
-        "NOTION_DATABASE_ID": "x",
-        "DB_USER": "u",
-        "DB_PASSWORD": "p",
-        "SLACK_WEBHOOK_URL": "x",
-        "SUPERVISOR_DB_ID": "x",
-        "DB_HOST": "localhost",
-        "DB_PORT": "5432",
-        "DB_NAME": "sandy",
-    }
-)
+# Variables mínimas definidas en la fixture
 
 # Base de datos en memoria
 import sqlalchemy
