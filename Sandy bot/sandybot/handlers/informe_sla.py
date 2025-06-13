@@ -314,12 +314,9 @@ def _generar_documento_sla(
     doc = Document(RUTA_PLANTILLA)
     cuerpo = doc._body._element
 
-    # Reemplazar o insertar el título sin duplicados
-    titulo_encontrado = None
-    for p in doc.paragraphs:
-        if "Informe SLA" in p.text:
-            titulo_encontrado = p
-            break
+for p in list(doc.paragraphs):
+    if "Informe SLA" in p.text:
+        p.clear()
 
     nuevo_titulo = f"Informe SLA {mes} {anio}"
     if titulo_encontrado:
@@ -331,6 +328,7 @@ def _generar_documento_sla(
             titulo = doc.add_heading(nuevo_titulo, level=1)
         cuerpo.remove(titulo._p)
         cuerpo.insert(0, titulo._p)
+
 
     # ── Tabla principal (se asume que la plantilla contiene ≥1 tabla) ──
     if not doc.tables:
