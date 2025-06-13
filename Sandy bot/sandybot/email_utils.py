@@ -43,13 +43,23 @@ logger = logging.getLogger(__name__)
 
 
 def _limpiar_correo(texto: str) -> str:
-    """Elimina firmas y bloques innecesarios del texto del correo."""
+    """Elimina firmas y bloques innecesarios del texto del correo.
+
+    Se detiene cuando encuentra frases típicas de aviso legal o
+    confidencialidad, por ejemplo «confidentiality notice» o
+    «este correo es privado».
+    """
     lineas: list[str] = []
     for linea in texto.splitlines():
         l = linea.strip()
         if not l:
             continue
-        if re.search(r"disclaimer|confidencial|aviso legal", l, re.I):
+        if re.search(
+            r"disclaimer|confidencial|aviso legal|confidentiality notice|"
+            r"correo(?:\s+electronico)?\s*(?:es\s+)?privado",
+            l,
+            re.I,
+        ):
             break
         lineas.append(l)
     return "\n".join(lineas)
