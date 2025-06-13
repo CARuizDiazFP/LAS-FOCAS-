@@ -36,6 +36,7 @@ from .database import (
 from .utils import (
     cargar_json,
     guardar_json,
+    incrementar_contador,
 )
 
 logger = logging.getLogger(__name__)
@@ -213,27 +214,16 @@ def enviar_excel_por_correo(
         return False
 
 
-def _incrementar_contador(clave: str) -> int:
-    """Obtiene el próximo número diario para ``clave``."""
-    fecha = datetime.now().strftime("%d%m%Y")
-    data = cargar_json(config.ARCHIVO_CONTADOR)
-    key = f"{clave}_{fecha}"
-    numero = data.get(key, 0) + 1
-    data[key] = numero
-    guardar_json(data, config.ARCHIVO_CONTADOR)
-    return numero
-
-
 def generar_nombre_camaras(id_servicio: int) -> str:
     """Genera el nombre base para un Excel de cámaras."""
-    nro = _incrementar_contador("camaras")
+    nro = incrementar_contador("camaras")
     fecha = datetime.now().strftime("%d%m%Y")
     return f"Camaras_{id_servicio}_{fecha}_{nro:02d}"
 
 
 def generar_nombre_tracking(id_servicio: int) -> str:
     """Genera el nombre base para un archivo de tracking."""
-    nro = _incrementar_contador("tracking")
+    nro = incrementar_contador("tracking")
     fecha = datetime.now().strftime("%d%m%Y")
     return f"Tracking_{id_servicio}_{fecha}_{nro:02d}"
 

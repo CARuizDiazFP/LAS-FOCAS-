@@ -30,7 +30,12 @@ except Exception:  # pragma: no cover
     pythoncom = None
 
 from sandybot.config import config
-from ..utils import obtener_mensaje, cargar_json, guardar_json
+from ..utils import (
+    obtener_mensaje,
+    cargar_json,
+    guardar_json,
+    incrementar_contador,
+)
 from .estado import UserState
 from ..registrador import responder_registrando, registrar_conversacion
 from .. import database as bd
@@ -40,20 +45,9 @@ RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
 logger = logging.getLogger(__name__)
 
 # ────────────────────── GENERACIÓN DE NOMBRES ───────────────────────
-def _incrementar_contador(clave: str) -> int:
-    """Devuelve el próximo número diario para ``clave``."""
-    fecha = datetime.now().strftime("%d%m%Y")
-    data = cargar_json(config.ARCHIVO_CONTADOR)
-    key = f"{clave}_{fecha}"
-    numero = data.get(key, 0) + 1
-    data[key] = numero
-    guardar_json(data, config.ARCHIVO_CONTADOR)
-    return numero
-
-
 def _nombre_base_sla() -> str:
     """Genera el nombre base del informe de SLA."""
-    nro = _incrementar_contador("sla")
+    nro = incrementar_contador("sla")
     fecha = datetime.now().strftime("%d%m%Y")
     return f"InformeSLA_{fecha}_{nro:02d}"
 
