@@ -43,13 +43,23 @@ logger = logging.getLogger(__name__)
 
 
 def _limpiar_correo(texto: str) -> str:
-    """Elimina firmas y bloques innecesarios del texto del correo."""
+    """Elimina firmas y bloques innecesarios del texto del correo.
+
+    Se detiene cuando encuentra frases típicas de aviso legal o
+    confidencialidad, por ejemplo «confidentiality notice» o
+    «este correo es privado».
+    """
     lineas: list[str] = []
     for linea in texto.splitlines():
         l = linea.strip()
         if not l:
             continue
-        if re.search(r"disclaimer|confidencial|aviso legal", l, re.I):
+        if re.search(
+            r"disclaimer|confidencial|aviso legal|confidentiality notice|"
+            r"correo(?:\s+electronico)?\s*(?:es\s+)?privado",
+            l,
+            re.I,
+        ):
             break
         lineas.append(l)
     return "\n".join(lineas)
@@ -427,12 +437,18 @@ async def procesar_correo_a_tarea(
         if not datos:
             raise ValueError("JSON inválido")
         if os.getenv("SANDY_ENV") == "dev":
-            print(f"GPT JSON: {datos}")
+            logger.debug("GPT JSON: %s", datos)
     except Exception as exc:  # pragma: no cover - fallo externo
         raise ValueError("No se pudo extraer la tarea del correo") from exc
 
     def _parse_fecha(valor: str) -> datetime:
-        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        formatos = (
+            "%Y-%m-%d %H:%M",
+            "%Y-%m-%d %H:%M:%S",
+            "%d/%m/%Y %H:%M",
+            "%d/%m/%Y %H:%M:%S",
+        )
+        for fmt in formatos:
             try:
                 return datetime.strptime(valor.replace("T", " "), fmt)
             except ValueError:

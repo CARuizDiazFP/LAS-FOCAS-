@@ -12,6 +12,7 @@ import asyncio
 import logging
 import pytest
 
+
 # Preparar rutas
 ROOT_DIR = Path(__file__).resolve().parents[1]
 import tests.telegram_stub  # Registra las clases fake de telegram
@@ -142,6 +143,29 @@ def test_enviar_tracking_reciente_por_correo(tmp_path):
     ok = email_utils.enviar_tracking_reciente_por_correo("d@x.com", 7)
     assert ok is True
     assert reg["sent"] is True
+
+
+def test_procesar_correo_fecha_dia_mes(tmp_path):
+    """La tarea se registra con fechas en formato dia/mes/año."""
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "02/01/2024 08:00", "fin": "02/01/2024 10:00",'
+                ' "tipo": "Mant", "afectacion": null, "descripcion": null, "ids": []}'
+            )
+
+        async def procesar_json_response(self, resp, esquema):
+            import json
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
+    tarea, _, ruta, _ = asyncio.run(
+        email_utils.procesar_correo_a_tarea("texto", "Cli")
+    )
+    assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)
+    assert tarea.fecha_fin == datetime(2024, 1, 2, 10)
+    assert ruta.exists()
 
 
 def test_enviar_correo_a_cliente(monkeypatch):
