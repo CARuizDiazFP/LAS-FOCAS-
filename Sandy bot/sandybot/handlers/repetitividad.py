@@ -241,6 +241,11 @@ def generar_informe_y_modificar(ruta_excel):
     lineas_a_conservar = lineas_con_multiples_reclamos[lineas_con_multiples_reclamos >= 2].index
     casos_filtrados = casos_limpio[casos_limpio['Número Línea'].isin(lineas_a_conservar)]
 
+    if not os.path.exists(RUTA_PLANTILLA):
+        raise ValueError(
+            f"⚠️ No se encontró la plantilla en {RUTA_PLANTILLA}. \
+Configurá la variable PLANTILLA_PATH."
+        )
     doc = Document(RUTA_PLANTILLA)
 
     for numero_linea, grupo in casos_filtrados.groupby('Número Línea'):
