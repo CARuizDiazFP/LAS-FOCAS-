@@ -42,6 +42,19 @@ from .utils import (
 logger = logging.getLogger(__name__)
 
 
+def _limpiar_correo(texto: str) -> str:
+    """Elimina firmas y bloques innecesarios del texto del correo."""
+    lineas: list[str] = []
+    for linea in texto.splitlines():
+        l = linea.strip()
+        if not l:
+            continue
+        if re.search(r"disclaimer|confidencial|aviso legal", l, re.I):
+            break
+        lineas.append(l)
+    return "\n".join(lineas)
+
+
 def cargar_destinatarios(cliente_id: int, carrier: str | None = None) -> list[str]:
     """Obtiene la lista de correos para el cliente indicado."""
 
@@ -372,18 +385,27 @@ async def procesar_correo_a_tarea(
     texto: str, cliente_nombre: str, carrier_nombre: str | None = None
 ) -> tuple[TareaProgramada, Cliente, Path, str]:
 
-    """Analiza ``texto`` con GPT y registra la tarea programada.
+    """Analiza el correo y registra la tarea programada."""
 
-    Devuelve la tarea creada, el cliente asociado, la ruta al archivo generado
-    y el cuerpo del aviso resultante.
-    """
+    texto_limpio = _limpiar_correo(texto)
 
+    ejemplo = (
+        "Ejemplo correo:\n"
+        "Inicio: 02/01/2024 08:00\n"
+        "Fin: 02/01/2024 10:00\n"
+        "Trabajo: Actualización de equipos\n"
+        "Servicios: 76208, 78333\n"
+        "\nRespuesta esperada:\n"
+        '{"inicio": "2024-01-02 08:00", "fin": "2024-01-02 10:00", '
+        '"tipo": "Actualización de equipos", "afectacion": null, '
+        '"descripcion": null, "ids": ["76208", "78333"]}'
+    )
 
     prompt = (
-        "Extraé del siguiente correo los datos de la ventana de mantenimiento y "
-        "devolvé solo un JSON con las claves 'inicio', 'fin', 'tipo', "
-        "'afectacion' e 'ids' (lista de servicios).\n\n"
-        f"Correo:\n{texto}"
+        "Sos un analista que extrae datos de mantenimientos programados. "
+        "Devolvé únicamente un JSON con las claves inicio, fin, tipo, "
+        "afectacion, descripcion e ids (lista de servicios).\n\n"
+        f"{ejemplo}\n\nCorreo:\n{texto_limpio}"
     )
 
     esquema = {
@@ -393,7 +415,8 @@ async def procesar_correo_a_tarea(
             "fin": {"type": "string"},
             "tipo": {"type": "string"},
             "afectacion": {"type": "string"},
-            "ids": {"type": "array", "items": {"type": "integer"}},
+            "descripcion": {"type": "string"},
+            "ids": {"type": "array", "items": {"type": "string"}},
         },
         "required": ["inicio", "fin", "tipo", "ids"],
     }
@@ -403,18 +426,31 @@ async def procesar_correo_a_tarea(
         datos = await gpt.procesar_json_response(respuesta, esquema)
         if not datos:
             raise ValueError("JSON inválido")
+        if os.getenv("SANDY_ENV") == "dev":
+            print(f"GPT JSON: {datos}")
     except Exception as exc:  # pragma: no cover - fallo externo
         raise ValueError("No se pudo extraer la tarea del correo") from exc
 
+    def _parse_fecha(valor: str) -> datetime:
+        for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+            try:
+                return datetime.strptime(valor.replace("T", " "), fmt)
+            except ValueError:
+                continue
+        return datetime.fromisoformat(valor.replace("T", " "))
+
     try:
-        inicio = datetime.fromisoformat(str(datos["inicio"]))
-        fin = datetime.fromisoformat(str(datos["fin"]))
+        inicio = _parse_fecha(str(datos["inicio"]))
+        fin = _parse_fecha(str(datos["fin"]))
     except Exception as exc:
         raise ValueError("Fechas con formato inválido") from exc
+    if inicio >= fin:
+        raise ValueError("La fecha de inicio debe ser anterior al fin")
 
     tipo = datos["tipo"]
-    ids = [int(i) for i in datos.get("ids", [])]
+    ids_brutos = [str(i) for i in datos.get("ids", [])]
     afectacion = datos.get("afectacion")
+    descripcion = datos.get("descripcion")
 
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
@@ -437,15 +473,31 @@ async def procesar_correo_a_tarea(
                 session.commit()
                 session.refresh(carrier)
 
+        servicios: list[Servicio] = []
+        for ident in ids_brutos:
+            srv = None
+            if ident.isdigit():
+                srv = session.get(Servicio, int(ident))
+            if not srv:
+                srv = (
+                    session.query(Servicio)
+                    .filter(Servicio.id_carrier == ident)
+                    .first()
+                )
+            if srv:
+                servicios.append(srv)
+            else:
+                logger.warning("Servicio %s no encontrado", ident)
+
         tarea = crear_tarea_programada(
             inicio,
             fin,
             tipo,
-            ids,
+            [s.id for s in servicios],
             carrier_id=carrier.id if carrier else None,
             tiempo_afectacion=afectacion,
+            descripcion=descripcion,
         )
-        servicios = [session.get(Servicio, i) for i in ids]
         if carrier:
             for srv in servicios:
                 if srv:
