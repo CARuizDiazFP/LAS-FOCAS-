@@ -376,6 +376,34 @@ def _generar_documento_sla(
         h, m, s = total // 3600, (total % 3600) // 60, total % 60
         return f"{h:03d}:{m:02d}:{s:02d}"
 
+    def _horas_decimal(val) -> str:
+        """Convierte valores de horas a un número entero de horas."""
+        if pd.isna(val) or val == "":
+            return ""
+        s = str(val).lower().replace(",", ".")
+        s = s.replace("d\u00eda", "day").replace("d\u00edas", "day").replace("dias", "day")
+        s = s.replace("horas", "hours").replace("hora", "hours")
+        try:
+            td = pd.to_timedelta(s)
+            return str(int(td.total_seconds() // 3600))
+        except Exception:
+            try:
+                return str(int(float(s)))
+            except Exception:
+                return s
+
+    meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+
+    def _formatear_fecha(val) -> str:
+        """Devuelve la fecha en formato DD-mes-YY en castellano."""
+        try:
+            fecha_v = pd.to_datetime(val)
+        except Exception:
+            return str(val)
+        if pd.isna(fecha_v):
+            return ""
+        return f"{fecha_v.day:02d}-{meses[fecha_v.month - 1]}-{str(fecha_v.year)[2:]}"
+
     if "Horas Reclamos Todos" in servicios_df.columns:
         servicios_df["Horas Reclamos Todos"] = servicios_df["Horas Reclamos Todos"].apply(_to_timedelta).apply(_fmt_td)
 
@@ -448,13 +476,24 @@ def _generar_documento_sla(
             recls = reclamos_df[reclamos_df[col_match] == srv.get(col_match)]
         else:
             recls = reclamos_df
+        total_h = 0.0
         for _, rec in recls.iterrows():
             cells = t3.add_row().cells
             cells[0].text = str(rec.get("Número Línea", ""))
             cells[1].text = str(rec.get(col_ticket, ""))
-            cells[2].text = str(rec.get("Horas Netas Reclamo", ""))
+            horas = _horas_decimal(rec.get("Horas Netas Reclamo", ""))
+            cells[2].text = horas
+            try:
+                total_h += float(horas)
+            except Exception:
+                pass
             cells[3].text = str(rec.get("Tipo Solución Reclamo", ""))
-            cells[4].text = str(rec.get("Fecha Inicio Reclamo", ""))
+            cells[4].text = _formatear_fecha(rec.get("Fecha Inicio Reclamo", ""))
+
+        fila_tot = t3.add_row().cells
+        fila_tot[0].text = "Total"
+        if total_h:
+            fila_tot[2].text = str(int(total_h))
 
         # Salto de página entre servicios
         if idx_srv < total_servicios - 1:
