@@ -182,7 +182,12 @@ async def procesar_repetitividad(update: Update, context: ContextTypes.DEFAULT_T
 
 
 def generar_informe_y_modificar(ruta_excel):
-    locale.setlocale(locale.LC_TIME, 'es_ES.UTF-8')
+    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            break
+        except locale.Error:
+            continue
 
     try:
         casos_df = pd.read_excel(ruta_excel)
@@ -212,9 +217,11 @@ def generar_informe_y_modificar(ruta_excel):
             "⚠️ El Excel no tiene todas las columnas necesarias. Revisá el formato."
         )
 
-    casos_limpio = casos_df[columnas_a_conservar_casos]
-    if cierre_col != 'Fecha Cierre Reclamo':
-        casos_limpio.rename(columns={cierre_col: 'Fecha Cierre Reclamo'}, inplace=True)
+    casos_limpio = casos_df[columnas_a_conservar_casos].copy()
+    if cierre_col != "Fecha Cierre Reclamo":
+        casos_limpio = casos_limpio.rename(
+            columns={cierre_col: "Fecha Cierre Reclamo"}
+        )
     try:
         valor_fecha = casos_limpio['Fecha Cierre Reclamo'].dropna().iloc[0]
         fecha_cierre = pd.to_datetime(valor_fecha)
@@ -228,13 +235,17 @@ def generar_informe_y_modificar(ruta_excel):
     mes_actual = fecha_cierre.strftime("%B")
     año_actual = fecha_cierre.strftime("%Y")
 
-    casos_limpio = casos_limpio.copy()
     casos_limpio['Número Línea'] = casos_limpio['Número Línea'].astype(str).str.replace('.0', '', regex=False)
     casos_limpio = casos_limpio.sort_values(by='Número Línea')
     lineas_con_multiples_reclamos = casos_limpio['Número Línea'].value_counts()
     lineas_a_conservar = lineas_con_multiples_reclamos[lineas_con_multiples_reclamos >= 2].index
     casos_filtrados = casos_limpio[casos_limpio['Número Línea'].isin(lineas_a_conservar)]
 
+    if not os.path.exists(RUTA_PLANTILLA):
+        raise ValueError(
+            f"⚠️ No se encontró la plantilla en {RUTA_PLANTILLA}. \
+Configurá la variable PLANTILLA_PATH."
+        )
     doc = Document(RUTA_PLANTILLA)
 
     for numero_linea, grupo in casos_filtrados.groupby('Número Línea'):
