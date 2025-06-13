@@ -8,6 +8,9 @@ import importlib
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
+import asyncio
+import logging
+import pytest
 
 # Preparar rutas
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -273,3 +276,24 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     assert ruta.exists()
     assert "Telco2" in texto
     assert not Path(str(ruta) + ".txt").exists()
+
+
+def test_procesar_correo_sin_servicios(monkeypatch, caplog):
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Mant", "afectacion": null, "descripcion": null, '
+                '"ids": ["99999"]}'
+            )
+
+        async def procesar_json_response(self, resp, schema):
+            import json
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
+
+    with caplog.at_level(logging.WARNING):
+        with pytest.raises(ValueError):
+            asyncio.run(email_utils.procesar_correo_a_tarea("correo", "Cli"))
+        assert "No se localizaron servicios" in caplog.text
