@@ -1,4 +1,7 @@
 #!/usr/bin/env bash
+# Nombre de archivo: setup_env.sh
+# Ubicación de archivo: setup_env.sh
+# User-provided custom instructions
 set -e
 
 # Directorio para la cache de pip
@@ -20,7 +23,6 @@ fi
 # Actualizar pip e instalar dependencias
 pip install --upgrade pip
 pip install --cache-dir "$PIP_CACHE_DIR" -r "Sandy bot/requirements.txt"
-pip install docx2pdf
 
-# Herramientas de pruebas
-pip install pytest pytest-cov
+# Paquetes de desarrollo y pruebas
+pip install --cache-dir "$PIP_CACHE_DIR" -r requirements-dev.txt
