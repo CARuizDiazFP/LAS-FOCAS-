@@ -752,3 +752,28 @@ def obtener_tareas_servicio(servicio_id: int) -> list[TareaProgramada]:
             .filter(TareaServicio.servicio_id == servicio_id)
             .all()
         )
+
+
+def obtener_servicios(desc: bool = True) -> list[Servicio]:
+    """Devuelve los servicios ordenados por fecha de creación."""
+    with SessionLocal() as session:
+        query = session.query(Servicio)
+        criterio = Servicio.fecha_creacion if not desc else Servicio.fecha_creacion.desc()
+        query = query.order_by(criterio)
+        return query.all()
+
+
+def obtener_reclamos(desc: bool = True) -> list[Reclamo]:
+    """Devuelve los reclamos ordenados por ID."""
+    with SessionLocal() as session:
+        query = session.query(Reclamo)
+        query = query.order_by(Reclamo.id.desc() if desc else Reclamo.id)
+        return query.all()
+
+
+def obtener_camaras(desc: bool = True) -> list[Camara]:
+    """Lista las cámaras registradas ordenadas por ID."""
+    with SessionLocal() as session:
+        query = session.query(Camara)
+        query = query.order_by(Camara.id.desc() if desc else Camara.id)
+        return query.all()

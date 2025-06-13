@@ -52,12 +52,17 @@ class InlineKeyboardMarkup:
     def __init__(self, *a, **k):
         pass
 
+class ReplyKeyboardMarkup:
+    def __init__(self, *a, **k):
+        self.keyboard = a[0] if a else []
+
 telegram_mod = ModuleType("telegram")
 telegram_mod.Update = Update
 telegram_mod.Message = Message
 telegram_mod.CallbackQuery = CallbackQuery
 telegram_mod.InlineKeyboardButton = InlineKeyboardButton
 telegram_mod.InlineKeyboardMarkup = InlineKeyboardMarkup
+telegram_mod.ReplyKeyboardMarkup = ReplyKeyboardMarkup
 telegram_mod.Document = Document
 sys.modules.setdefault("telegram", telegram_mod)
 
