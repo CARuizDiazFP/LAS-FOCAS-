@@ -314,22 +314,9 @@ def _generar_documento_sla(
     doc = Document(RUTA_PLANTILLA)
     cuerpo = doc._body._element
 
-for p in list(doc.paragraphs):
-    if "Informe SLA" in p.text:
-        p.clear()
-
-    nuevo_titulo = f"Informe SLA {mes} {anio}"
-    if titulo_encontrado:
-        titulo_encontrado.text = nuevo_titulo
-    else:
-        try:
-            titulo = doc.add_heading(nuevo_titulo, level=0)
-        except KeyError:  # pragma: no cover - compatibilidad con estilos
-            titulo = doc.add_heading(nuevo_titulo, level=1)
-        cuerpo.remove(titulo._p)
-        cuerpo.insert(0, titulo._p)
-
-
+    for p in list(doc.paragraphs):
+        if "Informe SLA" in p.text:
+            cuerpo.remove(p._p)
     # ── Tabla principal (se asume que la plantilla contiene ≥1 tabla) ──
     if not doc.tables:
         raise ValueError("La plantilla debe incluir una tabla para el SLA")
