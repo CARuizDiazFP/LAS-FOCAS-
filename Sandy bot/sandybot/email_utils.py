@@ -239,14 +239,14 @@ def enviar_excel_por_correo(
 
 def generar_nombre_camaras(id_servicio: int) -> str:
     """Genera el nombre base para un Excel de cámaras."""
-    nro = incrementar_contador("camaras")
+    nro = incrementar_contador("camaras", config.ARCHIVO_CONTADOR)
     fecha = datetime.now().strftime("%d%m%Y")
     return f"Camaras_{id_servicio}_{fecha}_{nro:02d}"
 
 
 def generar_nombre_tracking(id_servicio: int) -> str:
     """Genera el nombre base para un archivo de tracking."""
-    nro = incrementar_contador("tracking")
+    nro = incrementar_contador("tracking", config.ARCHIVO_CONTADOR)
     fecha = datetime.now().strftime("%d%m%Y")
     return f"Tracking_{id_servicio}_{fecha}_{nro:02d}"
 
@@ -505,7 +505,7 @@ async def procesar_correo_a_tarea(
             else:
                 logger.warning("Servicio %s no encontrado", ident)
 
-        if not servicios:
+        if ids_brutos and not servicios:
             logger.warning("No se localizaron servicios en el correo")
             raise ValueError("No se encontraron servicios")
 

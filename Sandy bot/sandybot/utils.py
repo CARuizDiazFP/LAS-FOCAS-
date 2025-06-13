@@ -156,17 +156,17 @@ def rellenar_tabla_sla(ruta_docx: str, datos: list[dict]) -> 'Document':
     return doc
 
 
-def incrementar_contador(clave: str) -> int:
+def incrementar_contador(clave: str, ruta: Path | None = None) -> int:
     """Obtiene el próximo número diario para ``clave``.
 
-    Se almacena un contador por día en ``config.ARCHIVO_CONTADOR`` y se
-    incrementa al invocar la función.  El valor actualizado se guarda
-    de inmediato y se devuelve el número resultante.
+    Se almacena un contador por día en ``ruta`` o en ``config.ARCHIVO_CONTADOR``
+    si no se especifica. Incrementa el valor y lo devuelve.
     """
     fecha = datetime.now().strftime("%d%m%Y")
-    data = cargar_json(config.ARCHIVO_CONTADOR)
+    destino = ruta or config.ARCHIVO_CONTADOR
+    data = cargar_json(destino)
     key = f"{clave}_{fecha}"
     numero = data.get(key, 0) + 1
     data[key] = numero
-    guardar_json(data, config.ARCHIVO_CONTADOR)
+    guardar_json(data, destino)
     return numero

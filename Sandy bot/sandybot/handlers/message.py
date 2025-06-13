@@ -59,7 +59,7 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         flujo_pendiente = context.user_data.get("confirmar_flujo")
         if flujo_pendiente:
             resp = normalizar_texto(mensaje_usuario)
-            if resp in ("si", "sí", "s", "ok", "dale"):
+            if resp in ("si", "sí", "s", "ok", "dale", "yes"):
                 context.user_data.pop("confirmar_flujo", None)
                 await responder_registrando(
                     update.message,
@@ -81,12 +81,25 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     "sandy",
                 )
             else:
+                keyboard = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "Sí", callback_data="confirmar_flujo_si"
+                            ),
+                            InlineKeyboardButton(
+                                "No", callback_data="confirmar_flujo_no"
+                            ),
+                        ]
+                    ]
+                )
                 await responder_registrando(
                     update.message,
                     user_id,
                     mensaje_usuario,
                     "Decí 'sí' o 'no' para confirmar.",
                     "sandy",
+                    reply_markup=keyboard,
                 )
             return
 
@@ -166,12 +179,25 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     return
             if accion:
                 context.user_data["confirmar_flujo"] = accion
+                keyboard = InlineKeyboardMarkup(
+                    [
+                        [
+                            InlineKeyboardButton(
+                                "Sí", callback_data="confirmar_flujo_si"
+                            ),
+                            InlineKeyboardButton(
+                                "No", callback_data="confirmar_flujo_no"
+                            ),
+                        ]
+                    ]
+                )
                 await responder_registrando(
                     update.message,
                     user_id,
                     mensaje_usuario,
                     f"¿Deseás iniciar { _nombre_flujo(accion) }? (sí/no)",
                     "sandy",
+                    reply_markup=keyboard,
                 )
                 return
 
