@@ -427,7 +427,7 @@ async def procesar_correo_a_tarea(
         if not datos:
             raise ValueError("JSON inválido")
         if os.getenv("SANDY_ENV") == "dev":
-            print(f"GPT JSON: {datos}")
+            logger.debug("GPT JSON: %s", datos)
     except Exception as exc:  # pragma: no cover - fallo externo
         raise ValueError("No se pudo extraer la tarea del correo") from exc
 
