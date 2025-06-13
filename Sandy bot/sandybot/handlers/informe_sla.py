@@ -11,6 +11,7 @@ import locale
 import os
 import shutil
 import tempfile
+from datetime import datetime
 from pathlib import Path
 from types import SimpleNamespace
 from typing import Optional, Sequence
@@ -29,7 +30,7 @@ except Exception:  # pragma: no cover
     pythoncom = None
 
 from sandybot.config import config
-from ..utils import obtener_mensaje
+from ..utils import obtener_mensaje, cargar_json, guardar_json
 from .estado import UserState
 from ..registrador import responder_registrando, registrar_conversacion
 from .. import database as bd
@@ -37,6 +38,24 @@ from .. import database as bd
 # Plantilla
 RUTA_PLANTILLA = config.SLA_PLANTILLA_PATH
 logger = logging.getLogger(__name__)
+
+# ────────────────────── GENERACIÓN DE NOMBRES ───────────────────────
+def _incrementar_contador(clave: str) -> int:
+    """Devuelve el próximo número diario para ``clave``."""
+    fecha = datetime.now().strftime("%d%m%Y")
+    data = cargar_json(config.ARCHIVO_CONTADOR)
+    key = f"{clave}_{fecha}"
+    numero = data.get(key, 0) + 1
+    data[key] = numero
+    guardar_json(data, config.ARCHIVO_CONTADOR)
+    return numero
+
+
+def _nombre_base_sla() -> str:
+    """Genera el nombre base del informe de SLA."""
+    nro = _incrementar_contador("sla")
+    fecha = datetime.now().strftime("%d%m%Y")
+    return f"InformeSLA_{fecha}_{nro:02d}"
 
 # ─────────────────────────────── UTILIDADES ────────────────────────────────
 def _guardar_reclamos(df: pd.DataFrame) -> None:
@@ -561,9 +580,9 @@ def _generar_documento_sla(
             cuerpo.remove(salto._p)
             cuerpo.insert(cuerpo.index(elem3) + 1, salto._p)
 
-    # ── Guardar DOCX temporal ───────────────────────────────────────
-    fd, ruta_docx = tempfile.mkstemp(suffix=".docx")
-    os.close(fd)
+    # ── Guardar DOCX con nombre determinístico ──────────────────────
+    nombre_base = _nombre_base_sla()
+    ruta_docx = os.path.join(tempfile.gettempdir(), nombre_base + ".docx")
     doc.save(ruta_docx)
 
     # ── Modificación COM opcional (Windows) ─────────────────────────
