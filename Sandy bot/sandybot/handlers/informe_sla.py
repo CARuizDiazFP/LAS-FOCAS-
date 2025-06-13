@@ -323,6 +323,16 @@ def _generar_documento_sla(
         raise ValueError("La plantilla debe incluir una tabla para el SLA")
     tabla_principal = doc.tables[0]
 
+    # Copias de las tablas 2 y 3 para replicarlas por servicio
+    tablas_plantilla = doc.tables[1:3]
+    if len(tablas_plantilla) < 2:
+        raise ValueError("La plantilla debe incluir tres tablas")
+    tabla2_tpl, tabla3_tpl = [copy.deepcopy(t._tbl) for t in tablas_plantilla]
+    cuerpo = doc._body._element
+    # Eliminar ejemplos originales
+    cuerpo.remove(doc.tables[2]._tbl)
+    cuerpo.remove(doc.tables[1]._tbl)
+
     # Borrar filas de ejemplo excepto encabezado
     while len(tabla_principal.rows) > 1:
         tabla_principal._tbl.remove(tabla_principal.rows[1]._tr)
@@ -361,7 +371,8 @@ def _generar_documento_sla(
         servicios_df["Horas Reclamos Todos"] = servicios_df["Horas Reclamos Todos"].apply(_to_timedelta).apply(_fmt_td)
 
     # Ordenar por SLA descendente y completar tabla principal
-    for _, fila in servicios_df[columnas_sla].sort_values("SLA", ascending=False).iterrows():
+    servicios_ordenados = servicios_df.sort_values("SLA", ascending=False)
+    for _, fila in servicios_ordenados[columnas_sla].iterrows():
         nueva = copy.deepcopy(tabla_principal.rows[0]._tr)
         tabla_principal._tbl.append(nueva)
         c = tabla_principal.rows[-1].cells
@@ -371,22 +382,69 @@ def _generar_documento_sla(
         c[3].text = str(fila["Horas Reclamos Todos"])
         c[4].text = f"{float(fila['SLA']) * 100:.2f}%"
 
-    # ── Inserción de textos libres (eventos, conclusión, propuesta) ──
-    etiquetas = {
-        "Eventos sucedidos de mayor impacto en SLA:": eventos,
-        "Conclusión:": conclusion,
-        "Propuesta de mejora:": propuesta,
-    }
-    encontradas: set[str] = set()
-    for p in doc.paragraphs:
-        for etq, txt in etiquetas.items():
-            if p.text.strip().startswith(etq):
-                p.text = f"{etq} {txt}"
-                encontradas.add(etq)
-                break
-    for etq, txt in etiquetas.items():
-        if etq not in encontradas and txt:
-            doc.add_paragraph(f"{etq} {txt}")
+    # ── Generar bloques por servicio ─────────────────────────────────
+    col_ticket = next((c for c in ("Número Reclamo", "N° de Ticket") if c in reclamos_df.columns), None)
+    col_match = "Número Línea" if "Número Línea" in reclamos_df.columns else None
+
+    for _, srv in servicios_ordenados.iterrows():
+        # Tabla 2 con datos del servicio
+        elem2 = copy.deepcopy(tabla2_tpl)
+        cuerpo.append(elem2)
+        t2 = doc.tables[-1]
+        valores = {
+            "servicio": f"{srv.get('Tipo Servicio', '')} {srv.get('Número Línea', '')}",
+            "cliente": str(srv.get('Nombre Cliente', "")),
+            "ticket": "",
+            "domicilio": str(srv.get('Dirección Servicio', "")),
+            "sla": str(srv.get('SLA', srv.get('SLA Entregado', "")))
+        }
+        if col_ticket and col_match:
+            mask = reclamos_df[col_match] == srv.get(col_match)
+            tickets = [str(t) for t in reclamos_df.loc[mask, col_ticket].dropna().unique()]
+            valores["ticket"] = ", ".join(tickets)
+
+        for row in t2.rows:
+            titulo = row.cells[0].text.lower()
+            if "servicio" in titulo:
+                row.cells[1].text = valores["servicio"].strip()
+            elif "cliente" in titulo:
+                row.cells[1].text = valores["cliente"]
+            elif "ticket" in titulo or "reclamo" in titulo:
+                row.cells[1].text = valores["ticket"]
+            elif "domicilio" in titulo:
+                row.cells[1].text = valores["domicilio"]
+            elif "sla" in titulo:
+                row.cells[1].text = valores["sla"]
+
+        # Párrafos informativos
+        idx = cuerpo.index(elem2)
+        for etq, txt in [
+            ("Eventos sucedidos de mayor impacto en SLA:", eventos),
+            ("Conclusión:", conclusion),
+            ("Propuesta de mejora:", propuesta),
+        ]:
+            p = doc.add_paragraph(f"{etq} {txt}")
+            cuerpo.remove(p._p)
+            cuerpo.insert(idx + 1, p._p)
+            idx += 1
+
+        # Tabla 3 con los reclamos del servicio
+        elem3 = copy.deepcopy(tabla3_tpl)
+        cuerpo.insert(idx + 1, elem3)
+        t3 = doc.tables[-1]
+        while len(t3.rows) > 1:
+            t3._tbl.remove(t3.rows[1]._tr)
+        if col_match:
+            recls = reclamos_df[reclamos_df[col_match] == srv.get(col_match)]
+        else:
+            recls = reclamos_df
+        for _, rec in recls.iterrows():
+            cells = t3.add_row().cells
+            cells[0].text = str(rec.get("Número Línea", ""))
+            cells[1].text = str(rec.get(col_ticket, ""))
+            cells[2].text = str(rec.get("Horas Netas Reclamo", ""))
+            cells[3].text = str(rec.get("Tipo Solución Reclamo", ""))
+            cells[4].text = str(rec.get("Fecha Inicio Reclamo", ""))
 
     # ── Guardar DOCX temporal ───────────────────────────────────────
     fd, ruta_docx = tempfile.mkstemp(suffix=".docx")
