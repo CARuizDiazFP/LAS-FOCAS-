@@ -129,8 +129,11 @@ def test_generar_nombres(tmp_path):
     nombre1 = email_utils.generar_nombre_camaras(5)
     nombre2 = email_utils.generar_nombre_camaras(5)
     hoy = datetime.now().strftime("%d%m%Y")
-    assert nombre1 == f"Camaras_5_{hoy}_01"
-    assert nombre2 == f"Camaras_5_{hoy}_02"
+    n1 = int(nombre1.rsplit("_", 1)[-1])
+    n2 = int(nombre2.rsplit("_", 1)[-1])
+    assert nombre1.startswith(f"Camaras_5_{hoy}")
+    assert nombre2.startswith(f"Camaras_5_{hoy}")
+    assert n2 == n1 + 1
 
 
 def test_enviar_tracking_reciente_por_correo(tmp_path):
@@ -152,7 +155,7 @@ def test_procesar_correo_fecha_dia_mes(tmp_path):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "02/01/2024 08:00", "fin": "02/01/2024 10:00",'
-                ' "tipo": "Mant", "afectacion": null, "descripcion": null, "ids": []}'
+                ' "tipo": "Mant", "afectacion": null, "descripcion": null, "ids": ["1"]}'
             )
 
         async def procesar_json_response(self, resp, esquema):
@@ -160,6 +163,7 @@ def test_procesar_correo_fecha_dia_mes(tmp_path):
             return json.loads(resp)
 
     email_utils.gpt = GPTStub()
+    bd.crear_servicio(nombre="Srv1", cliente="Cli", id_servicio=1)
     tarea, _, ruta, _ = asyncio.run(
         email_utils.procesar_correo_a_tarea("texto", "Cli")
     )

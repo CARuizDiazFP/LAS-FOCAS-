@@ -134,6 +134,7 @@ class GPTHandler:
             "descargar_camaras",
             "enviar_camaras_mail",
             "id_carrier",
+            "identificador_tarea",
             "informe_repetitividad",
             "informe_sla",
             "analizar_incidencias",

@@ -46,6 +46,10 @@ async def manejar_documento(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if mode == "id_carrier":
             await procesar_identificador_carrier(update, context)
             return
+        if mode == "identificador_tarea":
+            from .identificador_tarea import procesar_identificador_tarea
+            await procesar_identificador_tarea(update, context)
+            return
         if mode == "incidencias":
             await procesar_incidencias(update, context)
             return

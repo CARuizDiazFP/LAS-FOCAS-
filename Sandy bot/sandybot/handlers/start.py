@@ -28,6 +28,10 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
            InlineKeyboardButton(
                "Identificador de servicio Carrier", callback_data="id_carrier"
            ),
+           InlineKeyboardButton(
+               "🔍 Identificar tarea programada",
+               callback_data="identificador_tarea",
+           ),
         ],
         [
            InlineKeyboardButton("🔁 Informe de repetitividad", callback_data="informe_repetitividad"),

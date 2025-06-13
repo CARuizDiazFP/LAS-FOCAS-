@@ -42,6 +42,8 @@ from .handlers import (
     registrar_tarea_programada,
     listar_tareas,
     detectar_tarea_mail,
+    iniciar_identificador_tarea,
+    procesar_identificador_tarea,
     procesar_correos,
     reenviar_aviso,
     supermenu,
@@ -89,6 +91,9 @@ class SandyBot:
         self.app.add_handler(CommandHandler("eliminar_carrier", eliminar_carrier))
         self.app.add_handler(CommandHandler("listar_tareas", listar_tareas))
         self.app.add_handler(CommandHandler("detectar_tarea", detectar_tarea_mail))
+        self.app.add_handler(
+            CommandHandler("identificar_tarea", iniciar_identificador_tarea)
+        )
         self.app.add_handler(CommandHandler("procesar_correos", procesar_correos))
         self.app.add_handler(CommandHandler("reenviar_aviso", reenviar_aviso))
         self.app.add_handler(CommandHandler("informe_sla", iniciar_informe_sla))

@@ -475,6 +475,12 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
             "id carr",
             "ident carr",
         ],
+        "identificador_tarea": [
+            "identificar tarea programada",
+            "detectar tarea",
+            "tarea programada msg",
+            "ident tarea",
+        ],
         "informe_repetitividad": [
             "informe de repetitividad",
             "reporte de repetitividad",
@@ -540,6 +546,8 @@ def _detectar_accion_natural(mensaje: str) -> str | None:
         return "enviar_camaras_mail"
     if "carrier" in texto and ("ident" in texto or "id" in texto):
         return "id_carrier"
+    if "tarea" in texto and ("ident" in texto or "msg" in texto):
+        return "identificador_tarea"
     if "repetit" in texto and "inform" in texto:
         return "informe_repetitividad"
     if "sla" in texto and "inform" in texto:
@@ -594,6 +602,10 @@ async def _ejecutar_accion_natural(
         return True
     elif accion == "id_carrier":
         await iniciar_identificador_carrier(update, context)
+        return True
+    elif accion == "identificador_tarea":
+        from .identificador_tarea import iniciar_identificador_tarea
+        await iniciar_identificador_tarea(update, context)
         return True
     elif accion == "informe_repetitividad":
         await iniciar_repetitividad(update, context)
