@@ -13,6 +13,7 @@ import os
 import pandas as pd
 from docx import Document
 import tempfile
+import locale
 
 # ─────────────────────────── PATH DE PROYECTO ─────────────────────────
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -445,3 +446,41 @@ def test_guardar_reclamos_ticket(tmp_path):
     handler._guardar_reclamos(df)
     recs = bd.obtener_reclamos_servicio(srv.id)
     assert recs[0].numero == "11"
+
+
+def test_parrafo_inicial(tmp_path):
+    """Reemplaza un párrafo existente con el título del informe."""
+    handler = _importar_handler(tmp_path)
+
+    # Insertar párrafo inicial con "Informe SLA" en la plantilla
+    doc = Document(handler.RUTA_PLANTILLA)
+    p = doc.add_paragraph("Informe SLA plantilla")
+    doc._body._element.insert(0, p._element)
+    doc.save(handler.RUTA_PLANTILLA)
+
+    # Datos con fecha conocida para verificar el título
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame({"Servicio": [1], "Fecha": ["2024-02-01"]}).to_excel(r, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["A"],
+            "Número Línea": [1],
+            "Nombre Cliente": ["X"],
+            "Horas Reclamos Todos": [0],
+            "SLA": [0.5],
+        }
+    ).to_excel(s, index=False)
+
+    ruta = handler._generar_documento_sla(str(r), str(s))
+    doc_res = Document(ruta)
+    titulos = [p.text for p in doc_res.paragraphs if "Informe SLA" in p.text]
+    assert len(titulos) == 1
+    fecha = pd.to_datetime("2024-02-01")
+    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            break
+        except locale.Error:
+            continue
+    esperado = f"Informe SLA {fecha.strftime('%B').upper()} {fecha.strftime('%Y')}"
+    assert doc_res.paragraphs[0].text == esperado

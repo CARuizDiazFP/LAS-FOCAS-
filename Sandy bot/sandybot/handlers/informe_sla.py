@@ -313,10 +313,15 @@ def _generar_documento_sla(
         raise ValueError(f"Plantilla de SLA no encontrada: {RUTA_PLANTILLA}")
     doc = Document(RUTA_PLANTILLA)
 
-    try:
-        doc.add_heading(f"Informe SLA {mes} {anio}", level=0)
-    except KeyError:
-        doc.add_heading(f"Informe SLA {mes} {anio}", level=1)
+    titulo = f"Informe SLA {mes} {anio}"
+    parrafo = next((p for p in doc.paragraphs if "Informe SLA" in p.text), None)
+    if parrafo:
+        parrafo.text = titulo
+    else:
+        try:
+            doc.add_heading(titulo, level=0)
+        except KeyError:
+            doc.add_heading(titulo, level=1)
 
     # ── Tabla principal (se asume que la plantilla contiene ≥1 tabla) ──
     if not doc.tables:
@@ -372,21 +377,50 @@ def _generar_documento_sla(
         c[4].text = f"{float(fila['SLA']) * 100:.2f}%"
 
     # ── Inserción de textos libres (eventos, conclusión, propuesta) ──
-    etiquetas = {
-        "Eventos sucedidos de mayor impacto en SLA:": eventos,
-        "Conclusión:": conclusion,
-        "Propuesta de mejora:": propuesta,
-    }
-    encontradas: set[str] = set()
-    for p in doc.paragraphs:
-        for etq, txt in etiquetas.items():
-            if p.text.strip().startswith(etq):
-                p.text = f"{etq} {txt}"
-                encontradas.add(etq)
-                break
-    for etq, txt in etiquetas.items():
-        if etq not in encontradas and txt:
-            doc.add_paragraph(f"{etq} {txt}")
+    tabla_serv = doc.tables[1] if len(doc.tables) > 1 else None
+    tabla_rec = doc.tables[2] if len(doc.tables) > 2 else None
+
+    if tabla_serv and tabla_rec:
+        while len(tabla_rec.rows) > 1:
+            tabla_rec._tbl.remove(tabla_rec.rows[1]._tr)
+
+        col_ticket = next(
+            (c for c in ("Número Reclamo", "N° de Ticket") if c in reclamos_df.columns),
+            None,
+        )
+
+        body = doc._body._element
+        for i, (_, rec) in enumerate(reclamos_df.iterrows()):
+            if i > 0:
+                nueva_serv = copy.deepcopy(tabla_serv._tbl)
+                nueva_rec = copy.deepcopy(tabla_rec._tbl)
+                body.append(nueva_serv)
+                body.append(nueva_rec)
+                tabla_rec_actual = doc.tables[-1]
+            else:
+                tabla_rec_actual = tabla_rec
+
+            fila = tabla_rec_actual.add_row().cells
+            fila[0].text = str(rec.get("Número Línea", ""))
+            if col_ticket:
+                fila[1].text = str(rec.get(col_ticket, ""))
+            fila[2].text = str(rec.get("Horas Netas Reclamo", ""))
+            fila[3].text = str(rec.get("Tipo Solución Reclamo", ""))
+            fila[4].text = str(rec.get("Fecha Inicio Reclamo", ""))
+
+        if any((eventos, conclusion, propuesta)):
+            idx = body.index(tabla_rec._tbl)
+            inserciones = []
+            if eventos:
+                inserciones.append(doc.add_paragraph(
+                    f"Eventos sucedidos de mayor impacto en SLA: {eventos}"
+                )._element)
+            if conclusion:
+                inserciones.append(doc.add_paragraph(f"Conclusión: {conclusion}")._element)
+            if propuesta:
+                inserciones.append(doc.add_paragraph(f"Propuesta de mejora: {propuesta}")._element)
+            for el in reversed(inserciones):
+                body.insert(idx, el)
 
     # ── Guardar DOCX temporal ───────────────────────────────────────
     fd, ruta_docx = tempfile.mkstemp(suffix=".docx")
