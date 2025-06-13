@@ -23,6 +23,7 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
+- `SUPER_PASS`: contraseña que habilita el menú de desarrollador.
 - `SMTP_USE_TLS`: controla si se inicia TLS. Si se define como `false` o se usa
   el puerto 465 se emplea `SMTP_SSL`; en caso contrario se ejecuta `starttls()`.
 - También se aceptan `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y
@@ -62,6 +63,13 @@ export NOTION_DATABASE_ID=dummy
 export DB_USER=postgres
 export DB_PASSWORD=postgres
 ```
+
+## Modo desarrollador
+
+El bot cuenta con un menú oculto para consultas internas. Se habilita
+enviando `/Supermenu <contraseña>` desde Telegram. La clave se toma de
+`SUPER_PASS` y por omisión vale `Bio123`. Al validarla se muestran los
+botones `/CDB_Servicios`, `/CDB_Reclamos` y `/CDB_Camaras`.
 
 ## Plantilla de informes de repetitividad
 

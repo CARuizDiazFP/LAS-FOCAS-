@@ -66,6 +66,8 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self.NOTION_DATABASE_ID = os.getenv("NOTION_DATABASE_ID")
         self.SLACK_WEBHOOK_URL = os.getenv("SLACK_WEBHOOK_URL")
         self.SUPERVISOR_DB_ID = os.getenv("SUPERVISOR_DB_ID")
+        # Clave para habilitar el menú de superusuario
+        self.SUPER_PASS = os.getenv("SUPER_PASS", "Bio123")
 
         # 4) Archivos comunes
         self.ARCHIVO_CONTADOR = self.DATA_DIR / "contador_diario.json"

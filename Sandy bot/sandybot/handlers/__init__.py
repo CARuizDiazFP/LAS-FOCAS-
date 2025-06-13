@@ -45,6 +45,12 @@ from .detectar_tarea_mail import detectar_tarea_mail
 from .procesar_correos import procesar_correos
 from .reenviar_aviso import reenviar_aviso
 from .listar_tareas import listar_tareas
+from .supermenu import (
+    supermenu,
+    listar_servicios,
+    listar_reclamos,
+    listar_camaras,
+)
 
 __all__ = [
     "start_handler",
@@ -88,4 +94,8 @@ __all__ = [
     "detectar_tarea_mail",
     "procesar_correos",
     "reenviar_aviso",
+    "supermenu",
+    "listar_servicios",
+    "listar_reclamos",
+    "listar_camaras",
 ]
