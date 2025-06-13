@@ -147,7 +147,7 @@ async def procesar_informe_sla(
     # ─── 2) Recibir nueva plantilla ─────────────────────────────────
     if context.user_data.get("cambiar_plantilla"):
         if getattr(mensaje, "document", None):
-            await _actualizar_plantilla_sla(mensaje, context)
+            await actualizar_plantilla_sla(mensaje, context)
         else:
             await responder_registrando(
                 mensaje, user_id, getattr(mensaje, "text", ""),
@@ -236,7 +236,7 @@ async def procesar_informe_sla(
 
 
 # ──────────────────────── ACTUALIZAR PLANTILLA ────────────────────────
-async def _actualizar_plantilla_sla(mensaje, context):
+async def actualizar_plantilla_sla(mensaje, context):
     """Guarda la nueva plantilla y mueve la anterior a templates/Historios."""
     user_id = mensaje.from_user.id
     archivo = mensaje.document
