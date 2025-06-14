@@ -777,3 +777,51 @@ def obtener_camaras(desc: bool = True) -> list[Camara]:
         query = session.query(Camara)
         query = query.order_by(Camara.id.desc() if desc else Camara.id)
         return query.all()
+
+
+def depurar_servicios_duplicados() -> int:
+    """Elimina servicios con el mismo nombre y cliente dejando el más reciente."""
+    with SessionLocal() as session:
+        repetidos = (
+            session.query(Servicio.nombre, Servicio.cliente)
+            .group_by(Servicio.nombre, Servicio.cliente)
+            .having(func.count(Servicio.id) > 1)
+            .all()
+        )
+        eliminados = 0
+        for nombre, cliente in repetidos:
+            filas = (
+                session.query(Servicio)
+                .filter(Servicio.nombre == nombre, Servicio.cliente == cliente)
+                .order_by(Servicio.id.desc())
+                .all()
+            )
+            for srv in filas[1:]:
+                session.delete(srv)
+                eliminados += 1
+        session.commit()
+        return eliminados
+
+
+def depurar_reclamos_duplicados() -> int:
+    """Elimina reclamos con número repetido conservando el de mayor ID."""
+    with SessionLocal() as session:
+        repetidos = (
+            session.query(Reclamo.numero)
+            .group_by(Reclamo.numero)
+            .having(func.count(Reclamo.id) > 1)
+            .all()
+        )
+        eliminados = 0
+        for (numero,) in repetidos:
+            filas = (
+                session.query(Reclamo)
+                .filter(Reclamo.numero == numero)
+                .order_by(Reclamo.id.desc())
+                .all()
+            )
+            for rec in filas[1:]:
+                session.delete(rec)
+                eliminados += 1
+        session.commit()
+        return eliminados

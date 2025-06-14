@@ -11,6 +11,8 @@ from ..database import (
     obtener_servicios,
     obtener_reclamos,
     obtener_camaras,
+    depurar_servicios_duplicados,
+    depurar_reclamos_duplicados,
 )
 from ..utils import obtener_mensaje
 from ..registrador import responder_registrando
@@ -41,7 +43,7 @@ async def supermenu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "supermenu",
         )
         return
-    botones = [["/CDB_Servicios", "/CDB_Reclamos", "/CDB_Camaras"]]
+    botones = [["/CDB_Servicios", "/CDB_Reclamos", "/CDB_Camaras", "/Depurar_Duplicados"]]
     markup = ReplyKeyboardMarkup(botones, resize_keyboard=True)
     await responder_registrando(
         mensaje,
@@ -114,6 +116,28 @@ async def listar_camaras(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         mensaje,
         user_id,
         mensaje.text or "CDB_Camaras",
+        texto,
+        "supermenu",
+    )
+
+
+async def depurar_duplicados(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Elimina registros duplicados de servicios y reclamos."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    elim_serv = depurar_servicios_duplicados()
+    elim_rec = depurar_reclamos_duplicados()
+    texto = (
+        "Depuración completada:\n"
+        f"Servicios eliminados: {elim_serv}\n"
+        f"Reclamos eliminados: {elim_rec}"
+    )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "Depurar_Duplicados",
         texto,
         "supermenu",
     )
