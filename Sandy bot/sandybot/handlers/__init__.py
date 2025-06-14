@@ -54,6 +54,7 @@ from .supermenu import (
     listar_servicios,
     listar_reclamos,
     listar_camaras,
+    depurar_duplicados,
 )
 
 __all__ = [
@@ -104,4 +105,5 @@ __all__ = [
     "listar_servicios",
     "listar_reclamos",
     "listar_camaras",
+    "depurar_duplicados",
 ]

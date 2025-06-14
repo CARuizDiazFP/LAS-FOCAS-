@@ -57,7 +57,12 @@ async def _run(func, args):
 
 def test_supermenu_teclado():
     res = asyncio.run(_run("supermenu", ["Bio123"]))
-    assert res["markup"].keyboard[0] == ["/CDB_Servicios", "/CDB_Reclamos", "/CDB_Camaras"]
+    assert res["markup"].keyboard[0] == [
+        "/CDB_Servicios",
+        "/CDB_Reclamos",
+        "/CDB_Camaras",
+        "/Depurar_Duplicados",
+    ]
 
 
 def test_listar_descendente():
@@ -73,3 +78,15 @@ def test_listar_descendente():
     assert texto_rec.splitlines()[1].startswith("1. ") and "R2" in texto_rec.splitlines()[1]
     texto_cam = asyncio.run(_run("listar_camaras", []))["texto"]
     assert texto_cam.splitlines()[1].startswith("1. ") and "C2" in texto_cam.splitlines()[1]
+
+
+def test_depurar_duplicados():
+    bd.Base.metadata.drop_all(bind=bd.engine)
+    bd.Base.metadata.create_all(bind=bd.engine)
+    s1 = bd.crear_servicio(nombre="Dup", cliente="X")
+    bd.crear_servicio(nombre="Dup", cliente="X")
+    bd.crear_reclamo(s1.id, "R10")
+    bd.crear_reclamo(bd.crear_servicio(nombre="Otro", cliente="X").id, "R10")
+    texto = asyncio.run(_run("depurar_duplicados", []))["texto"]
+    assert "Servicios eliminados: 1" in texto
+    assert "Reclamos eliminados: 1" in texto
