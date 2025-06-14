@@ -69,7 +69,13 @@ export DB_PASSWORD=postgres
 El bot cuenta con un menú oculto para consultas internas. Se habilita
 enviando `/Supermenu <contraseña>` desde Telegram. La clave se toma de
 `SUPER_PASS` y por omisión vale `Bio123`. Al validarla se muestran los
-botones `/CDB_Servicios`, `/CDB_Reclamos` y `/CDB_Camaras`.
+botones `/CDB_Servicios`, `/CDB_Reclamos`, `/CDB_Camaras` y
+`/Depurar_Duplicados`.
+
+`/Depurar_Duplicados` elimina registros duplicados de servicios y
+reclamos, conservando las versiones más recientes. Es útil después de
+cargar datos de forma masiva. Puede ejecutarse desde el menú de
+desarrollador o enviando el comando directamente.
 
 ## Plantilla de informes de repetitividad
 
