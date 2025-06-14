@@ -11,6 +11,12 @@ from ..database import (
     obtener_servicios,
     obtener_reclamos,
     obtener_camaras,
+    obtener_clientes,
+    obtener_carriers,
+    obtener_conversaciones,
+    obtener_ingresos,
+    obtener_tareas_programadas,
+    obtener_tareas_servicio,
     depurar_servicios_duplicados,
     depurar_reclamos_duplicados,
 )
@@ -43,7 +49,18 @@ async def supermenu(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             "supermenu",
         )
         return
-    botones = [["/CDB_Servicios", "/CDB_Reclamos", "/CDB_Camaras", "/Depurar_Duplicados"]]
+    botones = [[
+        "/CDB_Servicios",
+        "/CDB_Reclamos",
+        "/CDB_Camaras",
+        "/Depurar_Duplicados",
+        "/CDB_Clientes",
+        "/CDB_Carriers",
+        "/CDB_Conversaciones",
+        "/CDB_Ingresos",
+        "/CDB_Tareas",
+        "/CDB_TareasServicio",
+    ]]
     markup = ReplyKeyboardMarkup(botones, resize_keyboard=True)
     await responder_registrando(
         mensaje,
@@ -138,6 +155,140 @@ async def depurar_duplicados(update: Update, context: ContextTypes.DEFAULT_TYPE)
         mensaje,
         user_id,
         mensaje.text or "Depurar_Duplicados",
+        texto,
+        "supermenu",
+    )
+
+
+async def listar_clientes(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra los clientes registrados."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    clientes = obtener_clientes(desc=True)
+    if not clientes:
+        texto = "No hay clientes registrados."
+    else:
+        texto = "Clientes:\n" + "\n".join(
+            f"{i + 1}. {c.nombre}" for i, c in enumerate(clientes)
+        )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "CDB_Clientes",
+        texto,
+        "supermenu",
+    )
+
+
+async def listar_carriers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Enumera los carriers de la base."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    carriers = obtener_carriers(desc=True)
+    if not carriers:
+        texto = "No hay carriers registrados."
+    else:
+        texto = "Carriers:\n" + "\n".join(
+            f"{i + 1}. {c.nombre}" for i, c in enumerate(carriers)
+        )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "CDB_Carriers",
+        texto,
+        "supermenu",
+    )
+
+
+async def listar_conversaciones(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Lista las conversaciones guardadas."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    convs = obtener_conversaciones(desc=True)
+    if not convs:
+        texto = "No hay conversaciones registradas."
+    else:
+        texto = "Conversaciones:\n" + "\n".join(
+            f"{i + 1}. {c.mensaje}" for i, c in enumerate(convs)
+        )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "CDB_Conversaciones",
+        texto,
+        "supermenu",
+    )
+
+
+async def listar_ingresos(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra los ingresos ordenados por fecha."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    ingresos = obtener_ingresos(desc=True)
+    if not ingresos:
+        texto = "No hay ingresos registrados."
+    else:
+        texto = "Ingresos:\n" + "\n".join(
+            f"{i + 1}. {ing.camara}" for i, ing in enumerate(ingresos)
+        )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "CDB_Ingresos",
+        texto,
+        "supermenu",
+    )
+
+
+async def listar_tareas_programadas(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
+    """Lista las tareas programadas."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    tareas = obtener_tareas_programadas(desc=True)
+    if not tareas:
+        texto = "No hay tareas programadas."
+    else:
+        texto = "Tareas:\n" + "\n".join(
+            f"{i + 1}. {t.tipo_tarea}" for i, t in enumerate(tareas)
+        )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "CDB_Tareas",
+        texto,
+        "supermenu",
+    )
+
+
+async def listar_tareas_servicio(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra la tabla de relaciones tarea-servicio."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+    user_id = update.effective_user.id
+    rels = obtener_tareas_servicio(servicio_id=None, desc=True)
+    if not rels:
+        texto = "No hay relaciones registradas."
+    else:
+        texto = "Tareas-Servicio:\n" + "\n".join(
+            f"{i + 1}. {r.tarea_id}-{r.servicio_id}" for i, r in enumerate(rels)
+        )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "CDB_TareasServicio",
         texto,
         "supermenu",
     )

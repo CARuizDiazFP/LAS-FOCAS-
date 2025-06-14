@@ -742,16 +742,35 @@ def crear_tarea_programada(
         return tarea
 
 
-def obtener_tareas_servicio(servicio_id: int) -> list[TareaProgramada]:
-    """Devuelve las tareas programadas que afectan al servicio indicado."""
+def obtener_tareas_servicio(
+    servicio_id: int | None = None, desc: bool = True
+) -> list[object]:
+    """Devuelve las tareas programadas o las relaciones tarea-servicio.
+
+    Si ``servicio_id`` es ``None`` se listan las filas de :class:`TareaServicio`
+    ordenadas por ID. Caso contrario se devuelven las tareas que afectan al
+    servicio indicado, ordenadas por ``fecha_inicio``.
+    """
 
     with SessionLocal() as session:
-        return (
+        if servicio_id is None:
+            query = session.query(TareaServicio)
+            query = query.order_by(
+                TareaServicio.id.desc() if desc else TareaServicio.id
+            )
+            return query.all()
+
+        query = (
             session.query(TareaProgramada)
             .join(TareaServicio, TareaProgramada.id == TareaServicio.tarea_id)
             .filter(TareaServicio.servicio_id == servicio_id)
-            .all()
         )
+        orden = (
+            TareaProgramada.fecha_inicio.desc()
+            if desc
+            else TareaProgramada.fecha_inicio
+        )
+        return query.order_by(orden).all()
 
 
 def obtener_servicios(desc: bool = True) -> list[Servicio]:
@@ -776,6 +795,53 @@ def obtener_camaras(desc: bool = True) -> list[Camara]:
     with SessionLocal() as session:
         query = session.query(Camara)
         query = query.order_by(Camara.id.desc() if desc else Camara.id)
+        return query.all()
+
+
+def obtener_clientes(desc: bool = True) -> list[Cliente]:
+    """Devuelve los clientes ordenados por ID."""
+    with SessionLocal() as session:
+        query = session.query(Cliente)
+        query = query.order_by(Cliente.id.desc() if desc else Cliente.id)
+        return query.all()
+
+
+def obtener_carriers(desc: bool = True) -> list[Carrier]:
+    """Lista los carriers registrados."""
+    with SessionLocal() as session:
+        query = session.query(Carrier)
+        query = query.order_by(Carrier.id.desc() if desc else Carrier.id)
+        return query.all()
+
+
+def obtener_conversaciones(desc: bool = True) -> list[Conversacion]:
+    """Obtiene el historial de conversaciones."""
+    with SessionLocal() as session:
+        query = session.query(Conversacion)
+        query = query.order_by(
+            Conversacion.fecha.desc() if desc else Conversacion.fecha
+        )
+        return query.all()
+
+
+def obtener_ingresos(desc: bool = True) -> list[Ingreso]:
+    """Devuelve los ingresos registrados."""
+    with SessionLocal() as session:
+        query = session.query(Ingreso)
+        query = query.order_by(Ingreso.fecha.desc() if desc else Ingreso.fecha)
+        return query.all()
+
+
+def obtener_tareas_programadas(desc: bool = True) -> list[TareaProgramada]:
+    """Lista las tareas programadas ordenadas por inicio."""
+    with SessionLocal() as session:
+        query = session.query(TareaProgramada)
+        criterio = (
+            TareaProgramada.fecha_inicio.desc()
+            if desc
+            else TareaProgramada.fecha_inicio
+        )
+        query = query.order_by(criterio)
         return query.all()
 
 

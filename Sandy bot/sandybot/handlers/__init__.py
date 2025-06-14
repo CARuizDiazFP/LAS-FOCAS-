@@ -55,6 +55,12 @@ from .supermenu import (
     listar_reclamos,
     listar_camaras,
     depurar_duplicados,
+    listar_clientes,
+    listar_carriers as listar_carriers_cdb,
+    listar_conversaciones,
+    listar_ingresos,
+    listar_tareas_programadas,
+    listar_tareas_servicio,
 )
 
 __all__ = [
@@ -106,4 +112,10 @@ __all__ = [
     "listar_reclamos",
     "listar_camaras",
     "depurar_duplicados",
+    "listar_clientes",
+    "listar_carriers_cdb",
+    "listar_conversaciones",
+    "listar_ingresos",
+    "listar_tareas_programadas",
+    "listar_tareas_servicio",
 ]
