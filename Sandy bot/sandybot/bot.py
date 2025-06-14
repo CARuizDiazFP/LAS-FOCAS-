@@ -1,5 +1,5 @@
-# + Nombre de archivo: bot.py
-# + Ubicación de archivo: Sandy bot/sandybot/bot.py
+# Nombre de archivo: bot.py
+# Ubicación de archivo: Sandy bot/sandybot/bot.py
 # User-provided custom instructions
 """
 Módulo principal del bot Sandy

@@ -1,5 +1,5 @@
-# + Nombre de archivo: start.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/start.py
+# Nombre de archivo: start.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/start.py
 # User-provided custom instructions
 """
 Handler principal para el comando /start

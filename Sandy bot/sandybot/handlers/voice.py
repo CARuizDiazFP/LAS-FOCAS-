@@ -1,5 +1,5 @@
-# + Nombre de archivo: voice.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/voice.py
+# Nombre de archivo: voice.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/voice.py
 # User-provided custom instructions
 """Handler para mensajes de voz."""
 import logging

@@ -1,5 +1,5 @@
-# + Nombre de archivo: enviar_camaras_mail.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/enviar_camaras_mail.py
+# Nombre de archivo: enviar_camaras_mail.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/enviar_camaras_mail.py
 # User-provided custom instructions
 """Manejadores para enviar las cámaras de un servicio por correo electrónico."""
 

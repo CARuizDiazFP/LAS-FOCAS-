@@ -1,5 +1,5 @@
-# + Nombre de archivo: id_carrier.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/id_carrier.py
+# Nombre de archivo: id_carrier.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/id_carrier.py
 # User-provided custom instructions
 """Handler para completar IDs de servicio o Carrier desde un Excel."""
 

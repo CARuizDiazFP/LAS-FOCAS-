@@ -1,5 +1,5 @@
-# + Nombre de archivo: ingresos.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/ingresos.py
+# Nombre de archivo: ingresos.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/ingresos.py
 # User-provided custom instructions
 """
 Handler para la verificación de ingresos.

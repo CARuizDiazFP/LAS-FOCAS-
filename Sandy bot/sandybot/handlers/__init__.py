@@ -1,5 +1,5 @@
-# + Nombre de archivo: __init__.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/__init__.py
+# Nombre de archivo: __init__.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/__init__.py
 # User-provided custom instructions
 """
 Handlers del bot Sandy

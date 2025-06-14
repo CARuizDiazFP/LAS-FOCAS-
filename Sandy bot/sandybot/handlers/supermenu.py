@@ -1,5 +1,5 @@
-# + Nombre de archivo: supermenu.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/supermenu.py
+# Nombre de archivo: supermenu.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/supermenu.py
 # User-provided custom instructions
 """Comandos de acceso rápido para consultas de base."""
 

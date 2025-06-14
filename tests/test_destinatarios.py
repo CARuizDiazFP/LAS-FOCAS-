@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_destinatarios.py
-# + Ubicación de archivo: tests/test_destinatarios.py
+# Nombre de archivo: test_destinatarios.py
+# Ubicación de archivo: tests/test_destinatarios.py
 # User-provided custom instructions
 import sys
 import importlib

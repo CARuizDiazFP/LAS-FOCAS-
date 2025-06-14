@@ -1,5 +1,5 @@
-# + Nombre de archivo: cargar_tracking.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/cargar_tracking.py
+# Nombre de archivo: cargar_tracking.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/cargar_tracking.py
 # User-provided custom instructions
 """Handler para la carga de trackings en la base de datos."""
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup

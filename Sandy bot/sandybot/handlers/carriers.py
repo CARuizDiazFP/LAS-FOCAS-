@@ -1,5 +1,5 @@
-# + Nombre de archivo: carriers.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/carriers.py
+# Nombre de archivo: carriers.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/carriers.py
 # User-provided custom instructions
 """Comandos para administrar carriers."""
 

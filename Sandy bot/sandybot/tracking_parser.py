@@ -1,5 +1,5 @@
-# + Nombre de archivo: tracking_parser.py
-# + Ubicación de archivo: Sandy bot/sandybot/tracking_parser.py
+# Nombre de archivo: tracking_parser.py
+# Ubicación de archivo: Sandy bot/sandybot/tracking_parser.py
 # User-provided custom instructions
 """Parser de trackings de fibra óptica."""
 

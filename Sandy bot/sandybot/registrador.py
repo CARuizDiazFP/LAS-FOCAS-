@@ -1,5 +1,5 @@
-# + Nombre de archivo: registrador.py
-# + Ubicación de archivo: Sandy bot/sandybot/registrador.py
+# Nombre de archivo: registrador.py
+# Ubicación de archivo: Sandy bot/sandybot/registrador.py
 # User-provided custom instructions
 # sandybot/registrador.py
 from datetime import datetime

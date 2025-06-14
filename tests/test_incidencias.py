@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_incidencias.py
-# + Ubicación de archivo: tests/test_incidencias.py
+# Nombre de archivo: test_incidencias.py
+# Ubicación de archivo: tests/test_incidencias.py
 # User-provided custom instructions
 import sys
 import importlib

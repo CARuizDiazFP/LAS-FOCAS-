@@ -1,5 +1,5 @@
-# + Nombre de archivo: repetitividad.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/repetitividad.py
+# Nombre de archivo: repetitividad.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/repetitividad.py
 # User-provided custom instructions
 # Repetitividad.py
 """

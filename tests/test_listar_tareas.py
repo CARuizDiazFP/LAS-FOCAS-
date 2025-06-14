@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_listar_tareas.py
-# + Ubicación de archivo: tests/test_listar_tareas.py
+# Nombre de archivo: test_listar_tareas.py
+# Ubicación de archivo: tests/test_listar_tareas.py
 # User-provided custom instructions
 import sys
 import importlib
