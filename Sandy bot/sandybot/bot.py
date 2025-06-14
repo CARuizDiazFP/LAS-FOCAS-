@@ -51,6 +51,12 @@ from .handlers import (
     listar_reclamos,
     listar_camaras,
     depurar_duplicados,
+    listar_clientes,
+    listar_carriers_cdb,
+    listar_conversaciones,
+    listar_ingresos,
+    listar_tareas_programadas,
+    listar_tareas_servicio,
 )
 
 logger = logging.getLogger(__name__)
@@ -103,6 +109,12 @@ class SandyBot:
         self.app.add_handler(CommandHandler("CDB_Reclamos", listar_reclamos))
         self.app.add_handler(CommandHandler("CDB_Camaras", listar_camaras))
         self.app.add_handler(CommandHandler("Depurar_Duplicados", depurar_duplicados))
+        self.app.add_handler(CommandHandler("CDB_Clientes", listar_clientes))
+        self.app.add_handler(CommandHandler("CDB_Carriers", listar_carriers_cdb))
+        self.app.add_handler(CommandHandler("CDB_Conversaciones", listar_conversaciones))
+        self.app.add_handler(CommandHandler("CDB_Ingresos", listar_ingresos))
+        self.app.add_handler(CommandHandler("CDB_Tareas", listar_tareas_programadas))
+        self.app.add_handler(CommandHandler("CDB_TareasServicio", listar_tareas_servicio))
 
         # Callbacks de botones
         self.app.add_handler(CallbackQueryHandler(callback_handler))

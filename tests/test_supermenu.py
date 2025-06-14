@@ -4,6 +4,7 @@
 import sys
 import importlib
 import asyncio
+from datetime import datetime
 from types import ModuleType, SimpleNamespace
 from pathlib import Path
 from sqlalchemy.orm import sessionmaker
@@ -62,10 +63,18 @@ def test_supermenu_teclado():
         "/CDB_Reclamos",
         "/CDB_Camaras",
         "/Depurar_Duplicados",
+        "/CDB_Clientes",
+        "/CDB_Carriers",
+        "/CDB_Conversaciones",
+        "/CDB_Ingresos",
+        "/CDB_Tareas",
+        "/CDB_TareasServicio",
     ]
 
 
 def test_listar_descendente():
+    bd.Base.metadata.drop_all(bind=bd.engine)
+    bd.Base.metadata.create_all(bind=bd.engine)
     s1 = bd.crear_servicio(nombre="S1", cliente="A")
     s2 = bd.crear_servicio(nombre="S2", cliente="B")
     bd.crear_reclamo(s1.id, "R1")
@@ -78,6 +87,43 @@ def test_listar_descendente():
     assert texto_rec.splitlines()[1].startswith("1. ") and "R2" in texto_rec.splitlines()[1]
     texto_cam = asyncio.run(_run("listar_camaras", []))["texto"]
     assert texto_cam.splitlines()[1].startswith("1. ") and "C2" in texto_cam.splitlines()[1]
+
+    # Datos extra para las nuevas tablas
+    with bd.SessionLocal() as s:
+        cli1 = bd.Cliente(nombre="Cli1")
+        cli2 = bd.Cliente(nombre="Cli2")
+        car1 = bd.Carrier(nombre="Car1")
+        car2 = bd.Carrier(nombre="Car2")
+        s.add_all([cli1, cli2, car1, car2])
+        s.commit()
+        s.refresh(cli1)
+        s.refresh(cli2)
+        s.refresh(car1)
+        s.refresh(car2)
+
+    with bd.SessionLocal() as s:
+        s.add_all([
+            bd.Conversacion(user_id="1", mensaje="hola", respuesta="hi", modo="t"),
+            bd.Conversacion(user_id="2", mensaje="chau", respuesta="bye", modo="t"),
+        ])
+        s.commit()
+    bd.crear_ingreso(s1.id, "Cam1", usuario="u1")
+    bd.crear_ingreso(s2.id, "Cam2", usuario="u2")
+    bd.crear_tarea_programada(datetime(2024, 1, 1, 8), datetime(2024, 1, 1, 9), "A", [s1.id])
+    t2 = bd.crear_tarea_programada(datetime(2024, 1, 2, 8), datetime(2024, 1, 2, 9), "B", [s2.id])
+
+    texto_cli = asyncio.run(_run("listar_clientes", []))["texto"]
+    assert texto_cli.splitlines()[1].startswith("1. ") and "Cli2" in texto_cli.splitlines()[1]
+    texto_car = asyncio.run(_run("listar_carriers", []))["texto"]
+    assert texto_car.splitlines()[1].startswith("1. ") and "Car2" in texto_car.splitlines()[1]
+    texto_conv = asyncio.run(_run("listar_conversaciones", []))["texto"]
+    assert texto_conv.splitlines()[1].startswith("1. ") and "chau" in texto_conv.splitlines()[1]
+    texto_ing = asyncio.run(_run("listar_ingresos", []))["texto"]
+    assert texto_ing.splitlines()[1].startswith("1. ") and "Cam2" in texto_ing.splitlines()[1]
+    texto_tareas = asyncio.run(_run("listar_tareas_programadas", []))["texto"]
+    assert texto_tareas.splitlines()[1].startswith("1. ") and "B" in texto_tareas.splitlines()[1]
+    texto_rel = asyncio.run(_run("listar_tareas_servicio", []))["texto"]
+    assert texto_rel.splitlines()[1].startswith("1. ") and f"{t2.id}-{s2.id}" in texto_rel.splitlines()[1]
 
 
 def test_depurar_duplicados():
