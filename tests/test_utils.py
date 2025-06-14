@@ -56,6 +56,14 @@ def test_timestamp_log_formato():
     ts = utils.timestamp_log()
     assert re.match(r"\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}", ts)
 
+
+def test_es_correo_valido_ok():
+    assert utils.es_correo_valido("alguien@example.com") is True
+
+
+def test_es_correo_valido_falso():
+    assert utils.es_correo_valido("alguien@example") is False
+
 def test_obtener_mensaje_callback():
     msg = Message("hola")
     update = Update(callback_query=CallbackQuery(message=msg))

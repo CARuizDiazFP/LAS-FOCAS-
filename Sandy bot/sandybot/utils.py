@@ -80,6 +80,12 @@ def timestamp_log() -> str:
     """
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+
+def es_correo_valido(correo: str) -> bool:
+    """Verifica si ``correo`` posee un formato de email válido."""
+    patron = r"^[\w.+-]+@[\w-]+\.[a-zA-Z]{2,}$"
+    return bool(re.match(patron, correo))
+
 def obtener_mensaje(update: Update) -> Optional[Message]:
     """
     Devuelve el objeto ``Message`` de un ``Update``.
