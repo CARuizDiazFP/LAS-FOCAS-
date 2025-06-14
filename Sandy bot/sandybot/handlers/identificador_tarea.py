@@ -1,5 +1,5 @@
-# + Nombre de archivo: identificador_tarea.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/identificador_tarea.py
+# Nombre de archivo: identificador_tarea.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/identificador_tarea.py
 # User-provided custom instructions
 """Flujo para identificar tareas programadas desde correos .MSG."""
 

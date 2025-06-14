@@ -1,5 +1,5 @@
-# + Nombre de archivo: conftest.py
-# + Ubicación de archivo: tests/conftest.py
+# Nombre de archivo: conftest.py
+# Ubicación de archivo: tests/conftest.py
 # User-provided custom instructions
 import sys
 import os

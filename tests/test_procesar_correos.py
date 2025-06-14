@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_procesar_correos.py
-# + Ubicación de archivo: tests/test_procesar_correos.py
+# Nombre de archivo: test_procesar_correos.py
+# Ubicación de archivo: tests/test_procesar_correos.py
 # User-provided custom instructions
 import asyncio
 import importlib

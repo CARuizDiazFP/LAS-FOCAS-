@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_informe_sla.py
-# + Ubicación de archivo: tests/test_informe_sla.py
+# Nombre de archivo: test_informe_sla.py
+# Ubicación de archivo: tests/test_informe_sla.py
 # User-provided custom instructions
 # --------------------------------------------------------------------- #
 #  Suite de pruebas unificada y libre de conflictos para el handler SLA #

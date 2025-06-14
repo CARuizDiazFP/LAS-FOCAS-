@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_identificador_tarea.py
-# + Ubicación de archivo: tests/test_identificador_tarea.py
+# Nombre de archivo: test_identificador_tarea.py
+# Ubicación de archivo: tests/test_identificador_tarea.py
 # User-provided custom instructions
 import sys
 import importlib

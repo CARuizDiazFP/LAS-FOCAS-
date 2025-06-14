@@ -1,5 +1,5 @@
-# + Nombre de archivo: reenviar_aviso.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/reenviar_aviso.py
+# Nombre de archivo: reenviar_aviso.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/reenviar_aviso.py
 # User-provided custom instructions
 import tempfile
 import os

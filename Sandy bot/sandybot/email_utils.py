@@ -1,5 +1,5 @@
-# + Nombre de archivo: email_utils.py
-# + Ubicación de archivo: Sandy bot/sandybot/email_utils.py
+# Nombre de archivo: email_utils.py
+# Ubicación de archivo: Sandy bot/sandybot/email_utils.py
 # User-provided custom instructions
 """Funciones utilitarias para el manejo de correos."""
 

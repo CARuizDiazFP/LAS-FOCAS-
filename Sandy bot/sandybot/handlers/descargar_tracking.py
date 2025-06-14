@@ -1,5 +1,5 @@
-# + Nombre de archivo: descargar_tracking.py
-# + Ubicación de archivo: Sandy bot/sandybot/handlers/descargar_tracking.py
+# Nombre de archivo: descargar_tracking.py
+# Ubicación de archivo: Sandy bot/sandybot/handlers/descargar_tracking.py
 # User-provided custom instructions
 """Handler para descargar trackings guardados."""
 

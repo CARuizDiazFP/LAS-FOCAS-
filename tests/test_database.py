@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_database.py
-# + Ubicación de archivo: tests/test_database.py
+# Nombre de archivo: test_database.py
+# Ubicación de archivo: tests/test_database.py
 # User-provided custom instructions
 import sys
 import importlib

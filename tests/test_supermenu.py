@@ -1,5 +1,5 @@
-# + Nombre de archivo: test_supermenu.py
-# + Ubicación de archivo: tests/test_supermenu.py
+# Nombre de archivo: test_supermenu.py
+# Ubicación de archivo: tests/test_supermenu.py
 # User-provided custom instructions
 import sys
 import importlib
