@@ -40,7 +40,20 @@ def _leer_msg(ruta: str) -> str:
 
         msg = extract_msg.Message(ruta)
         asunto = msg.subject or ""
-        cuerpo = msg.body or ""
+
+        # 👉 1A) Usamos .body y, si está vacío, htmlBody o rtfBody
+        cuerpo = msg.body or getattr(msg, "htmlBody", "") or getattr(msg, "rtfBody", "")
+
+        # 👉 1B) Convertimos HTML a texto si es necesario
+        if "<html" in cuerpo.lower():
+            try:
+                from bs4 import BeautifulSoup
+
+                cuerpo = BeautifulSoup(cuerpo, "html.parser").get_text("\n")
+            except ModuleNotFoundError:
+                logger.warning("beautifulsoup4 no instalado; continúo con HTML crudo")
+        cuerpo = cuerpo.strip()
+
         texto = f"{asunto}\n{cuerpo}".strip()
 
         if not texto:

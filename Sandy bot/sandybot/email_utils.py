@@ -27,15 +27,17 @@ SIGNATURE_PATH = Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
 TEMPLATE_MSG_PATH = Path(config.MSG_TEMPLATE_PATH)
 if not TEMPLATE_MSG_PATH.exists():
     logging.warning("Plantilla MSG no encontrada: %s", TEMPLATE_MSG_PATH)
-from .database import crear_tarea_programada  # (+) Necesario en procesar_correo_a_tarea
+# ─── Acceso a la base ────────────────────────────────────────────────
 from .database import (
-    Carrier,
-    Cliente,
-    Servicio,
-    SessionLocal,
-    TareaProgramada,
+    crear_tarea_programada,   # Registra la tarea programada
+    Carrier,                  # Tabla de carriers
+    Cliente,                  # Tabla de clientes
+    Servicio,                 # Tabla de servicios
+    SessionLocal,             # Sesiones SQLAlchemy
+    TareaProgramada,          # Tabla de tareas programadas
     obtener_cliente_por_nombre,
 )
+
 from .utils import cargar_json, guardar_json, incrementar_contador
 
 logger = logging.getLogger(__name__)
@@ -473,12 +475,26 @@ async def procesar_correo_a_tarea(
 
     try:
         if not datos:
-            respuesta = await gpt.consultar_gpt(prompt)
+            # 👉 2A) Desactivamos la cache para recibir respuesta actual
+            respuesta = await gpt.consultar_gpt(prompt, cache=False)
+            logger.debug("GPT raw:\n%s", respuesta[:500])
+
             import re as _re
 
             match = _re.search(r"\{.*\}", respuesta, _re.S)
             if not match:
-                raise ValueError("JSON no encontrado en la respuesta GPT")
+                # 👉 2C) Segundo intento restringiendo a solo JSON
+                prompt_2 = (
+                    "Devuelveme ÚNICAMENTE el JSON (sin ``` ni explicaciones) con las "
+                    "claves inicio, fin, tipo, afectacion, descripcion, ids.\n\n"
+                    f"Correo:\n{texto_limpio}"
+                )
+                respuesta_2 = await gpt.consultar_gpt(prompt_2, cache=False)
+                logger.debug("GPT raw #2:\n%s", respuesta_2[:500])
+                match = _re.search(r"\{.*\}", respuesta_2, _re.S)
+                if not match:
+                    raise ValueError("JSON no encontrado en ningún intento GPT")
+
             datos = await gpt.procesar_json_response(match.group(0), esquema)
         if not datos:
             raise ValueError("JSON inválido")

@@ -5,8 +5,9 @@ import asyncio
 import importlib
 import sys
 import tempfile
-from types import ModuleType, SimpleNamespace
 from pathlib import Path
+from types import ModuleType, SimpleNamespace
+
 from sqlalchemy.orm import sessionmaker
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -153,6 +154,7 @@ def test_procesar_correos(tmp_path):
     servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
 
     import sandybot.email_utils as email_utils
+
     class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
@@ -231,6 +233,7 @@ def test_procesar_correos_varios(tmp_path):
     servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
 
     import sandybot.email_utils as email_utils
+
     class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
@@ -390,3 +393,41 @@ def test_procesar_correos_sin_libreria(tmp_path):
 
     assert new_tareas == prev_tareas
     assert msg.sent is None
+
+
+def test_leer_msg_html(tmp_path, monkeypatch):
+    """Convierte htmlBody a texto plano."""
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.procesar_correos"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "procesar_correos.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+
+    class MsgHTML:
+        def __init__(self, path):
+            self.subject = "A"
+            self.body = ""
+            self.htmlBody = "<html><body>hola <b>mundo</b></body></html>"
+            self.rtfBody = ""
+
+        def close(self):
+            pass
+
+    stub = ModuleType("extract_msg")
+    stub.Message = MsgHTML
+    monkeypatch.setitem(sys.modules, "extract_msg", stub)
+
+    arch = tmp_path / "mail.msg"
+    arch.write_text("x")
+    texto = mod._leer_msg(str(arch))
+    assert "hola" in texto and "mundo" in texto
