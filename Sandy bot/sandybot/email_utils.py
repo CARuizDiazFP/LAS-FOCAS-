@@ -24,6 +24,9 @@ from .config import config
 from .gpt_handler import gpt
 
 SIGNATURE_PATH = Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
+TEMPLATE_MSG_PATH = Path(config.MSG_TEMPLATE_PATH)
+if not TEMPLATE_MSG_PATH.exists():
+    logging.warning("Plantilla MSG no encontrada: %s", TEMPLATE_MSG_PATH)
 from .database import (
     SessionLocal,
     Cliente,
@@ -356,7 +359,10 @@ def generar_archivo_msg(
                 pythoncom.CoInitialize()
 
             outlook = win32.Dispatch("Outlook.Application")
-            mail = outlook.CreateItem(0)
+            if TEMPLATE_MSG_PATH.exists():
+                mail = outlook.CreateItemFromTemplate(str(TEMPLATE_MSG_PATH))
+            else:
+                mail = outlook.CreateItem(0)
             mail.Subject = f"Aviso de tarea programada - {cliente.nombre}"
 
             # Firma opcional
@@ -367,7 +373,15 @@ def generar_archivo_msg(
                 except Exception as e:  # pragma: no cover
                     logger.warning("No se pudo leer la firma: %s", e)
 
-            mail.Body = contenido + ("\n\n" + firma if firma else "")
+            cuerpo_final = mail.Body or ""
+            if "{{CONTENIDO}}" in cuerpo_final:
+                cuerpo_final = cuerpo_final.replace("{{CONTENIDO}}", contenido)
+            elif not cuerpo_final:
+                cuerpo_final = contenido
+            else:
+                cuerpo_final = f"{cuerpo_final}\n{contenido}"
+
+            mail.Body = cuerpo_final + ("\n\n" + firma if firma else "")
             mail.SaveAs(ruta, 3)  # 3 = olMSGUnicode
             # Copia temporal de texto para algunas pruebas
             temp_txt = f"{ruta}.txt"
@@ -394,10 +408,19 @@ def generar_archivo_msg(
                     pass
 
     # 📝 Fallback a texto plano
-    with open(ruta, "w", encoding="utf-8") as f:
-        f.write(contenido)
+    cuerpo_final = contenido
+    if TEMPLATE_MSG_PATH.exists():
+        try:
+            plantilla = TEMPLATE_MSG_PATH.read_text(encoding="utf-8")
+            cuerpo_final = plantilla.replace("{{CONTENIDO}}", contenido)
+        except Exception as e:  # pragma: no cover
+            logger.warning("No se pudo leer la plantilla: %s", e)
+            cuerpo_final = contenido
 
-    return ruta, contenido
+    with open(ruta, "w", encoding="utf-8") as f:
+        f.write(cuerpo_final)
+
+    return ruta, cuerpo_final
 
 
 async def procesar_correo_a_tarea(

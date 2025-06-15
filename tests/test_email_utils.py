@@ -246,8 +246,53 @@ def test_generar_archivo_msg(tmp_path):
     assert "Telco" in texto
 
 
+def test_generar_archivo_msg_con_template(tmp_path, monkeypatch):
+    plantilla = tmp_path / "Plantilla Correo.MSG"
+    plantilla.write_text("Inicio\n{{CONTENIDO}}\nFin", encoding="utf-8")
+    monkeypatch.setenv("MSG_TEMPLATE_PATH", str(plantilla))
+
+    import importlib
+    from sandybot import config as config_mod
+
+    config_mod.Config._instance = None
+    importlib.reload(config_mod)
+    email_utils = importlib.reload(importlib.import_module("sandybot.email_utils"))
+
+    cli = bd.Cliente(nombre="AcmeT", destinatarios=["x@y.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    srv = bd.crear_servicio(nombre="S1", cliente="AcmeT", cliente_id=cli.id)
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8),
+        datetime(2024, 1, 2, 10),
+        "Mantenimiento",
+        [srv.id],
+    )
+
+    ruta = tmp_path / "aviso.msg"
+    resultado, texto = email_utils.generar_archivo_msg(
+        tarea,
+        cli,
+        [srv],
+        str(ruta),
+    )
+
+    assert resultado == str(ruta)
+    assert "Inicio" in texto and "Fin" in texto
+
+
 def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     """Genera el archivo usando Outlook cuando win32 está disponible."""
+
+    import importlib
+    from sandybot import config as config_mod
+
+    config_mod.Config._instance = None
+    importlib.reload(config_mod)
+    email_utils = importlib.reload(importlib.import_module("sandybot.email_utils"))
 
     class OutlookStub:
         def __init__(self):
@@ -316,6 +361,79 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     assert ruta.exists()
     assert "Telco2" in texto
     assert not Path(str(ruta) + ".txt").exists()
+
+
+def test_generar_archivo_msg_win32_template(tmp_path, monkeypatch):
+    plantilla = tmp_path / "Plantilla Correo.MSG"
+    plantilla.write_text("Head\n{{CONTENIDO}}\nTail", encoding="utf-8")
+    monkeypatch.setenv("MSG_TEMPLATE_PATH", str(plantilla))
+
+    import importlib
+    from sandybot import config as config_mod
+
+    config_mod.Config._instance = None
+    importlib.reload(config_mod)
+    email_utils = importlib.reload(importlib.import_module("sandybot.email_utils"))
+
+    class OutlookStub:
+        def __init__(self):
+            self.saved = None
+            self.template = None
+            self.Body = ""
+
+        def Dispatch(self, name):
+            return self
+
+        def CreateItem(self, typ):
+            return self
+
+        def CreateItemFromTemplate(self, path):
+            self.template = path
+            self.Body = Path(path).read_text()
+            return self
+
+        def SaveAs(self, path, fmt):
+            self.saved = (path, fmt)
+            Path(path).write_text(self.Body or "")
+
+    class PycomStub:
+        def CoInitialize(self):
+            pass
+
+        def CoUninitialize(self):
+            pass
+
+    outlook = OutlookStub()
+    pyc = PycomStub()
+    monkeypatch.setattr(email_utils, "win32", outlook)
+    monkeypatch.setattr(email_utils, "pythoncom", pyc)
+
+    cli = bd.Cliente(nombre="AcmePlant", destinatarios=["x@y.com"])
+    with bd.SessionLocal() as s:
+        s.add(cli)
+        s.commit()
+        s.refresh(cli)
+
+    srv = bd.crear_servicio(nombre="S1", cliente="AcmePlant", cliente_id=cli.id)
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 2, 8),
+        datetime(2024, 1, 2, 10),
+        "Mant",
+        [srv.id],
+    )
+
+    ruta = tmp_path / "aviso.msg"
+    resultado, texto = email_utils.generar_archivo_msg(
+        tarea,
+        cli,
+        [srv],
+        str(ruta),
+    )
+
+    assert resultado == str(ruta)
+    assert outlook.saved == (str(ruta), 3)
+    assert outlook.template == str(plantilla)
+    assert "Head" in texto and "Tail" in texto
 
 
 def test_procesar_correo_sin_servicios(monkeypatch, caplog):
