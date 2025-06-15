@@ -8,6 +8,7 @@ from __future__ import annotations
 import logging
 import os
 import tempfile
+import zipfile
 from pathlib import Path
 
 from telegram import Update
@@ -83,6 +84,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     first_name = getattr(docs[0], "file_name", "")
     tareas: list[str] = []
+    rutas_msg: list[Path] = []
 
     for doc in docs:
         # Descarga temporal del .msg recibido
@@ -136,11 +138,8 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             carrier_nombre,
         )
 
-        # Adjuntamos el .msg generado en el chat
         if ruta_msg.exists():
-            with open(ruta_msg, "rb") as f:
-                await mensaje.reply_document(f, filename=ruta_msg.name)
-            os.remove(ruta_msg)
+            rutas_msg.append(ruta_msg)
 
         tareas.append(str(tarea.id))
 
@@ -153,3 +152,20 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             f"Tareas registradas: {', '.join(tareas)}",
             "tareas",
         )
+
+    if rutas_msg:
+        if len(rutas_msg) >= 5:
+            zip_path = Path(tempfile.gettempdir()) / "tareas.zip"
+            with zipfile.ZipFile(zip_path, "w") as zipf:
+                for p in rutas_msg:
+                    zipf.write(p, arcname=p.name)
+            with open(zip_path, "rb") as f:
+                await mensaje.reply_document(f, filename=zip_path.name)
+            for p in rutas_msg:
+                os.remove(p)
+            os.remove(zip_path)
+        else:
+            for p in rutas_msg:
+                with open(p, "rb") as f:
+                    await mensaje.reply_document(f, filename=p.name)
+                os.remove(p)

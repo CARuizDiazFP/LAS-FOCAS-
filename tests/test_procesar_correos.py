@@ -268,6 +268,73 @@ def test_procesar_correos_varios(tmp_path):
     assert enviados["cid"] == cli.id
 
 
+def test_procesar_correos_zip(tmp_path):
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+
+    def _tmpdir():
+        return str(TEMP_DIR)
+
+    tempfile.gettempdir = _tmpdir
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.procesar_correos"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "procesar_correos.py",
+    )
+    tarea_mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = tarea_mod
+    spec.loader.exec_module(tarea_mod)
+
+    enviados = {}
+
+    def fake_enviar(asunto, cuerpo, cid, carrier=None, **k):
+        enviados["cid"] = cid
+        enviados["asunto"] = asunto
+        enviados["cuerpo"] = cuerpo
+        return True
+
+    tarea_mod.enviar_correo = fake_enviar
+
+    servicio = bd.crear_servicio(nombre="Srv", cliente="Cli")
+
+    import sandybot.email_utils as email_utils
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + "]}"
+            )
+
+    email_utils.gpt = GPTStub()
+
+    docs = [Document(file_name=f"a{i}.msg", content="dummy") for i in range(5)]
+    msg = Message(documents=docs)
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=["Cliente"])
+
+    with bd.SessionLocal() as s:
+        prev_tareas = s.query(bd.TareaProgramada).count()
+
+    asyncio.run(tarea_mod.procesar_correos(update, ctx))
+
+    with bd.SessionLocal() as s:
+        tareas = s.query(bd.TareaProgramada).all()
+
+    tempfile.gettempdir = orig_tmp
+
+    assert len(tareas) == prev_tareas + 5
+    assert msg.sent == "tareas.zip"
+
+
 def test_procesar_correos_sin_libreria(tmp_path):
     global TEMP_DIR
     TEMP_DIR = tmp_path
