@@ -233,7 +233,13 @@ def test_generar_archivo_msg(tmp_path):
     )
 
     ruta = tmp_path / "aviso.msg"
-    resultado_ruta, texto = email_utils.generar_archivo_msg(tarea, cli, [srv], str(ruta))
+    resultado_ruta, texto = email_utils.generar_archivo_msg(
+        tarea,
+        cli,
+        [srv],
+        str(ruta),
+        carrier,
+    )
     assert resultado_ruta == str(ruta)
     assert ruta.exists()
     assert "Mantenimiento" in texto
@@ -298,7 +304,13 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     )
 
     ruta = tmp_path / "aviso.msg"
-    resultado, texto = email_utils.generar_archivo_msg(tarea, cli, [srv], str(ruta))
+    resultado, texto = email_utils.generar_archivo_msg(
+        tarea,
+        cli,
+        [srv],
+        str(ruta),
+        carrier,
+    )
     assert resultado == str(ruta)
     assert outlook.saved == (str(ruta), 3)
     assert ruta.exists()

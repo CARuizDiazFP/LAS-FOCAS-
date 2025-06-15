@@ -98,6 +98,7 @@ async def registrar_tarea_programada(
             cliente,
             [s for s in servicios if s],
             str(ruta_path),
+            carrier,
         )
 
         enviar_correo(
