@@ -432,7 +432,6 @@ def test_leer_msg_html(tmp_path, monkeypatch):
     texto = mod._leer_msg(str(arch))
     assert "hola" in texto and "mundo" in texto
 
-
 def test_leer_msg_bytes(tmp_path, monkeypatch):
     """Soporta cuerpos en bytes."""
 
@@ -467,3 +466,4 @@ def test_leer_msg_bytes(tmp_path, monkeypatch):
     arch.write_text("x")
     texto = mod._leer_msg(str(arch))
     assert "cuerpo bytes" in texto
+
