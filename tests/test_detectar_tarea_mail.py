@@ -12,7 +12,7 @@ import tempfile
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
-from tests.telegram_stub import Message, Update  # Registra las clases fake de telegram
+from tests.telegram_stub import Message, Update, Document  # Registra las clases fake de telegram
 
 # Stubs de openai y jsonschema
 openai_stub = ModuleType("openai")
@@ -155,3 +155,72 @@ def test_cuerpo_sin_carrier(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert capturado["texto"] == "cuerpo mail"
+
+
+def test_detectar_tarea_carrier_en_correo(tmp_path):
+    """Obtiene carrier del correo y parsea fechas sin año."""
+
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = lambda: str(TEMP_DIR)
+
+    extract_stub = ModuleType("extract_msg")
+
+    class Msg:
+        def __init__(self, path):
+            self.body = ""
+            self.subject = ""
+
+    extract_stub.Message = Msg
+    sys.modules["extract_msg"] = extract_stub
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.detectar_tarea_mail"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "detectar_tarea_mail.py",
+    )
+    tarea_mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = tarea_mod
+    spec.loader.exec_module(tarea_mod)
+
+    servicio = bd.crear_servicio(nombre="SrvX", cliente="Cli")
+
+    import sandybot.email_utils as email_utils
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "02/01 08:00", "fin": "02/01 10:00", '
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + ']}'
+            )
+
+        async def procesar_json_response(self, resp, esquema):
+            import json
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
+
+    cuerpo = (
+        "Carrier: Telco\nInicio: 02/01 08:00\nFin: 02/01 10:00\n"
+        f"Servicios: {servicio.id}"
+    )
+    doc = Document(file_name="aviso.msg", content=cuerpo)
+    msg = Message("/detectar_tarea Cli", document=doc)
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=["Cli"])
+
+    asyncio.run(tarea_mod.detectar_tarea_mail(update, ctx))
+
+    with bd.SessionLocal() as s:
+        tarea = s.query(bd.TareaProgramada).order_by(bd.TareaProgramada.id.desc()).first()
+
+    tempfile.gettempdir = orig_tmp
+
+    assert tarea is not None

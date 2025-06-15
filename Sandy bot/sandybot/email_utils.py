@@ -431,6 +431,11 @@ async def procesar_correo_a_tarea(
 
     texto_limpio = _limpiar_correo(texto)
 
+    if not carrier_nombre:
+        m = re.search(r"carrier[:\s-]+([^\n\r]+)", texto_limpio, re.I)
+        if m:
+            carrier_nombre = m.group(1).strip()
+
     ejemplo = (
         "Ejemplo correo:\n"
         "Inicio: 02/01/2024 08:00\n"
@@ -474,18 +479,24 @@ async def procesar_correo_a_tarea(
         raise ValueError("No se pudo extraer la tarea del correo") from exc
 
     def _parse_fecha(valor: str) -> datetime:
+        valor = valor.replace("T", " ").strip()
         formatos = (
             "%Y-%m-%d %H:%M",
             "%Y-%m-%d %H:%M:%S",
             "%d/%m/%Y %H:%M",
             "%d/%m/%Y %H:%M:%S",
+            "%d/%m %H:%M",
+            "%d/%m %H:%M:%S",
         )
         for fmt in formatos:
             try:
-                return datetime.strptime(valor.replace("T", " "), fmt)
+                dt = datetime.strptime(valor, fmt)
+                if "%Y" not in fmt:
+                    dt = dt.replace(year=datetime.now().year)
+                return dt
             except ValueError:
                 continue
-        return datetime.fromisoformat(valor.replace("T", " "))
+        return datetime.fromisoformat(valor)
 
     try:
         inicio = _parse_fecha(str(datos["inicio"]))
