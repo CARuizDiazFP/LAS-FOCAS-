@@ -3,19 +3,19 @@
 # User-provided custom instructions
 """Funciones utilitarias para el manejo de correos."""
 
-from pathlib import Path
 import logging
-import smtplib
 import os
 import re
+import smtplib
 import tempfile
 from datetime import datetime
 from email.message import EmailMessage
+from pathlib import Path
 
 # Para exportar mensajes .msg en Windows se usan estos módulos opcionales
 try:
-    import win32com.client as win32  # pragma: no cover - solo disponible en Windows
     import pythoncom  # pragma: no cover - solo disponible en Windows
+    import win32com.client as win32  # pragma: no cover - solo disponible en Windows
 except Exception:  # pragma: no cover - entornos sin win32
     win32 = None
     pythoncom = None
@@ -27,20 +27,16 @@ SIGNATURE_PATH = Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
 TEMPLATE_MSG_PATH = Path(config.MSG_TEMPLATE_PATH)
 if not TEMPLATE_MSG_PATH.exists():
     logging.warning("Plantilla MSG no encontrada: %s", TEMPLATE_MSG_PATH)
+from .database import crear_tarea_programada  # (+) Necesario en procesar_correo_a_tarea
 from .database import (
-    SessionLocal,
+    Carrier,
     Cliente,
     Servicio,
+    SessionLocal,
     TareaProgramada,
-    Carrier,
     obtener_cliente_por_nombre,
-    crear_tarea_programada,    # (+) Necesario en procesar_correo_a_tarea
 )
-from .utils import (
-    cargar_json,
-    guardar_json,
-    incrementar_contador,
-)
+from .utils import cargar_json, guardar_json, incrementar_contador
 
 logger = logging.getLogger(__name__)
 
@@ -426,10 +422,17 @@ def generar_archivo_msg(
 async def procesar_correo_a_tarea(
     texto: str, cliente_nombre: str, carrier_nombre: str | None = None
 ) -> tuple[TareaProgramada, Cliente, Path, str]:
-
     """Analiza el correo y registra la tarea programada."""
 
     texto_limpio = _limpiar_correo(texto)
+
+    # 👉 (1) INTENTO RÁPIDO: extraer datos con regex
+    datos = _extraer_por_regex(texto_limpio)
+    if datos:
+        if os.getenv("SANDY_ENV") == "dev":
+            logger.debug("Regex OK, sin GPT: %s", datos)
+    else:
+        datos = {}
 
     if not carrier_nombre:
         m = re.search(r"carrier[:\s-]+([^\n\r]+)", texto_limpio, re.I)
@@ -469,8 +472,14 @@ async def procesar_correo_a_tarea(
     }
 
     try:
-        respuesta = await gpt.consultar_gpt(prompt)
-        datos = await gpt.procesar_json_response(respuesta, esquema)
+        if not datos:
+            respuesta = await gpt.consultar_gpt(prompt)
+            import re as _re
+
+            match = _re.search(r"\{.*\}", respuesta, _re.S)
+            if not match:
+                raise ValueError("JSON no encontrado en la respuesta GPT")
+            datos = await gpt.procesar_json_response(match.group(0), esquema)
         if not datos:
             raise ValueError("JSON inválido")
         if os.getenv("SANDY_ENV") == "dev":
@@ -522,9 +531,7 @@ async def procesar_correo_a_tarea(
         carrier = None
         if carrier_nombre:
             carrier = (
-                session.query(Carrier)
-                .filter(Carrier.nombre == carrier_nombre)
-                .first()
+                session.query(Carrier).filter(Carrier.nombre == carrier_nombre).first()
             )
             if not carrier:
                 carrier = Carrier(nombre=carrier_nombre)
@@ -540,9 +547,7 @@ async def procesar_correo_a_tarea(
                 srv = session.get(Servicio, int(ident))
             if not srv:
                 srv = (
-                    session.query(Servicio)
-                    .filter(Servicio.id_carrier == ident)
-                    .first()
+                    session.query(Servicio).filter(Servicio.id_carrier == ident).first()
                 )
             if srv:
                 servicios.append(srv)
@@ -587,3 +592,25 @@ async def procesar_correo_a_tarea(
         ruta_msg = Path(ruta_str)
 
         return tarea, cliente, ruta_msg, cuerpo
+
+
+def _extraer_por_regex(texto: str) -> dict | None:
+    """Devuelve datos de una tarea con expresiones regulares.
+
+    Retorna ``None`` si no consigue inicio, fin e IDs.
+    """
+    import re as _re
+
+    inicio_m = _re.search(r"inicio[:\s-]+([^\n\r]+)", texto, _re.I)
+    fin_m = _re.search(r"fin[:\s-]+([^\n\r]+)", texto, _re.I)
+    ids_m = _re.search(r"servicios?[:\s-]+([0-9, ]+)", texto, _re.I)
+    if not (inicio_m and fin_m and ids_m):
+        return None
+    return {
+        "inicio": inicio_m.group(1).strip(),
+        "fin": fin_m.group(1).strip(),
+        "tipo": "Mantenimiento",
+        "afectacion": None,
+        "descripcion": None,
+        "ids": [i.strip() for i in ids_m.group(1).split(",") if i.strip()],
+    }

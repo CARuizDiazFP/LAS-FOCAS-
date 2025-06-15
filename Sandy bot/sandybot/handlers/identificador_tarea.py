@@ -79,6 +79,18 @@ async def procesar_identificador_tarea(
         tarea, cliente_obj, ruta_msg, _ = await procesar_correo_a_tarea(
             contenido, cliente, carrier
         )
+    except ValueError as exc:
+        logger.error("Fallo identificando tarea: %s", exc)
+        await responder_registrando(
+            mensaje,
+            user_id,
+            mensaje.document.file_name,
+            "No pude identificar la tarea en el correo. Podés cargarla "
+            "manualmente con /ingresar_tarea",
+            "identificador_tarea",
+        )
+        os.remove(ruta)
+        return
     except Exception as exc:  # pragma: no cover
         logger.error("Fallo identificando tarea: %s", exc)
         await responder_registrando(
