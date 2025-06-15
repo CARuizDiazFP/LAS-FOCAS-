@@ -14,12 +14,11 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..utils import obtener_mensaje
-from ..email_utils import procesar_correo_a_tarea, enviar_correo
+from ..email_utils import enviar_correo, procesar_correo_a_tarea
 from ..registrador import responder_registrando
+from ..utils import obtener_mensaje
 
 logger = logging.getLogger(__name__)
-
 
 
 # ────────────────────────── UTILIDAD LOCAL ──────────────────────────
@@ -70,17 +69,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_id = update.effective_user.id
 
     # Sintaxis: /procesar_correos <cliente> [carrier]
-    if not context.args:
-        await responder_registrando(
-            mensaje,
-            user_id,
-            mensaje.text or getattr(mensaje.document, "file_name", ""),
-            "Usá: /procesar_correos <cliente> [carrier] y adjuntá los archivos.",
-            "tareas",
-        )
-        return
-
-    cliente_nombre = context.args[0]
+    cliente_nombre = context.args[0] if context.args else "METROTEL"
     carrier_nombre = context.args[1] if len(context.args) > 1 else None
 
     # Colectar documentos

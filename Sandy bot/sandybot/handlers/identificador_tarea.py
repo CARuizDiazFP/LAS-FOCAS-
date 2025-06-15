@@ -13,11 +13,11 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..utils import obtener_mensaje
+from ..email_utils import procesar_correo_a_tarea
 from ..registrador import responder_registrando
+from ..utils import obtener_mensaje
 from .estado import UserState
 from .procesar_correos import _leer_msg
-from ..email_utils import procesar_correo_a_tarea
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +38,8 @@ async def iniciar_identificador_tarea(
         mensaje,
         user_id,
         "identificador_tarea",
-        "Adjuntá el correo .MSG con la tarea. "
-        "En el texto indicá el nombre del cliente y opcionalmente el carrier.",
+        "📎 Adjuntá el archivo *.MSG* del mantenimiento.\n"
+        "No hace falta escribir nada más, yo me encargo del resto 😉",
         "identificador_tarea",
     )
 
@@ -55,16 +55,7 @@ async def procesar_identificador_tarea(
 
     user_id = mensaje.from_user.id
     partes = (mensaje.text or "").split()
-    if not partes:
-        await responder_registrando(
-            mensaje,
-            user_id,
-            mensaje.document.file_name,
-            "Indicá cliente y opcionalmente carrier en el texto del mensaje.",
-            "identificador_tarea",
-        )
-        return
-    cliente = partes[0]
+    cliente = partes[0] if partes else "METROTEL"
     carrier = partes[1] if len(partes) > 1 else None
 
     archivo = await mensaje.document.get_file()
