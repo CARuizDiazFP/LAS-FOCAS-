@@ -44,6 +44,20 @@ def _leer_msg(ruta: str) -> str:
         # 👉 1A) Usamos .body y, si está vacío, htmlBody o rtfBody
         cuerpo = msg.body or getattr(msg, "htmlBody", "") or getattr(msg, "rtfBody", "")
 
+
+        # Si viene como bytes convertimos a texto para evitar errores
+        if isinstance(cuerpo, bytes):
+            try:
+                cuerpo = cuerpo.decode()
+            except Exception:
+                cuerpo = cuerpo.decode("latin-1", "ignore")
+        if isinstance(asunto, bytes):
+            try:
+                asunto = asunto.decode()
+            except Exception:
+                asunto = asunto.decode("latin-1", "ignore")
+
+
         # 👉 1B) Convertimos HTML a texto si es necesario
         if "<html" in cuerpo.lower():
             try:

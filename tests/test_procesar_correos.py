@@ -431,3 +431,39 @@ def test_leer_msg_html(tmp_path, monkeypatch):
     arch.write_text("x")
     texto = mod._leer_msg(str(arch))
     assert "hola" in texto and "mundo" in texto
+
+def test_leer_msg_bytes(tmp_path, monkeypatch):
+    """Soporta cuerpos en bytes."""
+
+    pkg = "sandybot.handlers"
+    mod_name = f"{pkg}.procesar_correos"
+    if mod_name in sys.modules:
+        mod = sys.modules[mod_name]
+    else:
+        spec = importlib.util.spec_from_file_location(
+            mod_name,
+            ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "procesar_correos.py",
+        )
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules[mod_name] = mod
+        spec.loader.exec_module(mod)
+
+    class MsgBytes:
+        def __init__(self, path):
+            self.subject = b"A"
+            self.body = b"cuerpo bytes"
+            self.htmlBody = b""
+            self.rtfBody = b""
+
+        def close(self):
+            pass
+
+    stub = ModuleType("extract_msg")
+    stub.Message = MsgBytes
+    monkeypatch.setitem(sys.modules, "extract_msg", stub)
+
+    arch = tmp_path / "mail.msg"
+    arch.write_text("x")
+    texto = mod._leer_msg(str(arch))
+    assert "cuerpo bytes" in texto
+

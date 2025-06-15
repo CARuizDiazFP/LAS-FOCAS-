@@ -478,7 +478,6 @@ async def procesar_correo_a_tarea(
             # 👉 2A) Desactivamos la cache para recibir respuesta actual
             respuesta = await gpt.consultar_gpt(prompt, cache=False)
             logger.debug("GPT raw:\n%s", respuesta[:500])
-
             import re as _re
 
             match = _re.search(r"\{.*\}", respuesta, _re.S)
