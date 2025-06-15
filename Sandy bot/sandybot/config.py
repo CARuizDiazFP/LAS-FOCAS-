@@ -90,6 +90,10 @@ class Config:  # pylint: disable=too-many-instance-attributes
 
         # 6) Firma de correos opcional
         self.SIGNATURE_PATH = os.getenv("SIGNATURE_PATH")
+        self.MSG_TEMPLATE_PATH = os.getenv(
+            "MSG_TEMPLATE_PATH",
+            str(self.BASE_DIR / "templates" / "Plantilla Correo.MSG"),
+        )
 
         # 7) GPT
         self.GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4")
@@ -149,10 +153,16 @@ class Config:  # pylint: disable=too-many-instance-attributes
         opcionales = {
             "SLACK_WEBHOOK_URL": self.SLACK_WEBHOOK_URL,
             "SUPERVISOR_DB_ID": self.SUPERVISOR_DB_ID,
+            "MSG_TEMPLATE_PATH": self.MSG_TEMPLATE_PATH,
         }
         warn = [v for v, val in opcionales.items() if not val]
         if warn:
             logging.warning("Variables opcionales ausentes: %s", ", ".join(warn))
+
+        if self.MSG_TEMPLATE_PATH and not Path(self.MSG_TEMPLATE_PATH).exists():
+            logging.warning(
+                "Plantilla MSG no encontrada: %s", self.MSG_TEMPLATE_PATH
+            )
 
         email_faltantes = [
             n for n in ("SMTP_USER", "SMTP_PASSWORD", "EMAIL_FROM") if not getattr(self, n)

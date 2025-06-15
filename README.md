@@ -21,6 +21,8 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `SLA_HISTORIAL_DIR`: carpeta donde se guardan las plantillas de SLA reemplazadas.
 
 - `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
+- `MSG_TEMPLATE_PATH`: plantilla para generar los avisos `.MSG`. Por defecto se
+  usa `templates/Plantilla Correo.MSG`.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
@@ -225,6 +227,12 @@ formatear el mensaje. Para leer los adjuntos es necesario instalar
 `extract-msg`; `pywin32` es opcional, pero permite crear un `.MSG`
 real con la firma incluida.
 Además Sandy envía el aviso por correo a los destinatarios configurados para el cliente o para el par (cliente, carrier) cuando corresponde.
+
+#### Plantilla para correos MSG
+
+La variable `MSG_TEMPLATE_PATH` define la base utilizada al crear estos avisos.
+Si no se especifica, se toma `templates/Plantilla Correo.MSG` dentro del
+proyecto. Este archivo se puede personalizar libremente y el bot reemplazará el marcador `{{CONTENIDO}}` por el cuerpo generado. Cuando Outlook no está disponible se lee la plantilla como texto plano.
 
 ### Reenviar un aviso de tarea
 
