@@ -845,6 +845,18 @@ def obtener_tareas_programadas(desc: bool = True) -> list[TareaProgramada]:
         return query.all()
 
 
+def obtener_proxima_tarea() -> TareaProgramada | None:
+    """Devuelve la tarea futura más cercana a la fecha actual."""
+    with SessionLocal() as session:
+        ahora = datetime.utcnow()
+        return (
+            session.query(TareaProgramada)
+            .filter(TareaProgramada.fecha_inicio >= ahora)
+            .order_by(TareaProgramada.fecha_inicio)
+            .first()
+        )
+
+
 def depurar_servicios_duplicados() -> int:
     """Elimina servicios con el mismo nombre y cliente dejando el más reciente."""
     with SessionLocal() as session:
