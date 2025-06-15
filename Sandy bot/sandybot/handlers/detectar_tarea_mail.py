@@ -88,12 +88,20 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
 
     try:
         tarea, cliente, ruta, _ = await procesar_correo_a_tarea(
-
             contenido,
             cliente_nombre,
             carrier_nombre,
-
         )
+    except ValueError as err:
+        logger.error("Fallo detectando tarea: %s", err)
+        await responder_registrando(
+            mensaje,
+            user_id,
+            mensaje.text or getattr(mensaje.document, "file_name", ""),
+            str(err),
+            "tareas",
+        )
+        return
     except Exception as e:
         logger.error("Fallo detectando tarea: %s", e)
         await responder_registrando(

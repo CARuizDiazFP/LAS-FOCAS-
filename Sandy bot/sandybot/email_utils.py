@@ -490,6 +490,7 @@ async def procesar_correo_a_tarea(
                 session.refresh(carrier)
 
         servicios: list[Servicio] = []
+        ids_faltantes: list[str] = []
         for ident in ids_brutos:
             srv = None
             if ident.isdigit():
@@ -503,11 +504,16 @@ async def procesar_correo_a_tarea(
             if srv:
                 servicios.append(srv)
             else:
+                ids_faltantes.append(ident)
                 logger.warning("Servicio %s no encontrado", ident)
 
         if ids_brutos and not servicios:
-            logger.warning("No se localizaron servicios en el correo")
-            raise ValueError("No se encontraron servicios")
+            faltantes_str = ", ".join(ids_faltantes)
+            logger.warning(
+                "No se localizaron servicios en el correo. Faltantes: %s",
+                faltantes_str,
+            )
+            raise ValueError(f"No se encontraron servicios: {faltantes_str}")
 
         tarea = crear_tarea_programada(
             inicio,

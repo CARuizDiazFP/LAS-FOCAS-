@@ -109,6 +109,17 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 contenido, cliente_nombre, carrier_nombre
             )
 
+        except ValueError as err:  # pragma: no cover
+            logger.error("Fallo procesando correo %s: %s", doc.file_name, err)
+            await responder_registrando(
+                mensaje,
+                user_id,
+                doc.file_name,
+                str(err),
+                "tareas",
+            )
+            os.remove(ruta_tmp)
+            continue
         except Exception as e:  # pragma: no cover
             logger.error("Fallo procesando correo %s: %s", doc.file_name, e)
             os.remove(ruta_tmp)

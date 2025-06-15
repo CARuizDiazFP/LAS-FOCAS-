@@ -322,6 +322,7 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
     email_utils.gpt = GPTStub()
 
     with caplog.at_level(logging.WARNING):
-        with pytest.raises(ValueError):
+        with pytest.raises(ValueError) as err:
             asyncio.run(email_utils.procesar_correo_a_tarea("correo", "Cli"))
-        assert "No se localizaron servicios" in caplog.text
+        assert "Faltantes: 99999" in caplog.text
+    assert "99999" in str(err.value)
