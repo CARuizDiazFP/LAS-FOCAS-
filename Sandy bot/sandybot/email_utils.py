@@ -292,6 +292,7 @@ def generar_archivo_msg(
     cliente: Cliente,
     servicios: list[Servicio],
     ruta: str,
+    carrier: Carrier | None = None,
 ) -> tuple[str, str]:
     """Genera un archivo *.msg* (Outlook) o texto plano con la tarea programada.
 
@@ -303,11 +304,19 @@ def generar_archivo_msg(
     - Con ``win32`` + ``pythoncom`` disponibles → se crea un verdadero **MSG**,
       se establece asunto, cuerpo y se agrega firma (si existe).
     - Sin estas librerías → se genera un **.txt** de respaldo.
+
+    Parameters
+    ----------
+    carrier : Carrier, optional
+        Objeto ya recuperado desde la base. Si no se indica,
+        se buscará usando una nueva sesión.
     """
 
     # 📨 Contenido base
     carrier_nombre = None
-    if tarea.carrier_id:
+    if carrier:
+        carrier_nombre = carrier.nombre
+    elif tarea.carrier_id:
         with SessionLocal() as s:
             car = s.get(Carrier, tarea.carrier_id)
             carrier_nombre = car.nombre if car else None
@@ -533,6 +542,7 @@ async def procesar_correo_a_tarea(
             cliente,
             [s for s in servicios if s],
             str(ruta),
+            carrier,
         )
         ruta_msg = Path(ruta_str)
 

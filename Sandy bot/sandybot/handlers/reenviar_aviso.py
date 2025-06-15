@@ -96,7 +96,11 @@ async def reenviar_aviso(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         nombre_arch = f"tarea_{tarea.id}.msg"
         ruta_path = Path(tempfile.gettempdir()) / nombre_arch
         _, cuerpo = generar_archivo_msg(
-            tarea, cliente, [s for s in servicios if s], str(ruta_path)
+            tarea,
+            cliente,
+            [s for s in servicios if s],
+            str(ruta_path),
+            carrier,
         )
         enviar_correo(
             f"Aviso de tarea programada - {cliente.nombre}",
