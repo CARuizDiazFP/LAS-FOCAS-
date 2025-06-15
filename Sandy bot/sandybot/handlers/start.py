@@ -38,6 +38,10 @@ async def start_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
            InlineKeyboardButton("🦜 Informe de SLA", callback_data="informe_sla"),
         ],
         [
+           InlineKeyboardButton("📫 Procesar correos", callback_data="procesar_correos"),
+           InlineKeyboardButton("⏰ Ver tareas", callback_data="listar_tareas"),
+        ],
+        [
            InlineKeyboardButton("📝 Analizar incidencias", callback_data="analizar_incidencias"),
         ],
         [

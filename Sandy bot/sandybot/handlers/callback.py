@@ -103,6 +103,16 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         registrar_conversacion(user_id, "boton_enviar_camaras_mail", "Inicio envio camaras", "callback")
         await iniciar_envio_camaras_mail(update, context)
 
+    elif data == "procesar_correos":
+        from .procesar_correos import procesar_correos
+        registrar_conversacion(user_id, "procesar_correos", "Procesar correos", "callback")
+        await procesar_correos(update, context)
+
+    elif data == "listar_tareas":
+        from .listar_tareas import mostrar_tareas
+        registrar_conversacion(user_id, "listar_tareas", "Mostrar tareas", "callback")
+        await mostrar_tareas(update, context)
+
     elif data == "id_carrier":
         from .id_carrier import iniciar_identificador_carrier
         registrar_conversacion(user_id, "boton_id_carrier", "Inicio id carrier", "callback")

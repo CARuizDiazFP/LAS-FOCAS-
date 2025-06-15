@@ -13,6 +13,7 @@ from ..database import (
     Servicio,
     Carrier,
     SessionLocal,
+    obtener_proxima_tarea,
 )
 from sqlalchemy import func, cast, String
 
@@ -106,6 +107,56 @@ async def listar_tareas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> N
                     f"{ini:%Y-%m-%d %H:%M} - {fin:%Y-%m-%d %H:%M} {tipo} (servicios: {ids_txt})"
                 )
             texto = "\n".join(lineas)
+
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or "listar_tareas",
+        texto,
+        "tareas",
+    )
+
+
+async def mostrar_tareas(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Muestra las tareas en curso y la próxima a iniciar."""
+    mensaje = obtener_mensaje(update)
+    if not mensaje:
+        return
+
+    user_id = update.effective_user.id
+    ahora = datetime.utcnow()
+
+    with SessionLocal() as session:
+        en_curso = (
+            session.query(TareaProgramada)
+            .filter(
+                TareaProgramada.fecha_inicio <= ahora,
+                TareaProgramada.fecha_fin >= ahora,
+            )
+            .order_by(TareaProgramada.fecha_inicio)
+            .all()
+        )
+
+    if en_curso:
+        lineas = [
+            f"{t.fecha_inicio:%H:%M} - {t.fecha_fin:%H:%M} {t.tipo_tarea}"
+            for t in en_curso
+        ]
+        texto = "Tareas en curso:\n" + "\n".join(lineas) + "\n\n"
+    else:
+        texto = "Sin tareas en curso.\n\n"
+
+    proxima = obtener_proxima_tarea()
+    if proxima:
+        delta = proxima.fecha_inicio - ahora
+        minutos = int(delta.total_seconds() // 60)
+        horas, mins = divmod(minutos, 60)
+        tiempo = f"{horas}h {mins}m" if horas else f"{mins}m"
+        texto += (
+            f"Próxima tarea en {tiempo}: {proxima.fecha_inicio:%Y-%m-%d %H:%M}"
+        )
+    else:
+        texto += "No hay tareas futuras registradas."
 
     await responder_registrando(
         mensaje,

@@ -208,6 +208,8 @@ Ejemplos:
 /listar_tareas carrier=Telecom
 ```
 El bot muestra inicio, fin, tipo y los servicios afectados.
+Si presionás **⏰ Ver tareas** en el menú se muestran las tareas en curso y
+cuánto falta para la próxima ventana.
 
 ### Avisos en formato `.MSG`
 
@@ -235,6 +237,7 @@ Además adjuntará el archivo `.MSG` en el chat para facilitar el reenvío manua
 ### Procesar correos y registrar tareas
 
 Usá `/procesar_correos` para analizar los avisos `.MSG` que reciba el bot y evitar cargar la información de forma manual. El comando extrae los datos mediante GPT y reenvía automáticamente el aviso a los destinatarios configurados.
+También podés iniciar el flujo desde el botón **📫 Procesar correos** del menú principal.
 
 Si `pywin32` está instalado los `.MSG` se crean con Outlook, por lo que podés abrirlos y editar el cuerpo antes de enviarlos. Sin esas librerías el bot genera un texto plano.
 

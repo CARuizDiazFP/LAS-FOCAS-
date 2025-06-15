@@ -25,6 +25,10 @@ class Message:
 class CallbackQuery:
     def __init__(self, message=None):
         self.message = message
+        self.from_user = SimpleNamespace(id=1)
+
+    async def answer(self, *a, **k):
+        pass
 
 class Document:
     def __init__(self, file_name="file.txt", content=""):
