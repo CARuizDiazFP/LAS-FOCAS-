@@ -1,9 +1,9 @@
 # NiceGrow
 
 Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
-instalar las dependencias listadas en `Sandy bot/requirements.txt`. Se recomienda usar
-la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva
-API utilizada en `sandybot`. Es obligatorio instalar `extract-msg` para leer los
+instalar las dependencias listadas en `Sandy bot/requirements.txt`.
+Se recomienda usar la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva API utilizada en `sandybot`.
+Es obligatorio instalar `extract-msg` para leer los
 adjuntos `.msg` y opcionalmente `pywin32` en Windows o `docx2pdf` en otros sistemas.
 Estas librerías permiten insertar la firma, generar un `.MSG` real desde Outlook y exportar informes a PDF. Desde esta versión el bot también acepta
 mensajes de voz, los descarga y los transcribe automáticamente utilizando la API
@@ -18,14 +18,17 @@ El comportamiento de SandyBot se ajusta mediante varias variables de entorno:
 - `PLANTILLA_PATH`: ruta de la plantilla para los informes de repetitividad. Si
 
 - `SLA_TEMPLATE_PATH`: ruta de la plantilla para el Informe de SLA. Si no se define, se usa `Sandy bot/templates/Template Informe SLA.docx`.
+- `SLA_HISTORIAL_DIR`: carpeta donde se guardan las plantillas de SLA reemplazadas.
 
 - `SIGNATURE_PATH`: ruta a la firma opcional que se agregará en los correos.
 - `GPT_MODEL`: modelo de OpenAI a emplear. Por defecto se aplica `gpt-4`.
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASSWORD`: datos para el servidor
   de correo saliente.
 - `SUPER_PASS`: contraseña que habilita el menú de desarrollador.
+- `SANDY_ENV`: si se define como `dev`, muestra detalles adicionales en los logs.
 - `SMTP_USE_TLS`: controla si se inicia TLS. Si se define como `false` o se usa
   el puerto 465 se emplea `SMTP_SSL`; en caso contrario se ejecuta `starttls()`.
+- `SMTP_DEBUG`: activa el modo de depuración de envío de correos.
 - También se aceptan `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y
   `EMAIL_PASSWORD` para mantener compatibilidad con versiones antiguas.
 - `PYTHONPATH`: `main.py` agrega de forma automática la carpeta `Sandy bot`.
@@ -40,6 +43,7 @@ Para adjuntar archivos por email se utilizan las siguientes variables opcionales
 - `SMTP_USER` y `SMTP_PASSWORD`: credenciales si el servidor las requiere.
 - `EMAIL_FROM`: dirección remitente utilizada en los mensajes.
 - `SIGNATURE_PATH`: archivo de firma que se adjunta al final de cada aviso.
+- `SMTP_DEBUG`: activa el modo de depuración del envío de correos.
 
 Si vas a usar Gmail en desarrollo, activá la verificación en dos pasos y generá
 una **contraseña de aplicación**. Definí las variables así:
@@ -278,6 +282,7 @@ Si el ID no existe en la base de datos, Sandy creará el servicio automáticamen
 al guardar el tracking.
 Para recuperar un archivo existente podés usar `/descargar_tracking` y
 especificar el número de servicio.
+Si solo necesitás el listado de cámaras guardadas, ejecutá `/descargar_camaras <servicio>`.
 
 ## Identificador de servicio Carrier
 

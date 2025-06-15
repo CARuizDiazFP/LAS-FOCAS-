@@ -164,6 +164,7 @@ Salida esperada:
 
 El bot envía listados por email a los contactos guardados en la tabla `clientes`. Los correos se registran con `/agregar_destinatario` y se consultan con `/listar_destinatarios`. Configurá `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER` y `SMTP_PASSWORD` junto a `EMAIL_FROM` en el `.env`. Las variables `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_USER` y `EMAIL_PASSWORD` siguen siendo válidas para compatibilidad.
 Definí también `SIGNATURE_PATH` para indicar la firma que se agrega a los mensajes generados.
+Activá `SMTP_DEBUG` para registrar cada paso del envío cuando necesites depurar problemas de conexión.
 
 Al registrar tareas se genera un aviso en formato `.MSG` y se envía de forma automática a los destinatarios correspondientes. Si tenés Outlook y la dependencia opcional `pywin32`, la firma se inserta y podés ajustar el mensaje antes de enviarlo.
 El comando `/procesar_correos` analiza esos `.MSG` y registra las tareas en la base sin intervención manual.
@@ -171,6 +172,7 @@ El comando `/procesar_correos` analiza esos `.MSG` y registra las tareas en la b
 ### Informe de SLA
 
 La tabla principal del documento SLA siempre debe ordenarse de **mayor a menor** por la columna `SLA`. Cualquier cambio en el generador o las pruebas debe respetar este criterio.
+Las plantillas anteriores se guardan automáticamente en la carpeta indicada por `SLA_HISTORIAL_DIR` para mantener el historial.
 
 
 ### Convenciones para commits
