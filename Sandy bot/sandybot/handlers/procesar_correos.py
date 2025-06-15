@@ -42,7 +42,16 @@ def _leer_msg(ruta: str) -> str:
         msg = extract_msg.Message(ruta)
         asunto = msg.subject or ""
         cuerpo = msg.body or ""
-        return f"{asunto}\n{cuerpo}".strip()
+        texto = f"{asunto}\n{cuerpo}".strip()
+
+        if not texto:
+            try:
+                texto = Path(ruta).read_text(encoding="utf-8", errors="ignore")
+            except Exception as err:  # pragma: no cover - error inusual
+                logger.error("Error leyendo texto plano de %s: %s", ruta, err)
+                texto = ""
+
+        return texto
     except Exception as exc:  # pragma: no cover
         logger.error("Error leyendo MSG %s: %s", ruta, exc)
         return ""

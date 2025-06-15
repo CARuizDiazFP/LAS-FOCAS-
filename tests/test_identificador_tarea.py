@@ -104,3 +104,77 @@ def test_identificador_tarea(tmp_path):
     assert tareas == prev_tareas + 1
     assert rels == prev_rels + 1
     assert msg.sent == f"tarea_{tareas_list[-1].id}.msg"
+
+
+def test_identificador_tarea_heuristicas(tmp_path):
+    """Detecta carrier en el cuerpo y lee .msg sin body."""
+
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = lambda: str(TEMP_DIR)
+
+    class Msg2:
+        def __init__(self, path):
+            self.body = ""
+            self.subject = ""
+
+    extract_stub.Message = Msg2
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.identificador_tarea"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "identificador_tarea.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+
+    servicio = bd.crear_servicio(nombre="Srv2", cliente="Cli")
+
+    import sandybot.email_utils as email_utils
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "02/01 08:00", "fin": "02/01 10:00", '
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + ']}'
+            )
+
+        async def procesar_json_response(self, resp, esquema):
+            import json
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
+
+    cuerpo = (
+        "Carrier: Telco\nInicio: 02/01 08:00\nFin: 02/01 10:00\n"
+        f"Servicios: {servicio.id}"
+    )
+    archivo = tmp_path / "mail.msg"
+    archivo.write_text(cuerpo)
+
+    doc = Document(file_name="mail.msg", content=cuerpo)
+    msg = Message("Cli", document=doc)
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=[], user_data={})
+
+    with bd.SessionLocal() as s:
+        prev_tareas = s.query(bd.TareaProgramada).count()
+
+    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+
+    with bd.SessionLocal() as s:
+        tarea = s.query(bd.TareaProgramada).order_by(bd.TareaProgramada.id.desc()).first()
+        srv = s.get(bd.Servicio, servicio.id)
+
+    tempfile.gettempdir = orig_tmp
+
+    assert tarea.id == prev_tareas + 1
+    assert srv.carrier_id is not None
