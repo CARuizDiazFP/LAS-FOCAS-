@@ -27,10 +27,17 @@ SIGNATURE_PATH = Path(config.SIGNATURE_PATH) if config.SIGNATURE_PATH else None
 TEMPLATE_MSG_PATH = Path(config.MSG_TEMPLATE_PATH)
 if not TEMPLATE_MSG_PATH.exists():
     logging.warning("Plantilla MSG no encontrada: %s", TEMPLATE_MSG_PATH)
-from .database import \
-    crear_tarea_programada  # (+) Necesario en procesar_correo_a_tarea
-from .database import (Carrier, Cliente, Servicio, SessionLocal,
-                       TareaProgramada, obtener_cliente_por_nombre)
+# ─── Acceso a la base ────────────────────────────────────────────────
+from .database import (
+    crear_tarea_programada,   # Registra la tarea programada
+    Carrier,                  # Tabla de carriers
+    Cliente,                  # Tabla de clientes
+    Servicio,                 # Tabla de servicios
+    SessionLocal,             # Sesiones SQLAlchemy
+    TareaProgramada,          # Tabla de tareas programadas
+    obtener_cliente_por_nombre,
+)
+
 from .utils import cargar_json, guardar_json, incrementar_contador
 
 logger = logging.getLogger(__name__)
@@ -471,6 +478,7 @@ async def procesar_correo_a_tarea(
             # 👉 2A) Desactivamos la cache para recibir respuesta actual
             respuesta = await gpt.consultar_gpt(prompt, cache=False)
             logger.debug("GPT raw:\n%s", respuesta[:500])
+
             import re as _re
 
             match = _re.search(r"\{.*\}", respuesta, _re.S)
@@ -486,6 +494,7 @@ async def procesar_correo_a_tarea(
                 match = _re.search(r"\{.*\}", respuesta_2, _re.S)
                 if not match:
                     raise ValueError("JSON no encontrado en ningún intento GPT")
+
             datos = await gpt.procesar_json_response(match.group(0), esquema)
         if not datos:
             raise ValueError("JSON inválido")
