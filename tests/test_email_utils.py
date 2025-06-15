@@ -1,17 +1,17 @@
 # Nombre de archivo: test_email_utils.py
 # Ubicación de archivo: tests/test_email_utils.py
 # User-provided custom instructions
+import asyncio
+import importlib
+import logging
+import os
 import sys
 import types
-import os
-import importlib
-from pathlib import Path
-from sqlalchemy.orm import sessionmaker
 from datetime import datetime
-import asyncio
-import logging
-import pytest
+from pathlib import Path
 
+import pytest
+from sqlalchemy.orm import sessionmaker
 
 # Preparar rutas
 ROOT_DIR = Path(__file__).resolve().parents[1]
@@ -65,14 +65,17 @@ os.environ.update(
 
 # Base de datos en memoria para las pruebas
 import sqlalchemy
+
 orig = sqlalchemy.create_engine
 sqlalchemy.create_engine = lambda *a, **k: orig("sqlite:///:memory:")
 import sandybot.database as bd
+
 sqlalchemy.create_engine = orig
 bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
 bd.Base.metadata.create_all(bind=bd.engine)
 
 from sandybot import config as config_mod
+
 config_mod.Config._instance = None
 importlib.reload(config_mod)
 config_mod = importlib.import_module("sandybot.config")
@@ -160,13 +163,12 @@ def test_procesar_correo_fecha_dia_mes(tmp_path):
 
         async def procesar_json_response(self, resp, esquema):
             import json
+
             return json.loads(resp)
 
     email_utils.gpt = GPTStub()
     bd.crear_servicio(nombre="Srv1", cliente="Cli", id_servicio=1)
-    tarea, _, ruta, _ = asyncio.run(
-        email_utils.procesar_correo_a_tarea("texto", "Cli")
-    )
+    tarea, _, ruta, _ = asyncio.run(email_utils.procesar_correo_a_tarea("texto", "Cli"))
     assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)
     assert tarea.fecha_fin == datetime(2024, 1, 2, 10)
     assert ruta.exists()
@@ -252,6 +254,7 @@ def test_generar_archivo_msg_con_template(tmp_path, monkeypatch):
     monkeypatch.setenv("MSG_TEMPLATE_PATH", str(plantilla))
 
     import importlib
+
     from sandybot import config as config_mod
 
     config_mod.Config._instance = None
@@ -288,6 +291,7 @@ def test_generar_archivo_msg_win32(tmp_path, monkeypatch):
     """Genera el archivo usando Outlook cuando win32 está disponible."""
 
     import importlib
+
     from sandybot import config as config_mod
 
     config_mod.Config._instance = None
@@ -369,6 +373,7 @@ def test_generar_archivo_msg_win32_template(tmp_path, monkeypatch):
     monkeypatch.setenv("MSG_TEMPLATE_PATH", str(plantilla))
 
     import importlib
+
     from sandybot import config as config_mod
 
     config_mod.Config._instance = None
@@ -447,6 +452,7 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
 
         async def procesar_json_response(self, resp, schema):
             import json
+
             return json.loads(resp)
 
     email_utils.gpt = GPTStub()
@@ -456,3 +462,26 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
             asyncio.run(email_utils.procesar_correo_a_tarea("correo", "Cli"))
         assert "Faltantes: 99999" in caplog.text
     assert "99999" in str(err.value)
+
+
+def test_procesar_correo_respuesta_con_texto(monkeypatch):
+    """Extrae JSON aunque venga acompañado de texto."""
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                "Aqui tienes:\n"
+                '{"inicio": "2024-01-02 08:00", "fin": "2024-01-02 10:00", '
+                '"tipo": "Mant", "afectacion": null, "descripcion": null, "ids": ["1"]}'
+            )
+
+        async def procesar_json_response(self, resp, esquema):
+            import json
+
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
+    bd.crear_servicio(nombre="SrvX", cliente="Cli", id_servicio=1)
+
+    tarea, _, _, _ = asyncio.run(email_utils.procesar_correo_a_tarea("texto", "Cli"))
+    assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)

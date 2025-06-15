@@ -14,12 +14,11 @@ from pathlib import Path
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..utils import obtener_mensaje
-from ..email_utils import procesar_correo_a_tarea, enviar_correo
+from ..email_utils import enviar_correo, procesar_correo_a_tarea
 from ..registrador import responder_registrando
+from ..utils import obtener_mensaje
 
 logger = logging.getLogger(__name__)
-
 
 
 # ────────────────────────── UTILIDAD LOCAL ──────────────────────────
@@ -41,7 +40,32 @@ def _leer_msg(ruta: str) -> str:
 
         msg = extract_msg.Message(ruta)
         asunto = msg.subject or ""
-        cuerpo = msg.body or ""
+
+        # 👉 1A) Usamos .body y, si está vacío, htmlBody o rtfBody
+        cuerpo = msg.body or getattr(msg, "htmlBody", "") or getattr(msg, "rtfBody", "")
+
+        # Si viene como bytes convertimos a texto para evitar errores
+        if isinstance(cuerpo, bytes):
+            try:
+                cuerpo = cuerpo.decode()
+            except Exception:
+                cuerpo = cuerpo.decode("latin-1", "ignore")
+        if isinstance(asunto, bytes):
+            try:
+                asunto = asunto.decode()
+            except Exception:
+                asunto = asunto.decode("latin-1", "ignore")
+
+        # 👉 1B) Convertimos HTML a texto si es necesario
+        if "<html" in cuerpo.lower():
+            try:
+                from bs4 import BeautifulSoup
+
+                cuerpo = BeautifulSoup(cuerpo, "html.parser").get_text("\n")
+            except ModuleNotFoundError:
+                logger.warning("beautifulsoup4 no instalado; continúo con HTML crudo")
+        cuerpo = cuerpo.strip()
+
         texto = f"{asunto}\n{cuerpo}".strip()
 
         if not texto:
@@ -70,17 +94,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     user_id = update.effective_user.id
 
     # Sintaxis: /procesar_correos <cliente> [carrier]
-    if not context.args:
-        await responder_registrando(
-            mensaje,
-            user_id,
-            mensaje.text or getattr(mensaje.document, "file_name", ""),
-            "Usá: /procesar_correos <cliente> [carrier] y adjuntá los archivos.",
-            "tareas",
-        )
-        return
-
-    cliente_nombre = context.args[0]
+    cliente_nombre = context.args[0] if context.args else "METROTEL"
     carrier_nombre = context.args[1] if len(context.args) > 1 else None
 
     # Colectar documentos
