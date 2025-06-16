@@ -1,12 +1,13 @@
 # Nombre de archivo: test_database.py
 # Ubicación de archivo: tests/test_database.py
 # User-provided custom instructions
-import sys
 import importlib
-from pathlib import Path
+import sys
 from datetime import datetime
-import pytest
+from pathlib import Path
+
 import openpyxl
+import pytest
 
 sqlalchemy = pytest.importorskip("sqlalchemy")
 from sqlalchemy import create_engine, text
@@ -15,10 +16,10 @@ from sqlalchemy.orm import sessionmaker
 # Agregar ruta del paquete
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
-import tests.telegram_stub  # Registra las clases fake de telegram
-
 # Forzar que ``sandybot.database`` utilice SQLite en memoria
 import sqlalchemy
+
+import tests.telegram_stub  # Registra las clases fake de telegram
 
 orig_create_engine = sqlalchemy.create_engine
 sqlalchemy.create_engine = lambda *a, **k: orig_create_engine("sqlite:///:memory:")
@@ -308,16 +309,23 @@ def test_crear_tarea_varios_servicios():
 
 
 def test_crear_tarea_servicio_repetido():
-    """Crear una tarea con el mismo servicio dos veces provoca un error."""
+    """Ignora servicios repetidos al crear la tarea."""
     s = bd.crear_servicio(nombre="SvRep", cliente="CliR")
 
-    with pytest.raises(sqlalchemy.exc.IntegrityError):
-        bd.crear_tarea_programada(
-            datetime(2024, 1, 4, 8),
-            datetime(2024, 1, 4, 10),
-            "Mantenimiento",
-            [s.id, s.id],
+    tarea = bd.crear_tarea_programada(
+        datetime(2024, 1, 4, 8),
+        datetime(2024, 1, 4, 10),
+        "Mantenimiento",
+        [s.id, s.id],
+    )
+
+    with bd.SessionLocal() as session:
+        rels = (
+            session.query(bd.TareaServicio)
+            .filter(bd.TareaServicio.tarea_id == tarea.id)
+            .all()
         )
+    assert len(rels) == 1
 
 
 def test_reclamos_por_servicio():
@@ -354,11 +362,7 @@ def test_reclamo_unico():
     r1 = bd.crear_reclamo(srv.id, "DUP")
     r2 = bd.crear_reclamo(srv.id, "DUP")
     with bd.SessionLocal() as s:
-        filas = (
-            s.query(bd.Reclamo)
-            .filter(bd.Reclamo.servicio_id == srv.id)
-            .all()
-        )
+        filas = s.query(bd.Reclamo).filter(bd.Reclamo.servicio_id == srv.id).all()
     assert len(filas) == 1
     assert r1.id == r2.id
 
@@ -369,10 +373,6 @@ def test_camara_unica():
     c1 = bd.crear_camara("Cam", srv.id)
     c2 = bd.crear_camara("Cam", srv.id)
     with bd.SessionLocal() as s:
-        filas = (
-            s.query(bd.Camara)
-            .filter(bd.Camara.id_servicio == srv.id)
-            .all()
-        )
+        filas = s.query(bd.Camara).filter(bd.Camara.id_servicio == srv.id).all()
     assert len(filas) == 1
     assert c1.id == c2.id

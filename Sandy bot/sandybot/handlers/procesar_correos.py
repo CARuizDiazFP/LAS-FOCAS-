@@ -40,10 +40,11 @@ def _leer_msg(ruta: str) -> str:
 
         msg = extract_msg.Message(ruta)
         asunto = msg.subject or ""
+        remitente = getattr(msg, "sender", None) or getattr(msg, "sender_email", None)
+        remitente_nom = getattr(msg, "sender_name", None)
 
         # 👉 1A) Usamos .body y, si está vacío, htmlBody o rtfBody
         cuerpo = msg.body or getattr(msg, "htmlBody", "") or getattr(msg, "rtfBody", "")
-
 
         # Si viene como bytes convertimos a texto para evitar errores
         if isinstance(cuerpo, bytes):
@@ -57,7 +58,6 @@ def _leer_msg(ruta: str) -> str:
             except Exception:
                 asunto = asunto.decode("latin-1", "ignore")
 
-
         # 👉 1B) Convertimos HTML a texto si es necesario
         if "<html" in cuerpo.lower():
             try:
@@ -68,7 +68,12 @@ def _leer_msg(ruta: str) -> str:
                 logger.warning("beautifulsoup4 no instalado; continúo con HTML crudo")
         cuerpo = cuerpo.strip()
 
-        texto = f"{asunto}\n{cuerpo}".strip()
+        encabezado = []
+        if remitente:
+            encabezado.append(f"From: {remitente}")
+        if remitente_nom:
+            encabezado.append(f"Name: {remitente_nom}")
+        texto = "\n".join(encabezado + [asunto, cuerpo]).strip()
 
         if not texto:
             try:
@@ -132,8 +137,14 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 return
 
             # Procesar correo → registrar tarea → generar .msg final
-            tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
-                contenido, cliente_nombre, carrier_nombre
+            (
+                tarea,
+                cliente,
+                ruta_msg,
+                cuerpo,
+                _,
+            ) = await procesar_correo_a_tarea(
+                contenido, cliente_nombre, carrier_nombre, generar_msg=True
             )
 
         except ValueError as err:  # pragma: no cover

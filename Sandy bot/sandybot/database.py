@@ -1,30 +1,31 @@
 # Nombre de archivo: database.py
 # Ubicación de archivo: Sandy bot/sandybot/database.py
 # User-provided custom instructions
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    DateTime,
-    text,
-    inspect,
-    func,
-    JSON,
-    ForeignKey,
-    Index,  # (+) Necesario para definir y recrear índices de forma explícita
-    UniqueConstraint,  # (+) Mantiene la restricción única de tareas_servicio
-)
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.dialects.postgresql import JSONB
-import logging
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import json
+import logging
+from datetime import datetime
 
 import pandas as pd
-from .utils import normalizar_camara
-from datetime import datetime
+from sqlalchemy import (  # (+) Necesario para definir y recrear índices de forma explícita; (+) Mantiene la restricción única de tareas_servicio
+    JSON,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    UniqueConstraint,
+    create_engine,
+    func,
+    inspect,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from .config import config
+from .utils import normalizar_camara
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +190,11 @@ class TareaProgramada(Base):
     tiempo_afectacion = Column(String)
     descripcion = Column(String)
     carrier_id = Column(Integer, ForeignKey("carriers.id"), index=True)
+    id_interno = Column(String, index=True, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("carrier_id", "id_interno", name="uix_carrier_interno"),
+    )
 
 
 Index(
@@ -211,6 +217,16 @@ class TareaServicio(Base):
     __table_args__ = (
         UniqueConstraint("tarea_id", "servicio_id", name="uix_tarea_servicio"),
     )
+
+
+class ServicioPendiente(Base):
+    """IDs de servicios no encontrados en un correo."""
+
+    __tablename__ = "servicios_pendientes"
+
+    id = Column(Integer, primary_key=True)
+    tarea_id = Column(Integer, ForeignKey("tareas_programadas.id"), index=True)
+    id_carrier = Column(String, index=True)
 
 
 def ensure_servicio_columns() -> None:
@@ -306,6 +322,36 @@ def ensure_servicio_columns() -> None:
                     "CREATE INDEX ix_tareas_programadas_carrier_id ON tareas_programadas (carrier_id)"
                 )
             )
+
+    if "id_interno" not in actuales_tarea:
+        tipo = TareaProgramada.__table__.columns["id_interno"].type.compile(
+            engine.dialect
+        )
+        with engine.begin() as conn:
+            conn.execute(
+                text(f"ALTER TABLE tareas_programadas ADD COLUMN id_interno {tipo}")
+            )
+    if "ix_tareas_programadas_id_interno" not in indices_tareas:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX ix_tareas_programadas_id_interno ON tareas_programadas (id_interno)"
+                )
+            )
+
+    uniques_tarea = {
+        u["name"] for u in inspector.get_unique_constraints("tareas_programadas")
+    }
+    if "uix_carrier_interno" not in uniques_tarea:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE tareas_programadas ADD CONSTRAINT uix_carrier_interno UNIQUE (carrier_id, id_interno)"
+                )
+            )
+
+    if "servicios_pendientes" not in inspector.get_table_names():
+        ServicioPendiente.__table__.create(bind=engine)
 
     # 2️⃣ Restricción única (tarea_id, servicio_id) en tareas_servicio
     if "tareas_servicio" in inspector.get_table_names():
@@ -509,7 +555,9 @@ def actualizar_tracking(
         session.commit()
 
 
-def buscar_servicios_por_camara(nombre_camara: str, exacto: bool = False) -> list[Servicio]:
+def buscar_servicios_por_camara(
+    nombre_camara: str, exacto: bool = False
+) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada.
 
     :param nombre_camara: Texto a buscar en las cámaras registradas.
@@ -554,8 +602,10 @@ def buscar_servicios_por_camara(nombre_camara: str, exacto: bool = False) -> lis
 
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
-                coincidencia = fragmento == c_norm if exacto else (
-                    fragmento in c_norm or c_norm in fragmento
+                coincidencia = (
+                    fragmento == c_norm
+                    if exacto
+                    else (fragmento in c_norm or c_norm in fragmento)
                 )
                 if coincidencia:
                     resultados.append(servicio)
@@ -703,11 +753,7 @@ def crear_reclamo(
 def obtener_reclamos_servicio(servicio_id: int) -> list[Reclamo]:
     """Devuelve los reclamos de un servicio."""
     with SessionLocal() as session:
-        return (
-            session.query(Reclamo)
-            .filter(Reclamo.servicio_id == servicio_id)
-            .all()
-        )
+        return session.query(Reclamo).filter(Reclamo.servicio_id == servicio_id).all()
 
 
 def crear_tarea_programada(
@@ -718,28 +764,59 @@ def crear_tarea_programada(
     carrier_id: int | None = None,
     tiempo_afectacion: str | None = None,
     descripcion: str | None = None,
+    id_interno: str | None = None,
 ) -> TareaProgramada:
     """Registra una tarea programada y la vincula a los servicios indicados."""
 
     with SessionLocal() as session:
-        tarea = TareaProgramada(
-            fecha_inicio=fecha_inicio,
-            fecha_fin=fecha_fin,
-            tipo_tarea=tipo_tarea,
-            carrier_id=carrier_id,
-            tiempo_afectacion=tiempo_afectacion,
-            descripcion=descripcion,
-        )
-        session.add(tarea)
+        tarea = None
+        if carrier_id and id_interno:
+            tarea = (
+                session.query(TareaProgramada)
+                .filter(
+                    TareaProgramada.carrier_id == carrier_id,
+                    TareaProgramada.id_interno == id_interno,
+                )
+                .first()
+            )
+        if tarea:
+            tarea.fecha_inicio = fecha_inicio
+            tarea.fecha_fin = fecha_fin
+            tarea.tipo_tarea = tipo_tarea
+            tarea.tiempo_afectacion = tiempo_afectacion
+            tarea.descripcion = descripcion
+        else:
+            tarea = TareaProgramada(
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                tipo_tarea=tipo_tarea,
+                carrier_id=carrier_id,
+                tiempo_afectacion=tiempo_afectacion,
+                descripcion=descripcion,
+                id_interno=id_interno,
+            )
+            session.add(tarea)
         session.commit()
         session.refresh(tarea)
 
+        servicios = list(dict.fromkeys(servicios))
+        session.query(TareaServicio).filter(TareaServicio.tarea_id == tarea.id).delete()
         relaciones = [
             TareaServicio(tarea_id=tarea.id, servicio_id=sid) for sid in servicios
         ]
         session.bulk_save_objects(relaciones)
         session.commit()
         return tarea
+
+
+def crear_servicio_pendiente(id_carrier: str, tarea_id: int) -> ServicioPendiente:
+    """Registra un servicio pendiente."""
+    with SessionLocal() as session:
+        pendiente = ServicioPendiente(id_carrier=id_carrier, tarea_id=tarea_id)
+        session.add(pendiente)
+        session.commit()
+        session.refresh(pendiente)
+        return pendiente
 
 
 def obtener_tareas_servicio(
@@ -777,7 +854,9 @@ def obtener_servicios(desc: bool = True) -> list[Servicio]:
     """Devuelve los servicios ordenados por fecha de creación."""
     with SessionLocal() as session:
         query = session.query(Servicio)
-        criterio = Servicio.fecha_creacion if not desc else Servicio.fecha_creacion.desc()
+        criterio = (
+            Servicio.fecha_creacion if not desc else Servicio.fecha_creacion.desc()
+        )
         query = query.order_by(criterio)
         return query.all()
 

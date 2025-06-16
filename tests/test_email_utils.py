@@ -168,7 +168,15 @@ def test_procesar_correo_fecha_dia_mes(tmp_path):
 
     email_utils.gpt = GPTStub()
     bd.crear_servicio(nombre="Srv1", cliente="Cli", id_servicio=1)
-    tarea, _, ruta, _ = asyncio.run(email_utils.procesar_correo_a_tarea("texto", "Cli"))
+    (
+        tarea,
+        _,
+        ruta,
+        _,
+        _,
+    ) = asyncio.run(
+        email_utils.procesar_correo_a_tarea("texto", "Cli", generar_msg=True)
+    )
     assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)
     assert tarea.fecha_fin == datetime(2024, 1, 2, 10)
     assert ruta.exists()
@@ -457,11 +465,13 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
 
     email_utils.gpt = GPTStub()
 
-    with caplog.at_level(logging.WARNING):
-        with pytest.raises(ValueError) as err:
-            asyncio.run(email_utils.procesar_correo_a_tarea("correo", "Cli"))
-        assert "Faltantes: 99999" in caplog.text
-    assert "99999" in str(err.value)
+    tarea, ids_pend = asyncio.run(
+        email_utils.procesar_correo_a_tarea("correo", "Cli", generar_msg=False)
+    )
+    with bd.SessionLocal() as s:
+        pendiente = s.query(bd.ServicioPendiente).filter_by(tarea_id=tarea.id).first()
+    assert pendiente.id_carrier == "99999"
+    assert ids_pend == ["99999"]
 
 
 def test_procesar_correo_respuesta_con_texto(monkeypatch):
@@ -483,7 +493,15 @@ def test_procesar_correo_respuesta_con_texto(monkeypatch):
     email_utils.gpt = GPTStub()
     bd.crear_servicio(nombre="SrvX", cliente="Cli", id_servicio=1)
 
-    tarea, _, _, _ = asyncio.run(email_utils.procesar_correo_a_tarea("texto", "Cli"))
+    (
+        tarea,
+        _,
+        _,
+        _,
+        _,
+    ) = asyncio.run(
+        email_utils.procesar_correo_a_tarea("texto", "Cli", generar_msg=True)
+    )
     assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)
 
 
@@ -506,5 +524,13 @@ def test_procesar_correo_id_con_prefijo(monkeypatch):
     email_utils.gpt = GPTStub()
     bd.crear_servicio(nombre="SrvPref", cliente="Cli", id_carrier="1")
 
-    tarea, _, _, _ = asyncio.run(email_utils.procesar_correo_a_tarea("texto", "Cli"))
+    (
+        tarea,
+        _,
+        _,
+        _,
+        _,
+    ) = asyncio.run(
+        email_utils.procesar_correo_a_tarea("texto", "Cli", generar_msg=True)
+    )
     assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)

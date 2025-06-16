@@ -76,8 +76,8 @@ async def procesar_identificador_tarea(
             os.remove(ruta)
             return
 
-        tarea, cliente_obj, ruta_msg, _ = await procesar_correo_a_tarea(
-            contenido, cliente, carrier
+        tarea, ids_pendientes = await procesar_correo_a_tarea(
+            contenido, cliente, carrier, generar_msg=False
         )
     except ValueError as exc:
         logger.error("Fallo identificando tarea: %s", exc)
@@ -106,17 +106,39 @@ async def procesar_identificador_tarea(
         if os.path.exists(ruta):
             os.remove(ruta)
 
-    if ruta_msg.exists():
-        with open(ruta_msg, "rb") as f:
-            await mensaje.reply_document(f, filename=ruta_msg.name)
-        os.remove(ruta_msg)
+    carrier_nombre = "Sin carrier"
+    servicios_txt = ""
+    if tarea.carrier_id:
+        from ..database import Carrier, SessionLocal, TareaServicio
 
-    await responder_registrando(
-        mensaje,
-        user_id,
-        mensaje.document.file_name,
-        f"Tarea {tarea.id} registrada para {cliente_obj.nombre}.",
-        "identificador_tarea",
+        with SessionLocal() as s:
+            car = s.get(Carrier, tarea.carrier_id)
+            if car:
+                carrier_nombre = car.nombre
+            servicios_ids = [
+                ts.servicio_id
+                for ts in s.query(TareaServicio).filter(
+                    TareaServicio.tarea_id == tarea.id
+                )
+            ]
+            servicios_txt = ", ".join(str(i) for i in servicios_ids)
+
+    detalle = (
+        f"✅ *Tarea Registrada ID: {tarea.id}*\n"
+        f"• Carrier: {carrier_nombre}\n"
+        f"• Tipo   : {tarea.tipo_tarea}\n"
+        f"• Inicio : {tarea.fecha_inicio} UTC-3\n"
+        f"• Fin    : {tarea.fecha_fin} UTC-3\n"
     )
+    if tarea.tiempo_afectacion:
+        detalle += f"• Afectación: {tarea.tiempo_afectacion}\n"
+    if tarea.descripcion:
+        detalle += f"• Descripción: {tarea.descripcion}\n"
+    if servicios_txt:
+        detalle += f"• Servicios Afectados: {servicios_txt}\n"
+    if ids_pendientes:
+        detalle += f"⚠️ *Servicios pendientes*: {', '.join(ids_pendientes)}"
+
+    await update.message.reply_text(detalle, parse_mode="Markdown")
     UserState.set_mode(user_id, "")
     context.user_data.clear()
