@@ -241,3 +241,4 @@ def test_identificador_tarea_telxius(tmp_path):
 
     assert pendiente.id_carrier == "CRT-008785"
     assert msg.sent is None
+

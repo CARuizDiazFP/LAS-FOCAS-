@@ -106,20 +106,26 @@ async def procesar_identificador_tarea(
         if os.path.exists(ruta):
             os.remove(ruta)
 
-    detalle = (
-        f"✅ *Tarea Registrada ID: {tarea.id}*\n"
-        f"• Carrier: {tarea.carrier.nombre if tarea.carrier_id else 'Sin carrier'}\n"
-        f"• Tipo   : {tarea.tipo_tarea}\n"
-        f"• Inicio : {tarea.fecha_inicio}\n"
-        f"• Fin    : {tarea.fecha_fin}\n"
-    )
-    if tarea.tiempo_afectacion:
-        detalle += f"• Afectación: {tarea.tiempo_afectacion}\n"
-    if tarea.descripcion:
-        detalle += f"• Descripción: {tarea.descripcion}\n"
-    if ids_pendientes:
-        detalle += f"⚠️ *Servicios pendientes*: {', '.join(ids_pendientes)}"
+        for token in ids_faltantes:
+            crear_servicio_pendiente(token, tarea.id)
+            logger.info("ServicioPendiente creado: %s", token)
 
-    await update.message.reply_text(detalle, parse_mode="Markdown")
-    UserState.set_mode(user_id, "")
-    context.user_data.clear()
+        # ── Detalle de la tarea registrada ──────────────────────────
+        detalle = (
+            f"✅ *Tarea Registrada ID: {tarea.id}*\n"
+            f"• Carrier : {tarea.carrier.nombre if tarea.carrier_id else 'Sin carrier'}\n"
+            f"• Tipo    : {tarea.tipo_tarea}\n"
+            f"• Inicio  : {tarea.fecha_inicio}\n"
+            f"• Fin     : {tarea.fecha_fin}\n"
+        )
+        if tarea.tiempo_afectacion:
+            detalle += f"• Afectación: {tarea.tiempo_afectacion}\n"
+        if tarea.descripcion:
+            detalle += f"• Descripción: {tarea.descripcion}\n"
+        if ids_pendientes:
+            detalle += f"⚠️ *Servicios pendientes*: {', '.join(ids_pendientes)}"
+
+        await update.message.reply_text(detalle, parse_mode="Markdown")
+        UserState.set_mode(user_id, "")
+        context.user_data.clear()
+

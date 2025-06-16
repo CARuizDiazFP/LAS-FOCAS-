@@ -555,6 +555,7 @@ async def procesar_correo_a_tarea(
     logger.info(">> id_interno detectado: %s", id_interno or "N/D")
     logger.info(">> Servicios extraídos: %s", ids_brutos)
 
+
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
         if not cliente:
@@ -601,8 +602,10 @@ async def procesar_correo_a_tarea(
                 ids_faltantes.append(ident)
                 logger.warning("Servicio %s no encontrado", ident)
 
+        # -- registro de faltantes -----------------------------------
         if ids_faltantes:
-            logger.info(">> Servicios faltantes: %s", ids_faltantes)
+            logger.info(">> Servicios faltantes: %s", ids_faltantes)            # nivel INFO
+            logger.debug("Detalle IDs faltantes: %s", ", ".join(ids_faltantes))  # nivel DEBUG
 
         tarea = crear_tarea_programada(
             inicio,
