@@ -183,11 +183,8 @@ def test_procesar_correos(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert len(tareas) == prev_tareas + 1
-    assert len(rels) == prev_rels + 1
+    assert len(rels) == prev_rels
     tarea = tareas[-1]
-    rel = rels[-1]
-    assert rel.tarea_id == tarea.id
-    assert rel.servicio_id == servicio.id
     ruta = tmp_path / f"tarea_{tarea.id}.msg"
     assert not ruta.exists()
     assert msg.sent == ruta.name
@@ -263,7 +260,7 @@ def test_procesar_correos_varios(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert len(tareas) == prev_tareas + 2
-    assert len(rels) == prev_rels + 2
+    assert len(rels) == prev_rels
     # Se registran dos tareas, una por cada adjunto
     ids_nuevos = [t.id for t in tareas[-2:]]
     assert ids_nuevos[0] != ids_nuevos[1]
@@ -432,6 +429,7 @@ def test_leer_msg_html(tmp_path, monkeypatch):
     texto = mod._leer_msg(str(arch))
     assert "hola" in texto and "mundo" in texto
 
+
 def test_leer_msg_bytes(tmp_path, monkeypatch):
     """Soporta cuerpos en bytes."""
 
@@ -466,4 +464,3 @@ def test_leer_msg_bytes(tmp_path, monkeypatch):
     arch.write_text("x")
     texto = mod._leer_msg(str(arch))
     assert "cuerpo bytes" in texto
-

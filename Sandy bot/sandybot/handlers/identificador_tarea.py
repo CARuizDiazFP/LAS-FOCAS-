@@ -120,7 +120,14 @@ async def procesar_identificador_tarea(
                     TareaServicio.tarea_id == tarea.id
                 )
             ]
-            servicios_txt = ", ".join(str(i) for i in servicios_ids)
+            servicios_pares = []
+            for sid in servicios_ids:
+                srv = s.get(Servicio, sid)
+                if srv:
+                    propio = str(srv.id) if srv.id else ""
+                    car = srv.id_carrier or ""
+                    servicios_pares.append(f"{propio} , {car}")
+            servicios_txt = "; ".join(servicios_pares)
 
     detalle = (
         f"✅ *Tarea Registrada ID: {tarea.id}*\n"
@@ -134,7 +141,7 @@ async def procesar_identificador_tarea(
     if tarea.descripcion:
         detalle += f"• Descripción: {tarea.descripcion}\n"
     if servicios_txt:
-        detalle += f"• Servicios Afectados: {servicios_txt}\n"
+        detalle += f"• Servicio afectado: {servicios_txt}\n"
     if ids_pendientes:
         detalle += f"⚠️ *Servicios pendientes*: {', '.join(ids_pendientes)}"
 
