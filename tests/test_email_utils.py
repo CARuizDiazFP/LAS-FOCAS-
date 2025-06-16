@@ -457,11 +457,10 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
 
     email_utils.gpt = GPTStub()
 
-    with caplog.at_level(logging.WARNING):
-        with pytest.raises(ValueError) as err:
-            asyncio.run(email_utils.procesar_correo_a_tarea("correo", "Cli"))
-        assert "Faltantes: 99999" in caplog.text
-    assert "99999" in str(err.value)
+    tarea, _, _, _ = asyncio.run(email_utils.procesar_correo_a_tarea("correo", "Cli"))
+    with bd.SessionLocal() as s:
+        pendiente = s.query(bd.ServicioPendiente).filter_by(tarea_id=tarea.id).first()
+    assert pendiente.id_carrier == "99999"
 
 
 def test_procesar_correo_respuesta_con_texto(monkeypatch):
