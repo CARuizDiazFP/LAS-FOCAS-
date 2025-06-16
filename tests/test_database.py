@@ -376,3 +376,56 @@ def test_camara_unica():
         filas = s.query(bd.Camara).filter(bd.Camara.id_servicio == srv.id).all()
     assert len(filas) == 1
     assert c1.id == c2.id
+
+
+import pytest
+
+
+@pytest.mark.skipif(bd.engine.dialect.name == "sqlite", reason="solo postgres")
+def test_eliminar_duplicados_tareas():
+    """``ensure_servicio_columns`` borra tareas repetidas."""
+
+    bd.Base.metadata.create_all(bind=bd.engine)
+    with bd.engine.begin() as conn:
+        conn.execute(text("DROP TABLE tareas_programadas"))
+        conn.execute(
+            text(
+                "CREATE TABLE tareas_programadas ("
+                "id INTEGER PRIMARY KEY, "
+                "fecha_inicio DATETIME, "
+                "fecha_fin DATETIME, "
+                "tipo_tarea STRING, "
+                "tiempo_afectacion STRING, "
+                "descripcion STRING, "
+                "carrier_id INTEGER, "
+                "id_interno STRING)"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO tareas_programadas "
+                "(id, fecha_inicio, fecha_fin, tipo_tarea, carrier_id, id_interno) VALUES "
+                "(1, '2024-01-01 00:00', '2024-01-01 01:00', 'M', 1, 'X1'),"
+                "(2, '2024-01-02 00:00', '2024-01-02 01:00', 'M', 1, 'X1')"
+            )
+        )
+        conn.execute(
+            text(
+                "INSERT INTO servicios_pendientes (id, tarea_id, id_carrier) "
+                "VALUES (1, 2, 'A')"
+            )
+        )
+
+    bd.ensure_servicio_columns()
+
+    with bd.SessionLocal() as s:
+        filas = (
+            s.query(bd.TareaProgramada)
+            .filter(bd.TareaProgramada.carrier_id == 1, bd.TareaProgramada.id_interno == "X1")
+            .all()
+        )
+        pendiente = s.query(bd.ServicioPendiente).first()
+
+    assert len(filas) == 1
+    assert filas[0].id == 1
+    assert pendiente.tarea_id == 1
