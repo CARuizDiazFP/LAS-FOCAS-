@@ -219,7 +219,6 @@ def test_identificador_tarea_telxius(tmp_path):
     dummy.procesar_identificador_tarea = lambda *a, **k: None
     sys.modules[f"{pkg}.identificador_tarea"] = dummy
     importlib.import_module(pkg)
-
     mod_name = f"{pkg}.identificador_tarea"
     spec = importlib.util.spec_from_file_location(
         mod_name,

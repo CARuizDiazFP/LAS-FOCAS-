@@ -6,15 +6,18 @@ import logging
 from datetime import datetime
 
 import pandas as pd
+
 from sqlalchemy import (  # (+) Necesario para definir y recrear índices de forma explícita; (+) Mantiene la restricción única de tareas_servicio
+
+    Index,
+    UniqueConstraint,
     JSON,
     Column,
     DateTime,
     ForeignKey,
-    Index,
     Integer,
     String,
-    UniqueConstraint,
+
     create_engine,
     func,
     inspect,
@@ -190,11 +193,13 @@ class TareaProgramada(Base):
     tiempo_afectacion = Column(String)
     descripcion = Column(String)
     carrier_id = Column(Integer, ForeignKey("carriers.id"), index=True)
+
     id_interno = Column(String, index=True, nullable=True)
 
     __table_args__ = (
         UniqueConstraint("carrier_id", "id_interno", name="uix_carrier_interno"),
     )
+
 
 
 Index(
@@ -339,6 +344,7 @@ def ensure_servicio_columns() -> None:
                 )
             )
 
+
     uniques_tarea = {
         u["name"] for u in inspector.get_unique_constraints("tareas_programadas")
     }
@@ -349,6 +355,7 @@ def ensure_servicio_columns() -> None:
                     "ALTER TABLE tareas_programadas ADD CONSTRAINT uix_carrier_interno UNIQUE (carrier_id, id_interno)"
                 )
             )
+
 
     if "servicios_pendientes" not in inspector.get_table_names():
         ServicioPendiente.__table__.create(bind=engine)
@@ -796,6 +803,7 @@ def crear_tarea_programada(
                 id_interno=id_interno,
             )
             session.add(tarea)
+
         session.commit()
         session.refresh(tarea)
 

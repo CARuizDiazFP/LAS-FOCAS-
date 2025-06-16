@@ -474,6 +474,7 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
     assert ids_pend == ["99999"]
 
 
+
 def test_procesar_correo_respuesta_con_texto(monkeypatch):
     """Extrae JSON aunque venga acompañado de texto."""
 

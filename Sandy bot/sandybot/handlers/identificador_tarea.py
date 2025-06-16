@@ -105,7 +105,6 @@ async def procesar_identificador_tarea(
     finally:
         if os.path.exists(ruta):
             os.remove(ruta)
-
     carrier_nombre = "Sin carrier"
     servicios_txt = ""
     if tarea.carrier_id:

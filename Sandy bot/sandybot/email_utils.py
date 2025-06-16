@@ -551,6 +551,7 @@ async def procesar_correo_a_tarea(
         ids_brutos = [i for i in ids_brutos if re.fullmatch(r"CRT-\d+", i)]
     else:
         ids_brutos = [i for i in ids_brutos if i.isdigit()]
+
     id_interno = datos_detectados.get("id_interno")
     afectacion = datos.get("afectacion")
     descripcion = datos.get("descripcion")
@@ -608,6 +609,7 @@ async def procesar_correo_a_tarea(
         if ids_pendientes:
             logger.info(">> Servicios faltantes: %s", ids_pendientes)
 
+
         tarea = crear_tarea_programada(
             inicio,
             fin,
@@ -628,6 +630,7 @@ async def procesar_correo_a_tarea(
         for token in ids_pendientes:
             crear_servicio_pendiente(token, tarea.id)
             logger.info("ServicioPendiente creado: %s", token)
+
 
         if generar_msg:
             nombre_arch = f"tarea_{tarea.id}.msg"
@@ -673,6 +676,7 @@ def _detectar_datos_correo(texto: str) -> dict:
     """Detecta carrier, id interno y servicios."""
     resultado: dict = {}
     domain_map = {"telxius.com": "TELXIUS"}
+
     lineas = texto.splitlines()
     asunto = ""
     if lineas:
@@ -696,6 +700,7 @@ def _detectar_datos_correo(texto: str) -> dict:
         if "carrier" not in resultado:
             resultado["carrier"] = parte.split("@")[0].split()[0]
 
+
     if not resultado.get("carrier") and asunto:
         m = re.match(r"([^\-]+)-\s*METROTEL", asunto, re.I)
         if m:
@@ -713,5 +718,6 @@ def _detectar_datos_correo(texto: str) -> dict:
         resultado["id_interno"] = m.group(0)
 
     resultado["ids"] = re.findall(srv_pat, texto)
+
     resultado["tipo"] = "Emergencia" if "EMERGENCY" in asunto.upper() else "Programada"
     return resultado
