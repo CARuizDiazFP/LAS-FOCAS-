@@ -416,6 +416,7 @@ def test_eliminar_duplicados_tareas():
             )
         )
 
+
     bd.ensure_servicio_columns()
 
     with bd.SessionLocal() as s:

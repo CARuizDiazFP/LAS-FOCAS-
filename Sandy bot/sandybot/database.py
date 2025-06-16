@@ -286,6 +286,7 @@ def eliminar_duplicados_tareas(conn) -> None:
             )
 
 
+
 def ensure_servicio_columns() -> None:
     """Comprueba que la tabla ``servicios`` posea todas las columnas del modelo.
 
