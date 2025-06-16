@@ -253,14 +253,38 @@ def eliminar_duplicados_tareas(conn) -> None:
         )
     ).fetchall()
 
+    inspector = inspect(conn)
+    tablas = set(inspector.get_table_names())
+
     for carrier_id, id_interno, keep_id in filas:
-        conn.execute(
+        dup_ids = conn.execute(
             text(
-                "DELETE FROM tareas_programadas "
+                "SELECT id FROM tareas_programadas "
                 "WHERE carrier_id = :c AND id_interno = :i AND id <> :k"
             ),
             {"c": carrier_id, "i": id_interno, "k": keep_id},
-        )
+        ).fetchall()
+
+        for (dup_id,) in dup_ids:
+            if "tareas_servicio" in tablas:
+                conn.execute(
+                    text(
+                        "UPDATE tareas_servicio SET tarea_id = :k WHERE tarea_id = :d"
+                    ),
+                    {"k": keep_id, "d": dup_id},
+                )
+            if "servicios_pendientes" in tablas:
+                conn.execute(
+                    text(
+                        "UPDATE servicios_pendientes SET tarea_id = :k WHERE tarea_id = :d"
+                    ),
+                    {"k": keep_id, "d": dup_id},
+                )
+            conn.execute(
+                text("DELETE FROM tareas_programadas WHERE id = :d"),
+                {"d": dup_id},
+            )
+
 
 
 def ensure_servicio_columns() -> None:

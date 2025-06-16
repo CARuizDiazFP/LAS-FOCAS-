@@ -409,6 +409,13 @@ def test_eliminar_duplicados_tareas():
                 "(2, '2024-01-02 00:00', '2024-01-02 01:00', 'M', 1, 'X1')"
             )
         )
+        conn.execute(
+            text(
+                "INSERT INTO servicios_pendientes (id, tarea_id, id_carrier) "
+                "VALUES (1, 2, 'A')"
+            )
+        )
+
 
     bd.ensure_servicio_columns()
 
@@ -418,4 +425,8 @@ def test_eliminar_duplicados_tareas():
             .filter(bd.TareaProgramada.carrier_id == 1, bd.TareaProgramada.id_interno == "X1")
             .all()
         )
+        pendiente = s.query(bd.ServicioPendiente).first()
+
     assert len(filas) == 1
+    assert filas[0].id == 1
+    assert pendiente.tarea_id == 1
