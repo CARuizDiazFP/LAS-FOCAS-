@@ -137,8 +137,14 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 return
 
             # Procesar correo → registrar tarea → generar .msg final
-            tarea, cliente, ruta_msg, cuerpo = await procesar_correo_a_tarea(
-                contenido, cliente_nombre, carrier_nombre
+            (
+                tarea,
+                cliente,
+                ruta_msg,
+                cuerpo,
+                _,
+            ) = await procesar_correo_a_tarea(
+                contenido, cliente_nombre, carrier_nombre, generar_msg=True
             )
 
         except ValueError as err:  # pragma: no cover

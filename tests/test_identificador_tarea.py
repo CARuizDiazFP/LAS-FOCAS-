@@ -116,7 +116,7 @@ def test_identificador_tarea(tmp_path):
 
     assert tareas == prev_tareas + 1
     assert rels == prev_rels + 1
-    assert msg.sent == f"tarea_{tareas_list[-1].id}.msg"
+    assert msg.sent is None
 
 
 def test_identificador_tarea_heuristicas(tmp_path):
@@ -240,3 +240,5 @@ def test_identificador_tarea_telxius(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert pendiente.id_carrier == "CRT-008785"
+    assert msg.sent is None
+

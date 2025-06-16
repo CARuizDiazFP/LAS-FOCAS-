@@ -419,9 +419,20 @@ def generar_archivo_msg(
 
 
 async def procesar_correo_a_tarea(
-    texto: str, cliente_nombre: str, carrier_nombre: str | None = None
-) -> tuple[TareaProgramada, Cliente, Path, str]:
-    """Analiza el correo y registra la tarea programada."""
+    texto: str,
+    cliente_nombre: str,
+    carrier_nombre: str | None = None,
+    *,
+    generar_msg: bool = False,
+) -> (
+    tuple[TareaProgramada, list[str]]
+    | tuple[TareaProgramada, Cliente, Path, str, list[str]]
+):
+    """Analiza el correo y registra la tarea programada.
+
+    Si ``generar_msg`` es ``True`` también se crea un archivo ``.MSG``. El
+    retorno incluye la tarea creada y los IDs pendientes.
+    """
 
     texto_limpio = _limpiar_correo(texto)
     datos_detectados = _detectar_datos_correo(texto_limpio)
@@ -540,9 +551,10 @@ async def procesar_correo_a_tarea(
     afectacion = datos.get("afectacion")
     descripcion = datos.get("descripcion")
 
-    logger.debug(">> Carrier detectado: %s", carrier_nombre)
-    logger.debug(">> id_interno detectado: %s", id_interno)
-    logger.debug(">> Servicios extraídos: %s", ids_brutos)
+    logger.info(">> Carrier detectado: %s", carrier_nombre or "N/D")
+    logger.info(">> id_interno detectado: %s", id_interno or "N/D")
+    logger.info(">> Servicios extraídos: %s", ids_brutos)
+
 
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
@@ -590,8 +602,10 @@ async def procesar_correo_a_tarea(
                 ids_faltantes.append(ident)
                 logger.warning("Servicio %s no encontrado", ident)
 
+        # -- registro de faltantes -----------------------------------
         if ids_faltantes:
-            logger.debug(">> Servicios faltantes: %s", ", ".join(ids_faltantes))
+            logger.info(">> Servicios faltantes: %s", ids_faltantes)            # nivel INFO
+            logger.debug("Detalle IDs faltantes: %s", ", ".join(ids_faltantes))  # nivel DEBUG
 
         tarea = crear_tarea_programada(
             inicio,
@@ -614,19 +628,24 @@ async def procesar_correo_a_tarea(
             crear_servicio_pendiente(token, tarea.id)
             logger.info("ServicioPendiente creado: %s", token)
 
-        nombre_arch = f"tarea_{tarea.id}.msg"
-        ruta = Path(tempfile.gettempdir()) / nombre_arch
+        ids_pendientes = ids_faltantes
 
-        ruta_str, cuerpo = generar_archivo_msg(
-            tarea,
-            cliente,
-            [s for s in servicios if s],
-            str(ruta),
-            carrier,
-        )
-        ruta_msg = Path(ruta_str)
+        if generar_msg:
+            nombre_arch = f"tarea_{tarea.id}.msg"
+            ruta = Path(tempfile.gettempdir()) / nombre_arch
 
-        return tarea, cliente, ruta_msg, cuerpo
+            ruta_str, cuerpo = generar_archivo_msg(
+                tarea,
+                cliente,
+                [s for s in servicios if s],
+                str(ruta),
+                carrier,
+            )
+            ruta_msg = Path(ruta_str)
+
+            return tarea, cliente, ruta_msg, cuerpo, ids_pendientes
+
+        return tarea, ids_pendientes
 
 
 def _extraer_por_regex(texto: str) -> dict | None:
