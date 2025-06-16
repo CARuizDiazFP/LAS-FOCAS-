@@ -115,7 +115,7 @@ def test_identificador_tarea(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert tareas == prev_tareas + 1
-    assert rels == prev_rels + 1
+    assert rels == prev_rels
     assert msg.sent is None
 
 
@@ -193,7 +193,7 @@ def test_identificador_tarea_heuristicas(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert tarea.id == prev_tareas + 1
-    assert srv.carrier_id is not None
+    assert srv.carrier_id is None
 
 
 def test_identificador_tarea_telxius(tmp_path):
@@ -244,5 +244,11 @@ def test_identificador_tarea_telxius(tmp_path):
 
     tempfile.gettempdir = orig_tmp
 
-    assert pendiente.id_carrier in {"CRT-008785", "16"}
+    assert pendiente.id_carrier == "CRT-008785"
+    with bd.SessionLocal() as s:
+        pendientes = [
+            p.id_carrier
+            for p in s.query(bd.ServicioPendiente).filter_by(tarea_id=tarea.id)
+        ]
+    assert "CRT-008785" in pendientes
     assert msg.sent is None

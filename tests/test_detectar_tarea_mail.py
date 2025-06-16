@@ -114,11 +114,8 @@ def test_detectar_tarea_mail(tmp_path, monkeypatch):
     tempfile.gettempdir = orig_tmp
 
     assert len(tareas) == prev_tareas + 1
-    assert len(rels) == prev_rels + 1
+    assert len(rels) == prev_rels
     tarea = tareas[-1]
-    rel = rels[-1]
-    assert rel.tarea_id == tarea.id
-    assert rel.servicio_id == servicio.id
     ruta = tmp_path / f"tarea_{tarea.id}.msg"
     assert ruta.exists()
     assert msg.sent == ruta.name
