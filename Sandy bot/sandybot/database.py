@@ -6,19 +6,18 @@ import logging
 from datetime import datetime
 
 import pandas as pd
-from sqlalchemy import (
+
+from sqlalchemy import (  # (+) Necesario para definir y recrear índices de forma explícita; (+) Mantiene la restricción única de tareas_servicio
+
     Index,
-)  # (+) Necesario para definir y recrear índices de forma explícita
-from sqlalchemy import (
     UniqueConstraint,
-)  # (+) Mantiene la restricción única de tareas_servicio
-from sqlalchemy import (
     JSON,
     Column,
     DateTime,
     ForeignKey,
     Integer,
     String,
+
     create_engine,
     func,
     inspect,
@@ -194,7 +193,13 @@ class TareaProgramada(Base):
     tiempo_afectacion = Column(String)
     descripcion = Column(String)
     carrier_id = Column(Integer, ForeignKey("carriers.id"), index=True)
-    id_interno = Column(String, unique=True, index=True, nullable=True)
+
+    id_interno = Column(String, index=True, nullable=True)
+
+    __table_args__ = (
+        UniqueConstraint("carrier_id", "id_interno", name="uix_carrier_interno"),
+    )
+
 
 
 Index(
@@ -338,6 +343,19 @@ def ensure_servicio_columns() -> None:
                     "CREATE INDEX ix_tareas_programadas_id_interno ON tareas_programadas (id_interno)"
                 )
             )
+
+
+    uniques_tarea = {
+        u["name"] for u in inspector.get_unique_constraints("tareas_programadas")
+    }
+    if "uix_carrier_interno" not in uniques_tarea:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE tareas_programadas ADD CONSTRAINT uix_carrier_interno UNIQUE (carrier_id, id_interno)"
+                )
+            )
+
 
     if "servicios_pendientes" not in inspector.get_table_names():
         ServicioPendiente.__table__.create(bind=engine)
@@ -758,19 +776,39 @@ def crear_tarea_programada(
     """Registra una tarea programada y la vincula a los servicios indicados."""
 
     with SessionLocal() as session:
-        tarea = TareaProgramada(
-            fecha_inicio=fecha_inicio,
-            fecha_fin=fecha_fin,
-            tipo_tarea=tipo_tarea,
-            carrier_id=carrier_id,
-            tiempo_afectacion=tiempo_afectacion,
-            descripcion=descripcion,
-            id_interno=id_interno,
-        )
-        session.add(tarea)
+        tarea = None
+        if carrier_id and id_interno:
+            tarea = (
+                session.query(TareaProgramada)
+                .filter(
+                    TareaProgramada.carrier_id == carrier_id,
+                    TareaProgramada.id_interno == id_interno,
+                )
+                .first()
+            )
+        if tarea:
+            tarea.fecha_inicio = fecha_inicio
+            tarea.fecha_fin = fecha_fin
+            tarea.tipo_tarea = tipo_tarea
+            tarea.tiempo_afectacion = tiempo_afectacion
+            tarea.descripcion = descripcion
+        else:
+            tarea = TareaProgramada(
+                fecha_inicio=fecha_inicio,
+                fecha_fin=fecha_fin,
+                tipo_tarea=tipo_tarea,
+                carrier_id=carrier_id,
+                tiempo_afectacion=tiempo_afectacion,
+                descripcion=descripcion,
+                id_interno=id_interno,
+            )
+            session.add(tarea)
+
         session.commit()
         session.refresh(tarea)
 
+        servicios = list(dict.fromkeys(servicios))
+        session.query(TareaServicio).filter(TareaServicio.tarea_id == tarea.id).delete()
         relaciones = [
             TareaServicio(tarea_id=tarea.id, servicio_id=sid) for sid in servicios
         ]

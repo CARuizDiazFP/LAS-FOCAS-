@@ -465,18 +465,11 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
 
     email_utils.gpt = GPTStub()
 
-    # ── Ejecutamos con generar_msg=False (devuelve tarea, ids_pend) ──
     tarea, ids_pend = asyncio.run(
         email_utils.procesar_correo_a_tarea("correo", "Cli", generar_msg=False)
     )
-
-    # El servicio inexistente queda registrado como pendiente
     with bd.SessionLocal() as s:
-        pendiente = (
-            s.query(bd.ServicioPendiente)
-            .filter_by(tarea_id=tarea.id)
-            .first()
-        )
+        pendiente = s.query(bd.ServicioPendiente).filter_by(tarea_id=tarea.id).first()
     assert pendiente.id_carrier == "99999"
     assert ids_pend == ["99999"]
 

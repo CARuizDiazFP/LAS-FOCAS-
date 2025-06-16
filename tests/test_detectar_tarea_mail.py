@@ -1,24 +1,36 @@
 # Nombre de archivo: test_detectar_tarea_mail.py
 # Ubicación de archivo: tests/test_detectar_tarea_mail.py
 # User-provided custom instructions
-import sys
-import importlib
 import asyncio
-from types import ModuleType, SimpleNamespace
-from pathlib import Path
-from datetime import datetime
-from sqlalchemy.orm import sessionmaker
+import importlib
+import sys
 import tempfile
+from datetime import datetime
+from pathlib import Path
+from types import ModuleType, SimpleNamespace
+
+from sqlalchemy.orm import sessionmaker
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
-from tests.telegram_stub import Message, Update, Document  # Registra las clases fake de telegram
+from tests.telegram_stub import (  # Registra las clases fake de telegram
+    Document,
+    Message,
+    Update,
+)
 
 # Stubs de openai y jsonschema
 openai_stub = ModuleType("openai")
+
+
 class AsyncOpenAI:
     def __init__(self, api_key=None):
-        self.chat = type("c", (), {"completions": type("comp", (), {"create": lambda *a, **k: None})()})()
+        self.chat = type(
+            "c",
+            (),
+            {"completions": type("comp", (), {"create": lambda *a, **k: None})()},
+        )()
+
 
 openai_stub.AsyncOpenAI = AsyncOpenAI
 sys.modules.setdefault("openai", openai_stub)
@@ -32,9 +44,11 @@ sys.modules.setdefault("jsonschema", jsonschema_stub)
 
 # Base de datos en memoria
 import sqlalchemy
+
 orig_engine = sqlalchemy.create_engine
 sqlalchemy.create_engine = lambda *a, **k: orig_engine("sqlite:///:memory:")
 import sandybot.database as bd
+
 sqlalchemy.create_engine = orig_engine
 bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
 bd.Base.metadata.create_all(bind=bd.engine)
@@ -77,11 +91,12 @@ def test_detectar_tarea_mail(tmp_path, monkeypatch):
 
     # Stub GPT para devolver JSON
     import sandybot.email_utils as email_utils
+
     class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
-                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + ']}'
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + "]}"
             )
 
     email_utils.gpt = GPTStub()
@@ -137,7 +152,7 @@ def test_cuerpo_sin_carrier(tmp_path):
 
     capturado = {}
 
-    async def stub_procesar(texto, cliente, carrier=None):
+    async def stub_procesar(texto, cliente, carrier=None, *, generar_msg=False):
         capturado["texto"] = texto
         ruta = tmp_path / "dummy.msg"
         ruta.write_text("x")
@@ -198,11 +213,12 @@ def test_detectar_tarea_carrier_en_correo(tmp_path):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "02/01 08:00", "fin": "02/01 10:00", '
-                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + ']}'
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + "]}"
             )
 
         async def procesar_json_response(self, resp, esquema):
             import json
+
             return json.loads(resp)
 
     email_utils.gpt = GPTStub()
@@ -219,7 +235,9 @@ def test_detectar_tarea_carrier_en_correo(tmp_path):
     asyncio.run(tarea_mod.detectar_tarea_mail(update, ctx))
 
     with bd.SessionLocal() as s:
-        tarea = s.query(bd.TareaProgramada).order_by(bd.TareaProgramada.id.desc()).first()
+        tarea = (
+            s.query(bd.TareaProgramada).order_by(bd.TareaProgramada.id.desc()).first()
+        )
 
     tempfile.gettempdir = orig_tmp
 

@@ -547,6 +547,11 @@ async def procesar_correo_a_tarea(
     ids_brutos.extend(
         [s for s in datos_detectados.get("ids", []) if s not in ids_brutos]
     )
+    if carrier_nombre and carrier_nombre.upper() == "TELXIUS":
+        ids_brutos = [i for i in ids_brutos if re.fullmatch(r"CRT-\d+", i)]
+    else:
+        ids_brutos = [i for i in ids_brutos if i.isdigit()]
+
     id_interno = datos_detectados.get("id_interno")
     afectacion = datos.get("afectacion")
     descripcion = datos.get("descripcion")
@@ -554,7 +559,6 @@ async def procesar_correo_a_tarea(
     logger.info(">> Carrier detectado: %s", carrier_nombre or "N/D")
     logger.info(">> id_interno detectado: %s", id_interno or "N/D")
     logger.info(">> Servicios extraídos: %s", ids_brutos)
-
 
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
@@ -576,7 +580,7 @@ async def procesar_correo_a_tarea(
                 session.refresh(carrier)
 
         servicios: list[Servicio] = []
-        ids_faltantes: list[str] = []
+        ids_pendientes: list[str] = []
         for ident in ids_brutos:
             srv = None
             if ident.isdigit():
@@ -599,13 +603,12 @@ async def procesar_correo_a_tarea(
             if srv:
                 servicios.append(srv)
             else:
-                ids_faltantes.append(ident)
+                ids_pendientes.append(ident)
                 logger.warning("Servicio %s no encontrado", ident)
 
-        # -- registro de faltantes -----------------------------------
-        if ids_faltantes:
-            logger.info(">> Servicios faltantes: %s", ids_faltantes)            # nivel INFO
-            logger.debug("Detalle IDs faltantes: %s", ", ".join(ids_faltantes))  # nivel DEBUG
+        if ids_pendientes:
+            logger.info(">> Servicios faltantes: %s", ids_pendientes)
+
 
         tarea = crear_tarea_programada(
             inicio,
@@ -624,11 +627,10 @@ async def procesar_correo_a_tarea(
                     srv.carrier = carrier.nombre
             session.commit()
 
-        for token in ids_faltantes:
+        for token in ids_pendientes:
             crear_servicio_pendiente(token, tarea.id)
             logger.info("ServicioPendiente creado: %s", token)
 
-        ids_pendientes = ids_faltantes
 
         if generar_msg:
             nombre_arch = f"tarea_{tarea.id}.msg"
@@ -673,6 +675,8 @@ def _extraer_por_regex(texto: str) -> dict | None:
 def _detectar_datos_correo(texto: str) -> dict:
     """Detecta carrier, id interno y servicios."""
     resultado: dict = {}
+    domain_map = {"telxius.com": "TELXIUS"}
+
     lineas = texto.splitlines()
     asunto = ""
     if lineas:
@@ -686,17 +690,34 @@ def _detectar_datos_correo(texto: str) -> dict:
         m = re.search(r"Name:\s*([^\n]+)", texto, re.I)
     if m:
         parte = m.group(1).strip()
-        resultado["carrier"] = parte.split("@")[0].split()[0]
+        correo = parte.split()[-1]
+        if "@" in correo:
+            dominio = correo.split("@")[-1].lower()
+            for dom, nombre in domain_map.items():
+                if dominio.endswith(dom):
+                    resultado["carrier"] = nombre
+                    break
+        if "carrier" not in resultado:
+            resultado["carrier"] = parte.split("@")[0].split()[0]
+
 
     if not resultado.get("carrier") and asunto:
         m = re.match(r"([^\-]+)-\s*METROTEL", asunto, re.I)
         if m:
             resultado["carrier"] = m.group(1).strip().split()[0]
 
-    m = re.search(r"SWX\d{7}", texto)
+    if resultado.get("carrier", "").upper() == "TELXIUS":
+        id_pat = r"SWX\d{7}"
+        srv_pat = r"CRT-\d+"
+    else:
+        id_pat = r"ID\w+"
+        srv_pat = r"\b\d+\b"
+
+    m = re.search(id_pat, texto)
     if m:
         resultado["id_interno"] = m.group(0)
 
-    resultado["ids"] = re.findall(r"CRT-\d+", texto)
+    resultado["ids"] = re.findall(srv_pat, texto)
+
     resultado["tipo"] = "Emergencia" if "EMERGENCY" in asunto.upper() else "Programada"
     return resultado

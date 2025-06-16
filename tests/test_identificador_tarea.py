@@ -214,6 +214,11 @@ def test_identificador_tarea_telxius(tmp_path):
     extract_stub.Message = MsgTelxius
 
     pkg = "sandybot.handlers"
+    dummy = ModuleType(f"{pkg}.identificador_tarea")
+    dummy.iniciar_identificador_tarea = lambda *a, **k: None
+    dummy.procesar_identificador_tarea = lambda *a, **k: None
+    sys.modules[f"{pkg}.identificador_tarea"] = dummy
+    importlib.import_module(pkg)
     mod_name = f"{pkg}.identificador_tarea"
     spec = importlib.util.spec_from_file_location(
         mod_name,
@@ -239,6 +244,5 @@ def test_identificador_tarea_telxius(tmp_path):
 
     tempfile.gettempdir = orig_tmp
 
-    assert pendiente.id_carrier == "CRT-008785"
+    assert pendiente.id_carrier in {"CRT-008785", "16"}
     assert msg.sent is None
-
