@@ -39,6 +39,20 @@ from .utils import cargar_json, guardar_json, incrementar_contador
 
 logger = logging.getLogger(__name__)
 
+# Mapeo de patrones de correo a nombres de carrier
+CARRIER_MAP: dict[str, str] = {r".*telxius.*": "TELXIUS"}
+
+
+def _carrier_por_remitente(remitente: str) -> str | None:
+    """Devuelve el carrier correspondiente al remitente.
+
+    Recorre :data:`CARRIER_MAP` comparando con expresiones regulares.
+    """
+    for patron, nombre in CARRIER_MAP.items():
+        if re.search(patron, remitente, re.I):
+            return nombre
+    return None
+
 
 def _limpiar_correo(texto: str) -> str:
     """Elimina firmas y bloques innecesarios del texto del correo.
@@ -547,10 +561,7 @@ async def procesar_correo_a_tarea(
     ids_brutos.extend(
         [s for s in datos_detectados.get("ids", []) if s not in ids_brutos]
     )
-    if carrier_nombre and carrier_nombre.upper() == "TELXIUS":
-        ids_brutos = [i for i in ids_brutos if re.fullmatch(r"CRT-\d+", i)]
-    else:
-        ids_brutos = [i for i in ids_brutos if i.isdigit()]
+    ids_brutos, descartados = _filtrar_tokens_servicios(ids_brutos, carrier_nombre)
 
     id_interno = datos_detectados.get("id_interno")
     afectacion = datos.get("afectacion")
@@ -558,7 +569,9 @@ async def procesar_correo_a_tarea(
 
     logger.info(">> Carrier detectado: %s", carrier_nombre or "N/D")
     logger.info(">> id_interno detectado: %s", id_interno or "N/D")
-    logger.info(">> Servicios extraídos: %s", ids_brutos)
+    logger.info(">> Servicios válidos: %s", ids_brutos)
+    if descartados:
+        logger.info(">> Servicios descartados: %s", descartados)
 
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
@@ -609,7 +622,6 @@ async def procesar_correo_a_tarea(
         if ids_pendientes:
             logger.info(">> Servicios faltantes: %s", ids_pendientes)
 
-
         tarea = crear_tarea_programada(
             inicio,
             fin,
@@ -630,7 +642,6 @@ async def procesar_correo_a_tarea(
         for token in ids_pendientes:
             crear_servicio_pendiente(token, tarea.id)
             logger.info("ServicioPendiente creado: %s", token)
-
 
         if generar_msg:
             nombre_arch = f"tarea_{tarea.id}.msg"
@@ -672,10 +683,42 @@ def _extraer_por_regex(texto: str) -> dict | None:
     }
 
 
+def _filtrar_tokens_servicios(
+    tokens: list[str], carrier: str | None
+) -> tuple[list[str], list[str]]:
+    """Filtra tokens válidos de servicios y registra descartados."""
+
+    validos: list[str] = []
+    descartados: list[str] = []
+    for token in tokens:
+        t = token.strip()
+        if not t:
+            continue
+        if carrier and carrier.upper() == "TELXIUS":
+            if re.fullmatch(r"CRT-\d{6}", t):
+                validos.append(t)
+            else:
+                descartados.append(t)
+            continue
+        if t.isdigit():
+            if len(t) >= 6:
+                validos.append(t)
+            else:
+                descartados.append(t)
+            continue
+        if len(t) < 6:
+            descartados.append(t)
+            continue
+        if re.fullmatch(r"\d{4}", t):
+            descartados.append(t)
+            continue
+        validos.append(t)
+    return validos, descartados
+
+
 def _detectar_datos_correo(texto: str) -> dict:
     """Detecta carrier, id interno y servicios."""
     resultado: dict = {}
-    domain_map = {"telxius.com": "TELXIUS"}
 
     lineas = texto.splitlines()
     asunto = ""
@@ -691,15 +734,13 @@ def _detectar_datos_correo(texto: str) -> dict:
     if m:
         parte = m.group(1).strip()
         correo = parte.split()[-1]
-        if "@" in correo:
-            dominio = correo.split("@")[-1].lower()
-            for dom, nombre in domain_map.items():
-                if dominio.endswith(dom):
-                    resultado["carrier"] = nombre
-                    break
-        if "carrier" not in resultado:
+        carrier = _carrier_por_remitente(parte)
+        if not carrier and "@" in correo:
+            carrier = _carrier_por_remitente(correo)
+        if carrier:
+            resultado["carrier"] = carrier
+        else:
             resultado["carrier"] = parte.split("@")[0].split()[0]
-
 
     if not resultado.get("carrier") and asunto:
         m = re.match(r"([^\-]+)-\s*METROTEL", asunto, re.I)
@@ -708,7 +749,7 @@ def _detectar_datos_correo(texto: str) -> dict:
 
     if resultado.get("carrier", "").upper() == "TELXIUS":
         id_pat = r"SWX\d{7}"
-        srv_pat = r"CRT-\d+"
+        srv_pat = r"CRT-\d{6}"
     else:
         id_pat = r"ID\w+"
         srv_pat = r"\b\d+\b"

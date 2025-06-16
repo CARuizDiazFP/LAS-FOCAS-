@@ -108,19 +108,18 @@ async def procesar_identificador_tarea(
     carrier_nombre = "Sin carrier"
     servicios_txt = ""
     if tarea.carrier_id:
-        from ..database import Carrier, SessionLocal, TareaServicio
+        from ..database import Carrier, Servicio, SessionLocal, TareaServicio
 
         with SessionLocal() as s:
             car = s.get(Carrier, tarea.carrier_id)
             if car:
                 carrier_nombre = car.nombre
-            servicios_ids = [
-                ts.servicio_id
-                for ts in s.query(TareaServicio).filter(
-                    TareaServicio.tarea_id == tarea.id
-                )
-            ]
-            servicios_txt = ", ".join(str(i) for i in servicios_ids)
+            pares: list[str] = []
+            for ts in s.query(TareaServicio).filter(TareaServicio.tarea_id == tarea.id):
+                srv = s.get(Servicio, ts.servicio_id)
+                if srv:
+                    pares.append(f"{srv.id or ''} , {srv.id_carrier or ''}")
+            servicios_txt = "; ".join(pares)
 
     detalle = (
         f"✅ *Tarea Registrada ID: {tarea.id}*\n"
@@ -134,7 +133,7 @@ async def procesar_identificador_tarea(
     if tarea.descripcion:
         detalle += f"• Descripción: {tarea.descripcion}\n"
     if servicios_txt:
-        detalle += f"• Servicios Afectados: {servicios_txt}\n"
+        detalle += f"• Servicio afectado: {servicios_txt}\n"
     if ids_pendientes:
         detalle += f"⚠️ *Servicios pendientes*: {', '.join(ids_pendientes)}"
 

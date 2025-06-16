@@ -111,11 +111,15 @@ def test_identificador_tarea(tmp_path):
         tareas_list = s.query(bd.TareaProgramada).all()
         tareas = len(tareas_list)
         rels = s.query(bd.TareaServicio).count()
+        pend = (
+            s.query(bd.ServicioPendiente).filter_by(tarea_id=tareas_list[-1].id).first()
+        )
 
     tempfile.gettempdir = orig_tmp
 
     assert tareas == prev_tareas + 1
-    assert rels == prev_rels + 1
+    assert rels == prev_rels
+    assert pend is None
     assert msg.sent is None
 
 
@@ -193,7 +197,7 @@ def test_identificador_tarea_heuristicas(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert tarea.id == prev_tareas + 1
-    assert srv.carrier_id is not None
+    assert srv.carrier_id is None
 
 
 def test_identificador_tarea_telxius(tmp_path):
@@ -212,6 +216,22 @@ def test_identificador_tarea_telxius(tmp_path):
             self.sender_name = "Telxius"
 
     extract_stub.Message = MsgTelxius
+
+    import sandybot.email_utils as email_utils
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "16/06/2025 11:00", "fin": "16/06/2025 12:00", '
+                '"tipo": "Mant", "afectacion": null, "ids": ["CRT-008785"]}'
+            )
+
+        async def procesar_json_response(self, resp, esquema):
+            import json
+
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
 
     pkg = "sandybot.handlers"
     dummy = ModuleType(f"{pkg}.identificador_tarea")
@@ -244,5 +264,6 @@ def test_identificador_tarea_telxius(tmp_path):
 
     tempfile.gettempdir = orig_tmp
 
-    assert pendiente.id_carrier in {"CRT-008785", "16"}
+    assert tarea.id_interno in {None, "SWX0030940"}
+    assert pendiente.id_carrier == "CRT-008785"
     assert msg.sent is None

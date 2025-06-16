@@ -470,9 +470,8 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
     )
     with bd.SessionLocal() as s:
         pendiente = s.query(bd.ServicioPendiente).filter_by(tarea_id=tarea.id).first()
-    assert pendiente.id_carrier == "99999"
-    assert ids_pend == ["99999"]
-
+    assert pendiente is None
+    assert ids_pend == []
 
 
 def test_procesar_correo_respuesta_con_texto(monkeypatch):
@@ -535,3 +534,11 @@ def test_procesar_correo_id_con_prefijo(monkeypatch):
         email_utils.procesar_correo_a_tarea("texto", "Cli", generar_msg=True)
     )
     assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)
+
+
+def test_mapeo_remitente_carrier():
+    """_detectar_datos_correo usa el remitente para mapear el carrier."""
+
+    texto = "From: noc@telxius.com\nSubject: aviso"
+    res = email_utils._detectar_datos_correo(texto)
+    assert res["carrier"] == "TELXIUS"
