@@ -115,7 +115,7 @@ async def procesar_identificador_tarea(
         mensaje,
         user_id,
         mensaje.document.file_name,
-        f"Tarea {tarea.id} registrada para {cliente_obj.nombre}.",
+        f"✅ Tarea Registrada ID: {tarea.id}",
         "identificador_tarea",
     )
     UserState.set_mode(user_id, "")

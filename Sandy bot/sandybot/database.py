@@ -1,30 +1,35 @@
 # Nombre de archivo: database.py
 # Ubicación de archivo: Sandy bot/sandybot/database.py
 # User-provided custom instructions
-from sqlalchemy import (
-    create_engine,
-    Column,
-    Integer,
-    String,
-    DateTime,
-    text,
-    inspect,
-    func,
-    JSON,
-    ForeignKey,
-    Index,  # (+) Necesario para definir y recrear índices de forma explícita
-    UniqueConstraint,  # (+) Mantiene la restricción única de tareas_servicio
-)
-from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy.dialects.postgresql import JSONB
-import logging
-from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 import json
+import logging
+from datetime import datetime
 
 import pandas as pd
-from .utils import normalizar_camara
-from datetime import datetime
+from sqlalchemy import (
+    Index,
+)  # (+) Necesario para definir y recrear índices de forma explícita
+from sqlalchemy import (
+    UniqueConstraint,
+)  # (+) Mantiene la restricción única de tareas_servicio
+from sqlalchemy import (
+    JSON,
+    Column,
+    DateTime,
+    ForeignKey,
+    Integer,
+    String,
+    create_engine,
+    func,
+    inspect,
+    text,
+)
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from .config import config
+from .utils import normalizar_camara
 
 logger = logging.getLogger(__name__)
 
@@ -189,6 +194,7 @@ class TareaProgramada(Base):
     tiempo_afectacion = Column(String)
     descripcion = Column(String)
     carrier_id = Column(Integer, ForeignKey("carriers.id"), index=True)
+    id_interno = Column(String, unique=True, index=True, nullable=True)
 
 
 Index(
@@ -211,6 +217,16 @@ class TareaServicio(Base):
     __table_args__ = (
         UniqueConstraint("tarea_id", "servicio_id", name="uix_tarea_servicio"),
     )
+
+
+class ServicioPendiente(Base):
+    """IDs de servicios no encontrados en un correo."""
+
+    __tablename__ = "servicios_pendientes"
+
+    id = Column(Integer, primary_key=True)
+    tarea_id = Column(Integer, ForeignKey("tareas_programadas.id"), index=True)
+    id_carrier = Column(String, index=True)
 
 
 def ensure_servicio_columns() -> None:
@@ -306,6 +322,25 @@ def ensure_servicio_columns() -> None:
                     "CREATE INDEX ix_tareas_programadas_carrier_id ON tareas_programadas (carrier_id)"
                 )
             )
+
+    if "id_interno" not in actuales_tarea:
+        tipo = TareaProgramada.__table__.columns["id_interno"].type.compile(
+            engine.dialect
+        )
+        with engine.begin() as conn:
+            conn.execute(
+                text(f"ALTER TABLE tareas_programadas ADD COLUMN id_interno {tipo}")
+            )
+    if "ix_tareas_programadas_id_interno" not in indices_tareas:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX ix_tareas_programadas_id_interno ON tareas_programadas (id_interno)"
+                )
+            )
+
+    if "servicios_pendientes" not in inspector.get_table_names():
+        ServicioPendiente.__table__.create(bind=engine)
 
     # 2️⃣ Restricción única (tarea_id, servicio_id) en tareas_servicio
     if "tareas_servicio" in inspector.get_table_names():
@@ -509,7 +544,9 @@ def actualizar_tracking(
         session.commit()
 
 
-def buscar_servicios_por_camara(nombre_camara: str, exacto: bool = False) -> list[Servicio]:
+def buscar_servicios_por_camara(
+    nombre_camara: str, exacto: bool = False
+) -> list[Servicio]:
     """Devuelve los servicios que contienen la cámara indicada.
 
     :param nombre_camara: Texto a buscar en las cámaras registradas.
@@ -554,8 +591,10 @@ def buscar_servicios_por_camara(nombre_camara: str, exacto: bool = False) -> lis
 
             for c in camaras:
                 c_norm = normalizar_camara(str(c))
-                coincidencia = fragmento == c_norm if exacto else (
-                    fragmento in c_norm or c_norm in fragmento
+                coincidencia = (
+                    fragmento == c_norm
+                    if exacto
+                    else (fragmento in c_norm or c_norm in fragmento)
                 )
                 if coincidencia:
                     resultados.append(servicio)
@@ -703,11 +742,7 @@ def crear_reclamo(
 def obtener_reclamos_servicio(servicio_id: int) -> list[Reclamo]:
     """Devuelve los reclamos de un servicio."""
     with SessionLocal() as session:
-        return (
-            session.query(Reclamo)
-            .filter(Reclamo.servicio_id == servicio_id)
-            .all()
-        )
+        return session.query(Reclamo).filter(Reclamo.servicio_id == servicio_id).all()
 
 
 def crear_tarea_programada(
@@ -718,6 +753,7 @@ def crear_tarea_programada(
     carrier_id: int | None = None,
     tiempo_afectacion: str | None = None,
     descripcion: str | None = None,
+    id_interno: str | None = None,
 ) -> TareaProgramada:
     """Registra una tarea programada y la vincula a los servicios indicados."""
 
@@ -729,6 +765,7 @@ def crear_tarea_programada(
             carrier_id=carrier_id,
             tiempo_afectacion=tiempo_afectacion,
             descripcion=descripcion,
+            id_interno=id_interno,
         )
         session.add(tarea)
         session.commit()
@@ -740,6 +777,16 @@ def crear_tarea_programada(
         session.bulk_save_objects(relaciones)
         session.commit()
         return tarea
+
+
+def crear_servicio_pendiente(id_carrier: str, tarea_id: int) -> ServicioPendiente:
+    """Registra un servicio pendiente."""
+    with SessionLocal() as session:
+        pendiente = ServicioPendiente(id_carrier=id_carrier, tarea_id=tarea_id)
+        session.add(pendiente)
+        session.commit()
+        session.refresh(pendiente)
+        return pendiente
 
 
 def obtener_tareas_servicio(
@@ -777,7 +824,9 @@ def obtener_servicios(desc: bool = True) -> list[Servicio]:
     """Devuelve los servicios ordenados por fecha de creación."""
     with SessionLocal() as session:
         query = session.query(Servicio)
-        criterio = Servicio.fecha_creacion if not desc else Servicio.fecha_creacion.desc()
+        criterio = (
+            Servicio.fecha_creacion if not desc else Servicio.fecha_creacion.desc()
+        )
         query = query.order_by(criterio)
         return query.all()
 
