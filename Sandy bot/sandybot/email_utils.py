@@ -564,6 +564,17 @@ async def procesar_correo_a_tarea(
                 srv = (
                     session.query(Servicio).filter(Servicio.id_carrier == ident).first()
                 )
+            if not srv:
+                ident_dig = re.sub(r"\D", "", ident)
+                if ident_dig:
+                    if ident_dig.isdigit():
+                        srv = session.get(Servicio, int(ident_dig))
+                    if not srv:
+                        srv = (
+                            session.query(Servicio)
+                            .filter(Servicio.id_carrier == ident_dig)
+                            .first()
+                        )
             if srv:
                 servicios.append(srv)
             else:

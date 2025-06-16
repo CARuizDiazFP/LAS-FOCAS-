@@ -485,3 +485,26 @@ def test_procesar_correo_respuesta_con_texto(monkeypatch):
 
     tarea, _, _, _ = asyncio.run(email_utils.procesar_correo_a_tarea("texto", "Cli"))
     assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)
+
+
+def test_procesar_correo_id_con_prefijo(monkeypatch):
+    """Reconoce IDs con guiones o prefijos."""
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Mant", "afectacion": null, "descripcion": null, '
+                '"ids": ["CRT-1"]}'
+            )
+
+        async def procesar_json_response(self, resp, esquema):
+            import json
+
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
+    bd.crear_servicio(nombre="SrvPref", cliente="Cli", id_carrier="1")
+
+    tarea, _, _, _ = asyncio.run(email_utils.procesar_correo_a_tarea("texto", "Cli"))
+    assert tarea.fecha_inicio == datetime(2024, 1, 2, 8)
