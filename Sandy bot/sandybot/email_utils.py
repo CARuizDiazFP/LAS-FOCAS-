@@ -28,16 +28,13 @@ TEMPLATE_MSG_PATH = Path(config.MSG_TEMPLATE_PATH)
 if not TEMPLATE_MSG_PATH.exists():
     logging.warning("Plantilla MSG no encontrada: %s", TEMPLATE_MSG_PATH)
 # ─── Acceso a la base ────────────────────────────────────────────────
-from .database import (
-    crear_tarea_programada,   # Registra la tarea programada
-    Carrier,                  # Tabla de carriers
-    Cliente,                  # Tabla de clientes
-    Servicio,                 # Tabla de servicios
-    SessionLocal,             # Sesiones SQLAlchemy
-    TareaProgramada,          # Tabla de tareas programadas
-    obtener_cliente_por_nombre,
-)
-
+from .database import Carrier  # Tabla de carriers
+from .database import Cliente  # Tabla de clientes
+from .database import Servicio  # Tabla de servicios
+from .database import SessionLocal  # Sesiones SQLAlchemy
+from .database import TareaProgramada  # Tabla de tareas programadas
+from .database import crear_tarea_programada  # Registra la tarea programada
+from .database import crear_servicio_pendiente, obtener_cliente_por_nombre
 from .utils import cargar_json, guardar_json, incrementar_contador
 
 logger = logging.getLogger(__name__)
@@ -422,11 +419,26 @@ def generar_archivo_msg(
 
 
 async def procesar_correo_a_tarea(
-    texto: str, cliente_nombre: str, carrier_nombre: str | None = None
-) -> tuple[TareaProgramada, Cliente, Path, str]:
-    """Analiza el correo y registra la tarea programada."""
+    texto: str,
+    cliente_nombre: str,
+    carrier_nombre: str | None = None,
+    *,
+    generar_msg: bool = False,
+) -> (
+    tuple[TareaProgramada, list[str]]
+    | tuple[TareaProgramada, Cliente, Path, str, list[str]]
+):
+    """Analiza el correo y registra la tarea programada.
+
+    Si ``generar_msg`` es ``True`` también se crea un archivo ``.MSG``. El
+    retorno incluye la tarea creada y los IDs pendientes.
+    """
 
     texto_limpio = _limpiar_correo(texto)
+    datos_detectados = _detectar_datos_correo(texto_limpio)
+
+    if not carrier_nombre:
+        carrier_nombre = datos_detectados.get("carrier")
 
     # 👉 (1) INTENTO RÁPIDO: extraer datos con regex
     datos = _extraer_por_regex(texto_limpio)
@@ -530,10 +542,18 @@ async def procesar_correo_a_tarea(
     if inicio >= fin:
         raise ValueError("La fecha de inicio debe ser anterior al fin")
 
-    tipo = datos["tipo"]
+    tipo = datos.get("tipo") or datos_detectados.get("tipo") or "Programada"
     ids_brutos = [str(i) for i in datos.get("ids", [])]
+    ids_brutos.extend(
+        [s for s in datos_detectados.get("ids", []) if s not in ids_brutos]
+    )
+    id_interno = datos_detectados.get("id_interno")
     afectacion = datos.get("afectacion")
     descripcion = datos.get("descripcion")
+
+    logger.info(">> Carrier detectado: %s", carrier_nombre or "N/D")
+    logger.info(">> id_interno detectado: %s", id_interno or "N/D")
+    logger.info(">> Servicios extraídos: %s", ids_brutos)
 
     with SessionLocal() as session:
         cliente = obtener_cliente_por_nombre(cliente_nombre)
@@ -581,13 +601,8 @@ async def procesar_correo_a_tarea(
                 ids_faltantes.append(ident)
                 logger.warning("Servicio %s no encontrado", ident)
 
-        if ids_brutos and not servicios:
-            faltantes_str = ", ".join(ids_faltantes)
-            logger.warning(
-                "No se localizaron servicios en el correo. Faltantes: %s",
-                faltantes_str,
-            )
-            raise ValueError(f"No se encontraron servicios: {faltantes_str}")
+        if ids_faltantes:
+            logger.info(">> Servicios faltantes: %s", ids_faltantes)
 
         tarea = crear_tarea_programada(
             inicio,
@@ -597,6 +612,7 @@ async def procesar_correo_a_tarea(
             carrier_id=carrier.id if carrier else None,
             tiempo_afectacion=afectacion,
             descripcion=descripcion,
+            id_interno=id_interno,
         )
         if carrier:
             for srv in servicios:
@@ -605,19 +621,28 @@ async def procesar_correo_a_tarea(
                     srv.carrier = carrier.nombre
             session.commit()
 
-        nombre_arch = f"tarea_{tarea.id}.msg"
-        ruta = Path(tempfile.gettempdir()) / nombre_arch
+        for token in ids_faltantes:
+            crear_servicio_pendiente(token, tarea.id)
+            logger.info("ServicioPendiente creado: %s", token)
 
-        ruta_str, cuerpo = generar_archivo_msg(
-            tarea,
-            cliente,
-            [s for s in servicios if s],
-            str(ruta),
-            carrier,
-        )
-        ruta_msg = Path(ruta_str)
+        ids_pendientes = ids_faltantes
 
-        return tarea, cliente, ruta_msg, cuerpo
+        if generar_msg:
+            nombre_arch = f"tarea_{tarea.id}.msg"
+            ruta = Path(tempfile.gettempdir()) / nombre_arch
+
+            ruta_str, cuerpo = generar_archivo_msg(
+                tarea,
+                cliente,
+                [s for s in servicios if s],
+                str(ruta),
+                carrier,
+            )
+            ruta_msg = Path(ruta_str)
+
+            return tarea, cliente, ruta_msg, cuerpo, ids_pendientes
+
+        return tarea, ids_pendientes
 
 
 def _extraer_por_regex(texto: str) -> dict | None:
@@ -640,3 +665,35 @@ def _extraer_por_regex(texto: str) -> dict | None:
         "descripcion": None,
         "ids": [i.strip() for i in ids_m.group(1).split(",") if i.strip()],
     }
+
+
+def _detectar_datos_correo(texto: str) -> dict:
+    """Detecta carrier, id interno y servicios."""
+    resultado: dict = {}
+    lineas = texto.splitlines()
+    asunto = ""
+    if lineas:
+        if lineas[0].lower().startswith("subject:"):
+            asunto = lineas[0].split(":", 1)[1].strip()
+        else:
+            asunto = lineas[0].strip()
+
+    m = re.search(r"From:\s*([^\n]+)", texto, re.I)
+    if not m:
+        m = re.search(r"Name:\s*([^\n]+)", texto, re.I)
+    if m:
+        parte = m.group(1).strip()
+        resultado["carrier"] = parte.split("@")[0].split()[0]
+
+    if not resultado.get("carrier") and asunto:
+        m = re.match(r"([^\-]+)-\s*METROTEL", asunto, re.I)
+        if m:
+            resultado["carrier"] = m.group(1).strip().split()[0]
+
+    m = re.search(r"SWX\d{7}", texto)
+    if m:
+        resultado["id_interno"] = m.group(0)
+
+    resultado["ids"] = re.findall(r"CRT-\d+", texto)
+    resultado["tipo"] = "Emergencia" if "EMERGENCY" in asunto.upper() else "Programada"
+    return resultado

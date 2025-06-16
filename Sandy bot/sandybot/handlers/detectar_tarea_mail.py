@@ -7,18 +7,21 @@ import logging
 import os
 import tempfile
 from pathlib import Path
+
 from telegram import Update
 from telegram.ext import ContextTypes
 
-from ..utils import obtener_mensaje
 from ..email_utils import procesar_correo_a_tarea
 from ..registrador import responder_registrando
+from ..utils import obtener_mensaje
 from .procesar_correos import _leer_msg
 
 logger = logging.getLogger(__name__)
 
 
-async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+async def detectar_tarea_mail(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> None:
     """Procesa un correo enviado por Telegram y registra la tarea."""
 
     mensaje = obtener_mensaje(update)
@@ -37,7 +40,8 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
         )
         return
 
-    cliente_nombre = context.args[0]; carrier_nombre = context.args[1] if len(context.args) > 1 else None
+    cliente_nombre = context.args[0]
+    carrier_nombre = context.args[1] if len(context.args) > 1 else None
 
     contenido = ""
     if mensaje.document:
@@ -50,9 +54,7 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
             if nombre.endswith(".msg"):
                 contenido = _leer_msg(ruta)
             else:
-                contenido = Path(ruta).read_text(
-                    encoding="utf-8", errors="ignore"
-                )
+                contenido = Path(ruta).read_text(encoding="utf-8", errors="ignore")
         except Exception as e:
             logger.error("Error leyendo adjunto: %s", e)
             os.remove(ruta)
@@ -87,10 +89,17 @@ async def detectar_tarea_mail(update: Update, context: ContextTypes.DEFAULT_TYPE
         contenido = partes[indice_cuerpo]
 
     try:
-        tarea, cliente, ruta, _ = await procesar_correo_a_tarea(
+        (
+            tarea,
+            cliente,
+            ruta,
+            _,
+            _,
+        ) = await procesar_correo_a_tarea(
             contenido,
             cliente_nombre,
             carrier_nombre,
+            generar_msg=True,
         )
     except ValueError as err:
         logger.error("Fallo detectando tarea: %s", err)
