@@ -316,14 +316,19 @@ def test_identificador_tarea_duplicada(tmp_path):
     email_utils.procesar_correo_a_tarea = wrap
     mod.procesar_correo_a_tarea = wrap
 
-    with bd.SessionLocal() as s:
-        prev = s.query(bd.TareaProgramada).count()
+    total = None
+    try:
+        with bd.SessionLocal() as s:
+            prev = s.query(bd.TareaProgramada).count()
 
-    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
-    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+        asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+        asyncio.run(mod.procesar_identificador_tarea(update, ctx))
 
-    with bd.SessionLocal() as s:
-        total = s.query(bd.TareaProgramada).count()
+        with bd.SessionLocal() as s:
+            total = s.query(bd.TareaProgramada).count()
+    finally:
+        email_utils.procesar_correo_a_tarea = real_proc
+        mod.procesar_correo_a_tarea = real_proc
 
     tempfile.gettempdir = orig_tmp
 
