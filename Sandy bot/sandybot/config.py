@@ -100,6 +100,8 @@ class Config:  # pylint: disable=too-many-instance-attributes
         self.GPT_TIMEOUT = 30
         self.GPT_MAX_RETRIES = 3
         self.GPT_CACHE_TIMEOUT = 3600  # 1 hora
+        # Cada cuántas consultas se persiste la cache de GPT
+        self.GPT_CACHE_SAVE_INTERVAL = int(os.getenv("GPT_CACHE_SAVE_INTERVAL", "5"))
 
         # 8) Conexión BD
         self.DB_HOST = os.getenv("DB_HOST", "localhost")

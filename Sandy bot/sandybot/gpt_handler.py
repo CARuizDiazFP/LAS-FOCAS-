@@ -14,6 +14,7 @@ import openai
 from jsonschema import validate, ValidationError
 from .config import config
 from .utils import cargar_json, guardar_json
+import atexit
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +26,33 @@ class GPTHandler:
     def __init__(self):
         # Cargar la cache desde disco para conservar respuestas entre ejecuciones
         self.cache: Dict[str, Dict[str, str]] = cargar_json(config.GPT_CACHE_FILE)
+        # Marca para saber si la cache cambió y evitar escrituras innecesarias
+        self._dirty = False
+        # Contador para definir cada cuántas consultas se guarda en disco
+        self._contador = 0
         # Se crea un cliente asíncrono para la API de OpenAI.
         # De esta forma se aprovecha la nueva interfaz de la
         # biblioteca ``openai`` a partir de la versión 1.x.
         self.client = openai.AsyncOpenAI(api_key=config.OPENAI_API_KEY)
+        # Guardar la cache automáticamente al finalizar la aplicación
+        atexit.register(self._flush_cache)
+
+    # ──────────────────────── Manejo de cache ────────────────────────
+    def _marcar_sucia(self) -> None:
+        """Activa la marca de cache sucia y cuenta la operación."""
+        # La cache solo se escribe cada N consultas para reducir E/S
+        self._dirty = True
+        self._contador += 1
+        if self._contador >= config.GPT_CACHE_SAVE_INTERVAL:
+            self._flush_cache()
+
+    def _flush_cache(self) -> None:
+        """Escribe la cache en disco si ha sido modificada."""
+        # Se minimizan las escrituras para mejorar el rendimiento
+        if self._dirty:
+            guardar_json(self.cache, config.GPT_CACHE_FILE)
+            self._dirty = False
+            self._contador = 0
         
     async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
         """
@@ -59,7 +83,8 @@ class GPTHandler:
         for k in vencidos:
             del self.cache[k]
         if vencidos:
-            guardar_json(self.cache, config.GPT_CACHE_FILE)
+            # Se marca la cache como sucia; se guardará según el intervalo
+            self._marcar_sucia()
 
         for intento in range(config.GPT_MAX_RETRIES):
             try:
@@ -78,7 +103,8 @@ class GPTHandler:
                         "timestamp": datetime.now().isoformat(),
                         "response": resultado,
                     }
-                    guardar_json(self.cache, config.GPT_CACHE_FILE)
+                    # Se marca la cache como sucia; se escribirá en disco más adelante
+                    self._marcar_sucia()
                 return resultado
                 
             except openai.RateLimitError:
