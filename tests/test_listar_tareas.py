@@ -58,6 +58,9 @@ import sandybot.database as bd
 
 sqlalchemy.create_engine = orig_engine
 bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
+# Compatibilidad con SQLAlchemy 2.0
+from sqlalchemy.orm import close_all_sessions
+bd.SessionLocal.close_all_sessions = close_all_sessions
 bd.Base.metadata.create_all(bind=bd.engine)
 
 
@@ -71,10 +74,12 @@ def reiniciar_bd():
     engine = sqlalchemy.create_engine("sqlite:///:memory:")
     bd.engine = engine
     bd.SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
+    from sqlalchemy.orm import close_all_sessions
+    bd.SessionLocal.close_all_sessions = close_all_sessions
     bd.Base.metadata.create_all(bind=engine)
     yield
     bd.Base.metadata.drop_all(bind=engine)
-    bd.SessionLocal.close_all()
+    bd.SessionLocal.close_all_sessions()
     engine.dispose()
     bd.engine = old_engine
     bd.SessionLocal = old_session
