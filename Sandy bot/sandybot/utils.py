@@ -17,6 +17,17 @@ from .config import config
 
 logger = logging.getLogger(__name__)
 
+# Patrón precargado para evitar recompilaciones en normalizar_camara
+REEMPLAZOS_REGEX: dict[re.Pattern, str] = {
+    re.compile(r"\bcam\.\b"): "camara",
+    re.compile(r"\bcam\b"): "camara",
+    re.compile(r"\bav\.\b"): "avenida",
+    re.compile(r"\bav\b"): "avenida",
+    re.compile(r"\bgral\.\b"): "general",
+    re.compile(r"\bgral\b"): "general",
+    re.compile(r"\bcra\.?\b"): "carrera",
+}
+
 def normalizar_texto(texto: str) -> str:
     """
     Normaliza un string para comparaciones (elimina acentos, mayúsculas, etc)
@@ -27,18 +38,9 @@ def normalizar_camara(texto: str) -> str:
     """Normaliza nombres de cámara eliminando acentos y abreviaturas."""
     t = normalizar_texto(texto)
 
-    # Equivalencias comunes en direcciones
-    reemplazos = {
-        r"\bcam\.\b": "camara",
-        r"\bcam\b": "camara",
-        r"\bav\.\b": "avenida",
-        r"\bav\b": "avenida",
-        r"\bgral\.\b": "general",
-        r"\bgral\b": "general",
-        r"\bcra\.?\b": "carrera",
-    }
-    for patron, reemplazo in reemplazos.items():
-        t = re.sub(patron, reemplazo, t)
+    # Aplicar equivalencias precompiladas
+    for patron, reemplazo in REEMPLAZOS_REGEX.items():
+        t = patron.sub(reemplazo, t)
 
     # Eliminar puntuación que pueda afectar la comparación
     t = re.sub(r"[.,;:]", "", t)
