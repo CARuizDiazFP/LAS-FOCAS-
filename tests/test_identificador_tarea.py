@@ -330,3 +330,78 @@ def test_identificador_tarea_duplicada(tmp_path):
     assert total == prev + 1
     assert flags == [True, False]
     assert capt_texts[-1].startswith("🔄")
+
+
+def test_respuesta_con_id_carrier(tmp_path):
+    """Verifica el texto enviado tras procesar un correo."""
+
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = lambda: str(TEMP_DIR)
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [
+            str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")
+        ]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.identificador_tarea"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR
+        / "Sandy bot"
+        / "sandybot"
+        / "handlers"
+        / "identificador_tarea.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+
+    servicio = bd.crear_servicio(nombre="SrvID", cliente="Cli")
+
+    import sandybot.email_utils as email_utils
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Mant", "afectacion": "1h", "ids": ['
+                + str(servicio.id)
+                + "]}"
+            )
+
+    email_utils.gpt = GPTStub()
+
+    content = (
+        f"Carrier: Telco\nID100\nInicio: 02/01 08:00\nFin: 02/01 10:00\n"
+        f"Servicios: {servicio.id}"
+    )
+    doc = Document(file_name="id.msg", content=content)
+    msg = Message("Cli", document=doc)
+
+    texts: list[str] = []
+
+    async def cap_reply(text, *a, **k):
+        texts.append(text)
+
+    msg.reply_text = cap_reply
+
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=[], user_data={})
+
+    with bd.SessionLocal() as s:
+        prev = s.query(bd.TareaProgramada).count()
+
+    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+
+    with bd.SessionLocal() as s:
+        total = s.query(bd.TareaProgramada).count()
+
+    tempfile.gettempdir = orig_tmp
+
+    assert total == prev + 1
+    assert any("ID Carrier: ID100" in t for t in texts)
