@@ -42,7 +42,8 @@ def _enviar_mail(destino: str, archivo: str, nombre: str) -> None:
     puerto = config.SMTP_PORT
 
     usar_tls = config.SMTP_USE_TLS
-    usar_ssl = not usar_tls or puerto == 465
+    # Se utiliza SSL solo cuando el puerto es 465
+    usar_ssl = puerto == 465
 
     if usar_ssl:
         with smtplib.SMTP_SSL(servidor, puerto) as smtp:
@@ -51,7 +52,9 @@ def _enviar_mail(destino: str, archivo: str, nombre: str) -> None:
             smtp.send_message(msg)
     else:
         with smtplib.SMTP(servidor, puerto) as smtp:
-            smtp.starttls()
+            # ``starttls`` se ejecuta solo cuando SMTP_USE_TLS es verdadero
+            if usar_tls:
+                smtp.starttls()
             if config.SMTP_USER and config.SMTP_PASSWORD:
                 smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
             smtp.send_message(msg)
