@@ -20,7 +20,6 @@ from ..email_utils import enviar_excel_por_correo
 
 logger = logging.getLogger(__name__)
 
-
 async def iniciar_envio_camaras_mail(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:

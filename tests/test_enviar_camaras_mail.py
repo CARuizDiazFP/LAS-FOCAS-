@@ -55,6 +55,7 @@ def _importar(tmp_path):
 
     mod_name = f"{pkg}.enviar_camaras_mail"
     spec = importlib.util.spec_from_file_location(mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "enviar_camaras_mail.py")
+
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
@@ -79,3 +80,5 @@ def test_handler_envia_excel(monkeypatch, tmp_path):
     assert registros["asunto"] == "Listado de cámaras"
     assert "cámaras" in registros["cuerpo"].lower()
     assert "enviadas" in captura["texto"]
+    
+    

@@ -448,8 +448,10 @@ pip install -r "Sandy bot/requirements.txt"
 ```
 Antes de lanzar `pytest` para evitar errores de importación.
 
-Algunas pruebas relacionadas con la base de datos se omiten de forma automática si `SQLAlchemy`
-no está presente en el entorno.
+
+Algunas pruebas relacionadas con la base de datos se omiten de forma automática si `SQLAlchemy` no está presente en el entorno.
+
+En `requirements-dev.txt` se establecen las versiones mínimas de `pytest` y `pytest-cov`. Si la suite de pruebas cambia o se amplía, recordá actualizar estos valores para evitar incompatibilidades.
 
 
 ## Licencia
