@@ -1,118 +1,84 @@
 # Nombre de archivo: test_enviar_camaras_mail.py
 # Ubicación de archivo: tests/test_enviar_camaras_mail.py
 # User-provided custom instructions
-"""Pruebas para el envio de camaras por correo."""
-
 import importlib
-import os
+import asyncio
 import sys
-from types import ModuleType
+from types import ModuleType, SimpleNamespace
 from pathlib import Path
+import tempfile
 
-import pytest
-from sqlalchemy.orm import sessionmaker
+from tests.telegram_stub import Message, Update
 
 ROOT_DIR = Path(__file__).resolve().parents[1]
 
-# Stub de smtplib
-smtp_stub = ModuleType("smtplib")
-reg = {}
-
-class SMTP:
-    def __init__(self, host, port):
-        reg["host"] = host
-        reg["port"] = port
-        reg["cls"] = self.__class__.__name__
-
-    def starttls(self):
-        reg["tls"] = True
-
-    def login(self, user, pwd):
-        reg["login"] = (user, pwd)
-
-    def send_message(self, msg):
-        reg["to"] = msg["To"]
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc, tb):
-        pass
-
-class SMTP_SSL(SMTP):
-    pass
-
-smtp_stub.SMTP = SMTP
-smtp_stub.SMTP_SSL = SMTP_SSL
-sys.modules["smtplib"] = smtp_stub
+captura = {}
+registros = {}
 
 
-# Base de datos en memoria
-import sqlalchemy
-
-orig = sqlalchemy.create_engine
-sqlalchemy.create_engine = lambda *a, **k: orig("sqlite:///:memory:")
-import sandybot.database as bd
-
-sqlalchemy.create_engine = orig
-bd.SessionLocal = sessionmaker(bind=bd.engine, expire_on_commit=False)
-bd.Base.metadata.create_all(bind=bd.engine)
-
-from sandybot import config as config_mod
-
-config_mod.Config._instance = None
-importlib.reload(config_mod)
-
-
-def _importar():
+def _importar(tmp_path):
     pkg = "sandybot.handlers"
     if pkg not in sys.modules:
         handlers_pkg = ModuleType(pkg)
         handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
         sys.modules[pkg] = handlers_pkg
+
+    registrador_stub = ModuleType("sandybot.registrador")
+
+    async def responder_registrando(*a, **k):
+        captura["texto"] = a[3]
+
+    registrador_stub.responder_registrando = responder_registrando
+    registrador_stub.registrar_conversacion = lambda *a, **k: None
+    sys.modules["sandybot.registrador"] = registrador_stub
+
+    db_stub = ModuleType("sandybot.database")
+
+    def exportar_camaras_servicio(_id, ruta):
+        Path(ruta).write_text("x")
+        return True
+
+    db_stub.exportar_camaras_servicio = exportar_camaras_servicio
+    sys.modules["sandybot.database"] = db_stub
+
+    email_stub = ModuleType("sandybot.email_utils")
+
+    def enviar_excel_por_correo(dest, ruta_excel, *, asunto="Reporte SandyBot", cuerpo="Adjunto el archivo Excel."):
+        registros["dest"] = dest
+        registros["ruta"] = ruta_excel
+        registros["asunto"] = asunto
+        registros["cuerpo"] = cuerpo
+        return True
+
+    email_stub.enviar_excel_por_correo = enviar_excel_por_correo
+    sys.modules["sandybot.email_utils"] = email_stub
+
     mod_name = f"{pkg}.enviar_camaras_mail"
-    spec = importlib.util.spec_from_file_location(
-        mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "enviar_camaras_mail.py"
-    )
+    spec = importlib.util.spec_from_file_location(mod_name, ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "enviar_camaras_mail.py")
+
     mod = importlib.util.module_from_spec(spec)
     sys.modules[mod_name] = mod
     spec.loader.exec_module(mod)
     return mod
 
 
-def test_enviar_mail_tls(tmp_path, monkeypatch):
-    monkeypatch.setenv("SMTP_PORT", "25")
-    monkeypatch.setenv("SMTP_USE_TLS", "true")
-    monkeypatch.setenv("SMTP_HOST", "mail")
-    monkeypatch.setenv("SMTP_USER", "u")
-    monkeypatch.setenv("SMTP_PASSWORD", "p")
-
-    config_mod.Config._instance = None
-    importlib.reload(config_mod)
-
-    mod = _importar()
-    archivo = tmp_path / "a.txt"
-    archivo.write_text("x")
-    reg.clear()
-    mod._enviar_mail("d@x.com", str(archivo), "a.txt")
-    assert reg["cls"] == "SMTP"
-    assert reg.get("tls") is True
+async def _run(mod):
+    msg = Message("5 dest@example.com")
+    update = Update(message=msg)
+    ctx = SimpleNamespace(user_data={})
+    await mod.procesar_envio_camaras_mail(update, ctx)
 
 
-def test_enviar_mail_ssl(tmp_path, monkeypatch):
-    monkeypatch.setenv("SMTP_PORT", "465")
-    monkeypatch.setenv("SMTP_USE_TLS", "true")
-    monkeypatch.setenv("SMTP_HOST", "mail")
-    monkeypatch.setenv("SMTP_USER", "u")
-    monkeypatch.setenv("SMTP_PASSWORD", "p")
-
-    config_mod.Config._instance = None
-    importlib.reload(config_mod)
-
-    mod = _importar()
-    archivo = tmp_path / "b.txt"
-    archivo.write_text("x")
-    reg.clear()
-    mod._enviar_mail("d@x.com", str(archivo), "b.txt")
-    assert reg["cls"] == "SMTP_SSL"
-    assert "tls" not in reg
+def test_handler_envia_excel(monkeypatch, tmp_path):
+    monkeypatch.setattr(tempfile, "gettempdir", lambda: str(tmp_path))
+    mod = _importar(tmp_path)
+    captura.clear()
+    registros.clear()
+    asyncio.run(_run(mod))
+    assert registros["dest"] == "dest@example.com"
+    assert Path(registros["ruta"]).exists()
+    assert registros["asunto"] == "Listado de cámaras"
+    assert "cámaras" in registros["cuerpo"].lower()
+    assert "enviadas" in captura["texto"]
+    
+    

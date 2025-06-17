@@ -8,8 +8,6 @@ from telegram.ext import ContextTypes
 import logging
 import os
 import tempfile
-import smtplib
-from email.message import EmailMessage
 from sqlalchemy.exc import SQLAlchemyError
 
 from ..config import config
@@ -18,47 +16,9 @@ from ..utils import obtener_mensaje
 from ..database import exportar_camaras_servicio
 from ..registrador import responder_registrando, registrar_conversacion
 from .estado import UserState
+from ..email_utils import enviar_excel_por_correo
 
 logger = logging.getLogger(__name__)
-
-
-def _enviar_mail(destino: str, archivo: str, nombre: str) -> None:
-    """Envía un archivo por correo utilizando SMTP simple."""
-    msg = EmailMessage()
-    msg["Subject"] = "Listado de cámaras"
-    msg["From"] = config.EMAIL_FROM or "bot@example.com"
-    msg["To"] = destino
-    msg.set_content("Adjunto las cámaras solicitadas.")
-    with open(archivo, "rb") as f:
-        datos = f.read()
-    msg.add_attachment(
-        datos,
-        maintype="application",
-        subtype="octet-stream",
-        filename=nombre,
-    )
-
-    servidor = config.SMTP_HOST or "localhost"
-    puerto = config.SMTP_PORT
-
-    usar_tls = config.SMTP_USE_TLS
-    # Se utiliza SSL solo cuando el puerto es 465
-    usar_ssl = puerto == 465
-
-    if usar_ssl:
-        with smtplib.SMTP_SSL(servidor, puerto) as smtp:
-            if config.SMTP_USER and config.SMTP_PASSWORD:
-                smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
-            smtp.send_message(msg)
-    else:
-        with smtplib.SMTP(servidor, puerto) as smtp:
-            # ``starttls`` se ejecuta solo cuando SMTP_USE_TLS es verdadero
-            if usar_tls:
-                smtp.starttls()
-            if config.SMTP_USER and config.SMTP_PASSWORD:
-                smtp.login(config.SMTP_USER, config.SMTP_PASSWORD)
-            smtp.send_message(msg)
-
 
 async def iniciar_envio_camaras_mail(
     update: Update, context: ContextTypes.DEFAULT_TYPE
@@ -126,11 +86,13 @@ async def procesar_envio_camaras_mail(
         )
         return
 
-    from ..email_utils import generar_nombre_camaras
-
     try:
-        nombre_archivo = generar_nombre_camaras(id_servicio) + ".xlsx"
-        _enviar_mail(correo, ruta, nombre_archivo)
+        enviar_excel_por_correo(
+            correo,
+            ruta,
+            asunto="Listado de cámaras",
+            cuerpo="Adjunto las cámaras solicitadas.",
+        )
         registrar_conversacion(
             mensaje.from_user.id,
             mensaje.text,
