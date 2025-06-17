@@ -67,6 +67,8 @@ config_mod = importlib.import_module("sandybot.config")
 def test_persistencia_cache(tmp_path):
     cache_file = tmp_path / "gpt_cache.json"
     config_mod.config.GPT_CACHE_FILE = cache_file
+    # Forzar guardado en disco tras cada consulta
+    config_mod.config.GPT_CACHE_SAVE_INTERVAL = 1
 
     gpt_module = importlib.reload(importlib.import_module("sandybot.gpt_handler"))
     handler = gpt_module.GPTHandler()
