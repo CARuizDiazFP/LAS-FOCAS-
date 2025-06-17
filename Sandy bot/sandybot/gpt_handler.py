@@ -7,6 +7,7 @@ Manejador de interacciones con GPT con soporte para cache y manejo de errores.
 import json
 import logging
 import asyncio
+import random
 from typing import List, Dict, Any, Optional, Union
 from datetime import datetime
 import openai
@@ -82,8 +83,8 @@ class GPTHandler:
                 
             except openai.RateLimitError:
                 logger.warning("Rate limit alcanzado, reintentando...")
-                # Exponential backoff with jitter
-                backoff_seconds = (2 ** intento) + (asyncio.get_running_loop().time() % 1)
+                # Exponential backoff con un pequeño valor aleatorio
+                backoff_seconds = (2 ** intento) + random.random()
                 await asyncio.sleep(backoff_seconds)
             except openai.APIError as e:
                 logger.error("Error de API en consulta GPT: %s", str(e))
