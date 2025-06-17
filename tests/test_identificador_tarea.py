@@ -90,10 +90,8 @@ def test_identificador_tarea(tmp_path):
     class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
-                "{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", "
-                ""tipo": "Mant", "afectacion": "1h", "descripcion": "Desc_con_guion", "ids": ["
-                + str(servicio.id)
-                + "]}"
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + "]}"
             )
 
     doc = Document(file_name="aviso.msg", content="dummy")
@@ -370,15 +368,14 @@ def test_respuesta_con_id_carrier(tmp_path):
 
 
     import sandybot.email_utils as email_utils
-
+    
     class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
-                '"tipo": "Mant", "afectacion": "1h", 
-                "Tipo_con_guion","descripcion": "Desc_con_guion", "ids": ['
-                + str(servicio.id)
-                + "]}"
+                '"tipo": "Mant", "afectacion": "1h", '
+                '"Tipo_con_guion","descripcion": "Desc_con_guion", "ids": [' + str(servicio.id) + "]}"
+            )
             
 
     email_utils.gpt = GPTStub()
