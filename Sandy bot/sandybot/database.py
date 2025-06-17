@@ -583,6 +583,13 @@ def actualizar_tracking(
                     existentes = []
 
             nuevos = []
+            if camaras is not None:
+                # Se calcula una sola vez para evitar repetir este proceso
+                nuevas = {normalizar_camara(c) for c in camaras}
+                anteriores = {normalizar_camara(c) for c in cam_anterior}
+                dif_agregadas = nuevas - anteriores
+                dif_quitadas = anteriores - nuevas
+
             for t in trackings_txt:
                 if isinstance(t, dict):
                     entrada = t
@@ -593,10 +600,6 @@ def actualizar_tracking(
                         "fecha": datetime.utcnow().isoformat(),
                     }
                 if camaras is not None:
-                    nuevas = {normalizar_camara(c) for c in camaras}
-                    anteriores = {normalizar_camara(c) for c in cam_anterior}
-                    dif_agregadas = nuevas - anteriores
-                    dif_quitadas = anteriores - nuevas
                     entrada["nuevas"] = [
                         c for c in camaras if normalizar_camara(c) in dif_agregadas
                     ]
