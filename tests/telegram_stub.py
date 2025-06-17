@@ -75,3 +75,19 @@ class ContextTypes:
     DEFAULT_TYPE = object
 telegram_ext.ContextTypes = ContextTypes
 sys.modules.setdefault("telegram.ext", telegram_ext)
+
+helpers_mod = ModuleType("telegram.helpers")
+
+
+def escape_markdown(text: str, version: int = 1, *_, **__) -> str:
+    """Escapa caracteres básicos de Markdown v1."""
+    return (
+        text.replace("_", "\\_")
+        .replace("*", "\\*")
+        .replace("[", "\\[")
+        .replace("`", "\\`")
+    )
+
+
+helpers_mod.escape_markdown = escape_markdown
+sys.modules.setdefault("telegram.helpers", helpers_mod)

@@ -12,6 +12,7 @@ from pathlib import Path
 
 from telegram import Update
 from telegram.ext import ContextTypes
+from telegram.helpers import escape_markdown
 
 from ..email_utils import procesar_correo_a_tarea
 from ..registrador import responder_registrando
@@ -135,17 +136,20 @@ async def procesar_identificador_tarea(
         interno = tarea.id_interno or "N/D"
         detalle = f"🔄 La tarea {interno} ya estaba registrada (ID BD: {tarea.id})\n"
 
+    carrier_md = escape_markdown(carrier_nombre, version=1)
+    tipo_md = escape_markdown(tarea.tipo_tarea, version=1)
     detalle += (
         f"ID Carrier: {tarea.id_interno or 'N/D'}\n"
-        f"• Carrier: {carrier_nombre}\n"
-        f"• Tipo   : {tarea.tipo_tarea}\n"
+        f"• Carrier: {carrier_md}\n"
+        f"• Tipo   : {tipo_md}\n"
         f"• Inicio : {tarea.fecha_inicio} UTC-3\n"
         f"• Fin    : {tarea.fecha_fin} UTC-3\n"
     )
     if tarea.tiempo_afectacion:
         detalle += f"• Afectación: {tarea.tiempo_afectacion}\n"
     if tarea.descripcion:
-        detalle += f"• Descripción: {tarea.descripcion}\n"
+        desc_md = escape_markdown(tarea.descripcion, version=1)
+        detalle += f"• Descripción: {desc_md}\n"
     if servicios_txt:
         detalle += f"• Servicio afectado: {servicios_txt}\n"
     if ids_pendientes:

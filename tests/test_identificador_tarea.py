@@ -316,14 +316,19 @@ def test_identificador_tarea_duplicada(tmp_path):
     email_utils.procesar_correo_a_tarea = wrap
     mod.procesar_correo_a_tarea = wrap
 
-    with bd.SessionLocal() as s:
-        prev = s.query(bd.TareaProgramada).count()
+    total = None
+    try:
+        with bd.SessionLocal() as s:
+            prev = s.query(bd.TareaProgramada).count()
 
-    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
-    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+        asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+        asyncio.run(mod.procesar_identificador_tarea(update, ctx))
 
-    with bd.SessionLocal() as s:
-        total = s.query(bd.TareaProgramada).count()
+        with bd.SessionLocal() as s:
+            total = s.query(bd.TareaProgramada).count()
+    finally:
+        email_utils.procesar_correo_a_tarea = real_proc
+        mod.procesar_correo_a_tarea = real_proc
 
     tempfile.gettempdir = orig_tmp
 
@@ -331,10 +336,8 @@ def test_identificador_tarea_duplicada(tmp_path):
     assert flags == [True, False]
     assert capt_texts[-1].startswith("🔄")
 
-
 def test_respuesta_con_id_carrier(tmp_path):
     """Verifica el texto enviado tras procesar un correo."""
-
     global TEMP_DIR
     TEMP_DIR = tmp_path
     orig_tmp = tempfile.gettempdir
@@ -363,16 +366,18 @@ def test_respuesta_con_id_carrier(tmp_path):
 
     servicio = bd.crear_servicio(nombre="SrvID", cliente="Cli")
 
+
     import sandybot.email_utils as email_utils
 
     class GPTStub(email_utils.gpt.__class__):
         async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
             return (
                 '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
-                '"tipo": "Mant", "afectacion": "1h", "ids": ['
+                '"tipo": "Mant", "afectacion": "1h", 
+                "Tipo_con_guion","descripcion": "Desc_con_guion", "ids": ['
                 + str(servicio.id)
                 + "]}"
-            )
+            
 
     email_utils.gpt = GPTStub()
 
@@ -387,6 +392,7 @@ def test_respuesta_con_id_carrier(tmp_path):
 
     async def cap_reply(text, *a, **k):
         texts.append(text)
+
 
     msg.reply_text = cap_reply
 
