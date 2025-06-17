@@ -330,3 +330,62 @@ def test_identificador_tarea_duplicada(tmp_path):
     assert total == prev + 1
     assert flags == [True, False]
     assert capt_texts[-1].startswith("🔄")
+
+
+def test_identificador_tarea_markdown(tmp_path):
+    """Escapa caracteres de Markdown en el mensaje final."""
+
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = lambda: str(TEMP_DIR)
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.identificador_tarea"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "identificador_tarea.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+
+    servicio = bd.crear_servicio(nombre="SrvEsc", cliente="Cli")
+
+    import sandybot.email_utils as email_utils
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Tipo_con_guion", "afectacion": "1h", '
+                '"descripcion": "Desc_con_guion", "ids": ['
+                + str(servicio.id)
+                + "]}"
+            )
+
+    email_utils.gpt = GPTStub()
+
+    doc = Document(file_name="esc.msg", content="dummy")
+    msg = Message("Cli", document=doc)
+    capt = []
+
+    async def cap_reply(text, *a, **k):
+        capt.append(text)
+
+    msg.reply_text = cap_reply
+
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=[], user_data={})
+
+    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+
+    tempfile.gettempdir = orig_tmp
+
+    assert "Tipo\\_con\\_guion" in capt[0]
+    assert "Desc\\_con\\_guion" in capt[0]
