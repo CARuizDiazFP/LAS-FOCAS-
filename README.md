@@ -4,7 +4,7 @@ Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `Sandy bot/requirements.txt`.
 Se recomienda usar la versión `openai>=1.0.0` para garantizar compatibilidad con la nueva API utilizada en `sandybot`.
 Es obligatorio instalar `extract-msg` para leer los
-adjuntos `.msg` y opcionalmente `pywin32` en Windows o `docx2pdf` en otros sistemas.
+adjuntos `.msg` o `.txt` y opcionalmente `pywin32` en Windows o `docx2pdf` en otros sistemas.
 Estas librerías permiten insertar la firma, generar un `.MSG` real desde Outlook y exportar informes a PDF. Desde esta versión el bot también acepta
 mensajes de voz, los descarga y los transcribe automáticamente utilizando la API
 de OpenAI.
@@ -257,7 +257,7 @@ Por ejemplo:
 ```bash
 /procesar_correos Cliente
 ```
-Luego adjuntá uno o varios archivos `.msg` con las ventanas de mantenimiento. Un aviso típico luce así:
+Luego adjuntá uno o varios archivos `.msg` o `.txt` con las ventanas de mantenimiento. Un aviso típico luce así:
 
 ```
 Estimado Cliente, nuestro partner nos da aviso de la siguiente tarea programada:
@@ -276,7 +276,7 @@ Al crear la tarea genera también un `.MSG` con el texto listo para enviar.
 ### Identificador de tarea programada
 
 En el menú principal tenés el botón **🔍 Identificar tarea programada**.
-Al seleccionarlo adjuntás el correo `.MSG` y escribís el cliente y, opcionalmente, el carrier.
+Al seleccionarlo adjuntás el correo `.MSG` o `.TXT` y escribís el cliente y, opcionalmente, el carrier.
 Sandy analizará el archivo, registrará la ventana y enviará el `.MSG` generado con todos los datos.
 
 

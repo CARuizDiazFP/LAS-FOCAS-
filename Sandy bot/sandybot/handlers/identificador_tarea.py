@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 async def iniciar_identificador_tarea(
     update: Update, context: ContextTypes.DEFAULT_TYPE
 ) -> None:
-    """Solicita el correo .MSG a analizar."""
+    """Solicita el correo .MSG o .TXT a analizar."""
     mensaje = obtener_mensaje(update)
     if not mensaje:
         logger.warning("No se recibió mensaje en iniciar_identificador_tarea")
@@ -39,7 +39,7 @@ async def iniciar_identificador_tarea(
         mensaje,
         user_id,
         "identificador_tarea",
-        "📎 Adjuntá el archivo *.MSG* del mantenimiento.\n"
+        "📎 Adjuntá el archivo *.MSG* o *.TXT* del mantenimiento.\n"
         "No hace falta escribir nada más, yo me encargo del resto 😉",
         "identificador_tarea",
     )
@@ -59,19 +59,43 @@ async def procesar_identificador_tarea(
     cliente = partes[0] if partes else "METROTEL"
     carrier = partes[1] if len(partes) > 1 else None
 
+    nombre = mensaje.document.file_name or ""
     archivo = await mensaje.document.get_file()
     with tempfile.NamedTemporaryFile(delete=False) as tmp:
         await archivo.download_to_drive(tmp.name)
         ruta = tmp.name
 
     try:
-        contenido = _leer_msg(ruta)
-        if not contenido:
+        if nombre.lower().endswith(".msg"):
+            contenido = _leer_msg(ruta)
+            if not contenido:
+                await responder_registrando(
+                    mensaje,
+                    user_id,
+                    nombre,
+                    "Instalá la librería 'extract-msg' para leer archivos .MSG.",
+                    "identificador_tarea",
+                )
+                os.remove(ruta)
+                return
+        elif nombre.lower().endswith(".txt"):
+            contenido = Path(ruta).read_text(encoding="utf-8", errors="ignore")
+            if not contenido:
+                await responder_registrando(
+                    mensaje,
+                    user_id,
+                    nombre,
+                    "El archivo está vacío o no pude leerlo.",
+                    "identificador_tarea",
+                )
+                os.remove(ruta)
+                return
+        else:
             await responder_registrando(
                 mensaje,
                 user_id,
-                mensaje.document.file_name,
-                "Instalá la librería 'extract-msg' para leer archivos .MSG.",
+                nombre,
+                "Solo se admiten archivos .msg o .txt.",
                 "identificador_tarea",
             )
             os.remove(ruta)
@@ -85,7 +109,7 @@ async def procesar_identificador_tarea(
         await responder_registrando(
             mensaje,
             user_id,
-            mensaje.document.file_name,
+            nombre,
             "No pude identificar la tarea en el correo. Podés cargarla "
             "manualmente con /ingresar_tarea",
             "identificador_tarea",
@@ -97,7 +121,7 @@ async def procesar_identificador_tarea(
         await responder_registrando(
             mensaje,
             user_id,
-            mensaje.document.file_name,
+            nombre,
             "No pude identificar la tarea en el correo.",
             "identificador_tarea",
         )
