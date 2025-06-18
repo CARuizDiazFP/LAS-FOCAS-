@@ -34,7 +34,7 @@ async def iniciar_identificador_carrier(
         mensaje,
         user_id,
         "id_carrier",
-        "Enviá el Excel con las columnas 'ID Servicio' e 'ID Carrier' y lo completaré.",
+        "Enviá el Excel con las columnas 'ID Servicio', 'ID Carrier' y 'Carrier' y lo completaré.",
         "id_carrier",
     )
 
@@ -78,20 +78,23 @@ async def procesar_identificador_carrier(
         return
 
     col_servicio = None
+    col_id_carrier = None
     col_carrier = None
     for col in df.columns:
         nombre = str(col).lower()
-        if "servicio" in nombre:
+        if "servicio" in nombre and col_servicio is None:
             col_servicio = col
-        if "carrier" in nombre:
+        elif "id carrier" in nombre and col_id_carrier is None:
+            col_id_carrier = col
+        elif "carrier" in nombre and col_carrier is None:
             col_carrier = col
 
-    if col_servicio is None or col_carrier is None:
+    if col_servicio is None or col_id_carrier is None or col_carrier is None:
         await responder_registrando(
             mensaje,
             mensaje.from_user.id,
             documento.file_name,
-            "El Excel debe tener las columnas 'ID Servicio' e 'ID Carrier'.",
+            "El Excel debe tener las columnas 'ID Servicio', 'ID Carrier' y 'Carrier'.",
             "id_carrier",
         )
         os.remove(tmp.name)
@@ -101,9 +104,10 @@ async def procesar_identificador_carrier(
     try:
         for idx, row in df.iterrows():
             id_servicio = row.get(col_servicio)
+            id_carrier = row.get(col_id_carrier)
             nombre_carrier = row.get(col_carrier)
 
-            if pd.isna(id_servicio) and pd.isna(nombre_carrier):
+            if pd.isna(id_servicio) and pd.isna(nombre_carrier) and pd.isna(id_carrier):
                 continue
 
             carrier_obj = None
@@ -126,11 +130,14 @@ async def procesar_identificador_carrier(
                 except ValueError:
                     continue
                 registrar_servicio(
-                    sid, carrier_id=carrier_obj.id if carrier_obj else None
+                    sid,
+                    id_carrier=id_carrier,
+                    carrier_id=carrier_obj.id if carrier_obj else None,
                 )
-                if carrier_obj:
-                    svc = session.get(Servicio, sid)
-                    svc.carrier = nombre_carrier
+                svc = session.get(Servicio, sid)
+                if svc:
+                    if carrier_obj:
+                        svc.carrier = nombre_carrier
                     session.commit()
 
         salida = os.path.join(
