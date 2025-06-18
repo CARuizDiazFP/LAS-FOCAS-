@@ -117,6 +117,65 @@ def test_identificador_tarea(tmp_path):
     assert msg.sent is None
 
 
+def test_identificador_tarea_txt(tmp_path):
+    """Procesa un aviso enviado en formato .txt."""
+
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = lambda: str(TEMP_DIR)
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.identificador_tarea"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "identificador_tarea.py",
+    )
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = mod
+    spec.loader.exec_module(mod)
+
+    servicio = bd.crear_servicio(nombre="SrvTxt", cliente="Cli")
+
+    import sandybot.email_utils as email_utils
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02T08:00:00", "fin": "2024-01-02T10:00:00", '
+                '"tipo": "Mant", "afectacion": "1h", "ids": [' + str(servicio.id) + "]}"
+            )
+
+    email_utils.gpt = GPTStub()
+
+    doc = Document(file_name="aviso.txt", content="dummy")
+    msg = Message("Cli Telco", document=doc)
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=[], user_data={})
+
+    with bd.SessionLocal() as s:
+        prev_tareas = s.query(bd.TareaProgramada).count()
+        prev_rels = s.query(bd.TareaServicio).count()
+
+    asyncio.run(mod.procesar_identificador_tarea(update, ctx))
+
+    with bd.SessionLocal() as s:
+        tareas_list = s.query(bd.TareaProgramada).all()
+        tareas = len(tareas_list)
+        rels = s.query(bd.TareaServicio).count()
+
+    tempfile.gettempdir = orig_tmp
+
+    assert tareas == prev_tareas + 1
+    assert rels == prev_rels
+    assert msg.sent is None
+
+
 def test_identificador_tarea_heuristicas(tmp_path):
     """Detecta carrier en el cuerpo y lee .msg sin body."""
 
