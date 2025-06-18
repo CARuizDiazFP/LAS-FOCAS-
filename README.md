@@ -295,7 +295,7 @@ Si solo necesitás el listado de cámaras guardadas, ejecutá `/descargar_camara
 ## Identificador de servicio Carrier
 
 Desde el menú principal es posible seleccionar **Identificador de servicio Carrier**.
-Esta opción recibe un Excel con las columnas "ID Servicio" y "Carrier".
+Esta opción recibe un Excel con las columnas "ID Servicio", "ID Carrier" y "Carrier".
 El bot registra cada carrier, lo vincula al servicio mediante `carrier_id` y
 devuelve el archivo actualizado con los datos completados.
 
