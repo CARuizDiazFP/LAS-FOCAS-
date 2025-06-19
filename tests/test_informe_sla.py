@@ -340,6 +340,8 @@ def test_bloque_con_parrafos(tmp_path):
     entre = [child for child in body[idx2 + 1:idx3] if child.tag.endswith("p")]
     from docx.text.paragraph import Paragraph
     assert any("Eventos" in Paragraph(p, doc).text for p in entre)
+    tabla3 = doc.tables[-1]
+    assert tabla3.rows[1].cells[2].text == "0.00"
 
 
 def test_generar_con_ticket(tmp_path):
@@ -365,6 +367,7 @@ def test_generar_con_ticket(tmp_path):
     doc = Document(doc_path)
     tabla3 = doc.tables[-1]
     assert tabla3.rows[1].cells[1].text == "1"
+    assert tabla3.rows[1].cells[2].text == "0.00"
 
 
 def test_tabla2_completa(tmp_path):

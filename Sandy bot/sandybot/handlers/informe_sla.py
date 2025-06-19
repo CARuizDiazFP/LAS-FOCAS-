@@ -408,7 +408,7 @@ def _generar_documento_sla(
         return f"{h:03d}:{m:02d}:{s:02d}"
 
     def _horas_decimal(val) -> str:
-        """Convierte valores de horas a un número entero de horas."""
+        """Devuelve las horas en formato decimal con dos digitos."""
         if pd.isna(val) or val == "":
             return ""
         s = str(val).lower().replace(",", ".")
@@ -416,12 +416,13 @@ def _generar_documento_sla(
         s = s.replace("horas", "hours").replace("hora", "hours")
         try:
             td = pd.to_timedelta(s)
-            return str(int(td.total_seconds() // 3600))
+            horas = td.total_seconds() / 3600
         except Exception:
             try:
-                return str(int(float(s)))
+                horas = float(s)
             except Exception:
                 return s
+        return f"{horas:.2f}"
 
     meses = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
 
@@ -566,7 +567,7 @@ def _generar_documento_sla(
         fila_tot = t3.add_row().cells
         fila_tot[0].text = "Total"
         if total_h:
-            fila_tot[2].text = str(int(total_h))
+            fila_tot[2].text = f"{total_h:.2f}"
 
         # Salto de página entre servicios
         if idx_srv < total_servicios - 1:
