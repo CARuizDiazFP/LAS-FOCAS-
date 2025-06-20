@@ -175,6 +175,7 @@ def test_procesar_correo_fecha_dia_mes(tmp_path):
         ruta,
         _,
         _,
+        _,
     ) = asyncio.run(
         email_utils.procesar_correo_a_tarea("texto", "Cli", generar_msg=True)
     )
@@ -466,7 +467,7 @@ def test_procesar_correo_sin_servicios(monkeypatch, caplog):
 
     email_utils.gpt = GPTStub()
 
-    tarea, _creada, ids_pend = asyncio.run(
+    tarea, _creada, ids_pend, _ = asyncio.run(
         email_utils.procesar_correo_a_tarea("correo", "Cli", generar_msg=False)
     )
     with bd.SessionLocal() as s:
@@ -497,6 +498,7 @@ def test_procesar_correo_respuesta_con_texto(monkeypatch):
     (
         tarea,
         _creada,
+        _,
         _,
         _,
         _,
@@ -533,6 +535,7 @@ def test_procesar_correo_id_con_prefijo(monkeypatch):
         _,
         _,
         _,
+        _,
     ) = asyncio.run(
         email_utils.procesar_correo_a_tarea("texto", "Cli", generar_msg=True)
     )
@@ -542,3 +545,28 @@ def test_procesar_correo_id_con_prefijo(monkeypatch):
 def test_detectar_carrier_por_remitente():
     assert email_utils.detectar_carrier_por_remitente("noc@telxius.com") == "TELXIUS"
     assert email_utils.detectar_carrier_por_remitente("otro@ejemplo.com") is None
+
+
+def test_ids_ignetwork(tmp_path):
+    """Filtra IDs del tipo MTR.xxxx.yyyy."""
+
+    class GPTStub(email_utils.gpt.__class__):
+        async def consultar_gpt(self, mensaje: str, cache: bool = True) -> str:
+            return (
+                '{"inicio": "2024-01-02 08:00", "fin": "2024-01-02 10:00", '
+                '"tipo": "Mant", "afectacion": null, "descripcion": null, '
+                '"ids": ["MTR.1234.A001", "MTR.12345.012", "1234"]}'
+            )
+
+        async def procesar_json_response(self, resp, esquema):
+            import json
+
+            return json.loads(resp)
+
+    email_utils.gpt = GPTStub()
+
+    tarea, _, ids_pend, carrier = asyncio.run(
+        email_utils.procesar_correo_a_tarea("texto", "Cli", "IGNETWORK")
+    )
+    assert ids_pend == ["MTR.1234.A001", "MTR.12345.012"]
+    assert carrier == "IGNETWORK"

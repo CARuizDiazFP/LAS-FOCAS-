@@ -158,6 +158,8 @@ adicional.
    - La verificación no distingue entre mayúsculas y minúsculas
    - También podés cargar un Excel con un lote de cámaras en la columna A
    - Informa si se accedió a otra "botella" (Bot 2, Bot 3, ... ) de la misma cámara
+   - Detecta el carrier de forma automática y pregunta si deseás corregirlo cuando no aparece en el correo
+   - Para IGNETWORK los IDs válidos tienen la forma `MTR.xxxx.yyyy`
 3. Carga de tracking
    - Seleccioná "Cargar tracking" en el menú principal
    - Enviá el archivo `.txt` cuyo nombre contenga el ID (ej.: `FO_1234_tramo.txt`)

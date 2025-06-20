@@ -561,10 +561,19 @@ async def procesar_correo_a_tarea(
         [s for s in datos_detectados.get("ids", []) if s not in ids_brutos]
     )
     descartados: list[str] = []
-    if carrier_nombre and carrier_nombre.upper() == "TELXIUS":
+    carrier_norm = carrier_nombre.upper() if carrier_nombre else ""
+    if carrier_norm == "TELXIUS":
         ids_filtrados = []
         for i in ids_brutos:
             if re.fullmatch(r"CRT-\d{6}", i):
+                ids_filtrados.append(i)
+            else:
+                descartados.append(i)
+    elif carrier_norm == "IGNETWORK":
+        ids_filtrados = []
+        patron = re.compile(r"MTR\.\d{4,6}\.[A0]\d+")
+        for i in ids_brutos:
+            if patron.fullmatch(i):
                 ids_filtrados.append(i)
             else:
                 descartados.append(i)
@@ -673,9 +682,17 @@ async def procesar_correo_a_tarea(
             )
             ruta_msg = Path(ruta_str)
 
-            return tarea, creada_nueva, cliente, ruta_msg, cuerpo, ids_pendientes
+            return (
+                tarea,
+                creada_nueva,
+                cliente,
+                ruta_msg,
+                cuerpo,
+                ids_pendientes,
+                carrier_nombre,
+            )
 
-        return tarea, creada_nueva, ids_pendientes
+        return tarea, creada_nueva, ids_pendientes, carrier_nombre
 
 
 def _extraer_por_regex(texto: str) -> dict | None:
@@ -735,6 +752,9 @@ def _detectar_datos_correo(texto: str) -> dict:
     if carrier_norm == "TELXIUS":
         id_pat = r"SWX\d{7}"
         srv_pat = r"CRT-\d{6}"
+    elif carrier_norm == "IGNETWORK":
+        id_pat = r"MTR\.\d{4,6}\.[A0]\d+"
+        srv_pat = r"MTR\.\d{4,6}\.[A0]\d+"
     else:
         id_pat = r"ID\w+"
         srv_pat = r"\b\d+\b"

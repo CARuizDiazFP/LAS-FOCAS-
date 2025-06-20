@@ -103,6 +103,97 @@ async def message_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
             return
 
+        if context.user_data.get("esperando_carrier_confirm"):
+            resp = normalizar_texto(mensaje_usuario)
+            if resp in ("si", "sí", "s", "ok", "dale", "yes"):
+                context.user_data.pop("esperando_carrier_confirm", None)
+                context.user_data["esperando_carrier"] = True
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Ingresá el nombre del carrier:",
+                    "tareas",
+                )
+            elif resp in ("no", "n", "cancelar"):
+                context.user_data.clear()
+                UserState.set_mode(user_id, "")
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Listo.",
+                    "tareas",
+                )
+            else:
+                keyboard = InlineKeyboardMarkup(
+                    [[
+                        InlineKeyboardButton("Sí", callback_data="carrier_manual_si"),
+                        InlineKeyboardButton("No", callback_data="carrier_manual_no"),
+                    ]]
+                )
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Decí 'sí' o 'no' para continuar.",
+                    "tareas",
+                    reply_markup=keyboard,
+                )
+            return
+
+        if context.user_data.get("esperando_carrier"):
+            nombre = mensaje_usuario.strip()
+            if not nombre:
+                await responder_registrando(
+                    update.message,
+                    user_id,
+                    mensaje_usuario,
+                    "Ingresá un nombre válido.",
+                    "tareas",
+                )
+                return
+            from ..database import (
+                Carrier,
+                Servicio,
+                SessionLocal,
+                TareaProgramada,
+                TareaServicio,
+            )
+            from sqlalchemy import func
+
+            nombre_norm = normalizar_texto(nombre)
+            with SessionLocal() as s:
+                col = func.lower(func.unaccent(Carrier.nombre))
+                car = s.query(Carrier).filter(col == nombre_norm).first()
+                if not car:
+                    car = Carrier(nombre=nombre)
+                    s.add(car)
+                    s.commit()
+                    s.refresh(car)
+                tarea_id = context.user_data.get("tarea_carrier")
+                if tarea_id:
+                    tarea = s.get(TareaProgramada, tarea_id)
+                    if tarea:
+                        tarea.carrier_id = car.id
+                        s.commit()
+                        for rel in s.query(TareaServicio).filter_by(tarea_id=tarea_id):
+                            srv = s.get(Servicio, rel.servicio_id)
+                            if srv:
+                                srv.carrier_id = car.id
+                                srv.carrier = car.nombre
+                        s.commit()
+            await responder_registrando(
+                update.message,
+                user_id,
+                mensaje_usuario,
+                f"Carrier {car.nombre} asignado.",
+                "tareas",
+            )
+            context.user_data.clear()
+            UserState.set_mode(user_id, "")
+            return
+
         # Manejo de carga de tracking
         if UserState.get_mode(user_id) == "cargar_tracking":
             if context.user_data.get("confirmar_id"):

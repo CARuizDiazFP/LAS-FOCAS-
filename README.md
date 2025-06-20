@@ -299,6 +299,12 @@ Esta opción recibe un Excel con las columnas "ID Servicio", "ID Carrier" y "Car
 El bot registra cada carrier, lo vincula al servicio mediante `carrier_id` y
 devuelve el archivo actualizado con los datos completados.
 
+El comando `/procesar_correos` detecta de forma automática carriers como
+TELXIUS o IGNETWORK. Si el correo no incluye el nombre, el bot pregunta si
+deseás ingresarlo manualmente y valida el dato sin diferenciar mayúsculas ni
+acentos.
+Para IGNETWORK los servicios válidos tienen formato `MTR.xxxx.yyyy`.
+
 ## Administración de carriers y destinatarios
 
 Podés crear carriers manualmente con `/agregar_carrier <nombre>`, consultarlos

@@ -144,6 +144,7 @@ async def procesar_correos(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                 ruta_msg,
                 cuerpo,
                 _,
+                carrier_nombre,
             ) = await procesar_correo_a_tarea(
                 contenido, cliente_nombre, carrier_nombre, generar_msg=True
             )

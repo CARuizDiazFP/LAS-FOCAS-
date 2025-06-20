@@ -49,6 +49,16 @@ async def callback_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         registrar_conversacion(user_id, "confirmar_flujo_no", "Cancelar", "callback")
         await query.edit_message_text("Operación cancelada.")
         return
+    elif data == "carrier_manual_si":
+        context.user_data.pop("esperando_carrier_confirm", None)
+        context.user_data["esperando_carrier"] = True
+        await query.edit_message_text("Ingresá el nombre del carrier:")
+        return
+    elif data == "carrier_manual_no":
+        context.user_data.clear()
+        UserState.set_mode(user_id, "")
+        await query.edit_message_text("Listo.")
+        return
 
     # ───────────────────────────── COMPARADOR FO ────────────────────────────
     if data == "comparar_fo":
