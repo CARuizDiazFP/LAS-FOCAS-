@@ -10,7 +10,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from telegram.helpers import escape_markdown
 
@@ -101,8 +101,16 @@ async def procesar_identificador_tarea(
             os.remove(ruta)
             return
 
-        tarea, creada_nueva, ids_pendientes = await procesar_correo_a_tarea(
-            contenido, cliente, carrier, generar_msg=False
+        (
+            tarea,
+            creada_nueva,
+            ids_pendientes,
+            carrier_detectado,
+        ) = await procesar_correo_a_tarea(
+            contenido,
+            cliente,
+            carrier,
+            generar_msg=False,
         )
     except ValueError as exc:
         logger.error("Fallo identificando tarea: %s", exc)
@@ -180,5 +188,17 @@ async def procesar_identificador_tarea(
         detalle += f"⚠️ *Servicios pendientes*: {', '.join(ids_pendientes)}"
 
     await update.message.reply_text(detalle, parse_mode="Markdown")
-    UserState.set_mode(user_id, "")
-    context.user_data.clear()
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Sí", callback_data="carrier_manual_si"), InlineKeyboardButton("No", callback_data="carrier_manual_no")]]
+    )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        nombre,
+        "¿Querés ingresar el carrier manualmente?",
+        "identificador_tarea",
+        reply_markup=keyboard,
+    )
+    context.user_data["tarea_carrier"] = tarea.id
+    context.user_data["carrier_detectado"] = carrier_detectado or carrier_nombre
+    context.user_data["esperando_carrier_confirm"] = True

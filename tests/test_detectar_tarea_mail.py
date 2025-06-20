@@ -160,6 +160,7 @@ def test_cuerpo_sin_carrier(tmp_path):
             ruta,
             "ok",
             [],
+            "",
         )
 
     email_utils.procesar_correo_a_tarea = stub_procesar
@@ -174,6 +175,68 @@ def test_cuerpo_sin_carrier(tmp_path):
     tempfile.gettempdir = orig_tmp
 
     assert capturado["texto"] == "cuerpo mail"
+
+
+def test_preguntar_carrier(tmp_path):
+    """Si no se detecta carrier se consulta al usuario."""
+
+    global TEMP_DIR
+    TEMP_DIR = tmp_path
+    orig_tmp = tempfile.gettempdir
+    tempfile.gettempdir = lambda: str(TEMP_DIR)
+
+    pkg = "sandybot.handlers"
+    if pkg not in sys.modules:
+        handlers_pkg = ModuleType(pkg)
+        handlers_pkg.__path__ = [str(ROOT_DIR / "Sandy bot" / "sandybot" / "handlers")]
+        sys.modules[pkg] = handlers_pkg
+
+    mod_name = f"{pkg}.detectar_tarea_mail"
+    spec = importlib.util.spec_from_file_location(
+        mod_name,
+        ROOT_DIR / "Sandy bot" / "sandybot" / "handlers" / "detectar_tarea_mail.py",
+    )
+    tarea_mod = importlib.util.module_from_spec(spec)
+    sys.modules[mod_name] = tarea_mod
+    spec.loader.exec_module(tarea_mod)
+
+    import sandybot.email_utils as email_utils
+
+    async def stub_procesar(texto, cliente, carrier=None, *, generar_msg=False):
+        ruta = tmp_path / "dummy.msg"
+        ruta.write_text("x")
+        return (
+            SimpleNamespace(id=1, id_interno="ID001"),
+            True,
+            SimpleNamespace(nombre=cliente),
+            ruta,
+            "ok",
+            [],
+            "",
+        )
+
+    email_utils.procesar_correo_a_tarea = stub_procesar
+    tarea_mod.procesar_correo_a_tarea = stub_procesar
+
+    captura = {}
+    reg_stub = ModuleType("sandybot.registrador")
+
+    async def resp_reg(m, u, t_usuario, t_resp, modo, **k):
+        captura["texto"] = t_resp
+
+    reg_stub.responder_registrando = resp_reg
+    reg_stub.registrar_conversacion = lambda *a, **k: None
+    sys.modules["sandybot.registrador"] = reg_stub
+
+    msg = Message("/detectar_tarea Cli cuerpo" )
+    update = Update(message=msg)
+    ctx = SimpleNamespace(args=["Cli"])
+
+    asyncio.run(tarea_mod.detectar_tarea_mail(update, ctx))
+
+    tempfile.gettempdir = orig_tmp
+
+    assert "ingresar el carrier" in captura.get("texto", "")
 
 
 def test_detectar_tarea_carrier_en_correo(tmp_path):

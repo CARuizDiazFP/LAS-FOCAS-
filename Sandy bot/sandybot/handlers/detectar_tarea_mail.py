@@ -8,7 +8,7 @@ import os
 import tempfile
 from pathlib import Path
 
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 
 from ..email_utils import procesar_correo_a_tarea
@@ -96,6 +96,7 @@ async def detectar_tarea_mail(
             ruta,
             _,
             _,
+            carrier_nombre,
         ) = await procesar_correo_a_tarea(
             contenido,
             cliente_nombre,
@@ -141,3 +142,18 @@ async def detectar_tarea_mail(
         detalle,
         "tareas",
     )
+
+    keyboard = InlineKeyboardMarkup(
+        [[InlineKeyboardButton("Sí", callback_data="carrier_manual_si"), InlineKeyboardButton("No", callback_data="carrier_manual_no")]]
+    )
+    await responder_registrando(
+        mensaje,
+        user_id,
+        mensaje.text or getattr(mensaje.document, "file_name", ""),
+        "¿Querés ingresar el carrier manualmente?",
+        "tareas",
+        reply_markup=keyboard,
+    )
+    context.user_data["tarea_carrier"] = tarea.id
+    context.user_data["carrier_detectado"] = carrier_nombre
+    context.user_data["esperando_carrier_confirm"] = True
