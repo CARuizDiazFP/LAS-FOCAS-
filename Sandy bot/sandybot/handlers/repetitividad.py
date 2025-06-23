@@ -195,17 +195,15 @@ def generar_informe_y_modificar(ruta_excel):
         logger.error("Error leyendo el Excel %s: %s", ruta_excel, exc)
         raise ValueError("⚠️ No se pudo leer el Excel. Verificá el archivo.") from exc
 
-    cierre_col = 'Fecha Cierre Reclamo'
-    if 'Fecha Cierre Problema Reclamo' in casos_df.columns:
-        cierre_col = 'Fecha Cierre Problema Reclamo'
-
     columnas_a_conservar_casos = [
         'Número Reclamo',
         'Número Línea',
         'Tipo Servicio',
         'Nombre Cliente',
         'Fecha Inicio Reclamo',
-        cierre_col,
+        'Fecha Cierre Reclamo',
+        'Fecha Cierre Problema Reclamo',
+        'Horas Netas Problema Reclamo',
         'Tipo Solución Reclamo',
         'Descripción Solución Reclamo',
     ]
@@ -218,17 +216,18 @@ def generar_informe_y_modificar(ruta_excel):
         )
 
     casos_limpio = casos_df[columnas_a_conservar_casos].copy()
-    if cierre_col != "Fecha Cierre Reclamo":
-        casos_limpio = casos_limpio.rename(
-            columns={cierre_col: "Fecha Cierre Reclamo"}
-        )
-    try:
-        valor_fecha = casos_limpio['Fecha Cierre Reclamo'].dropna().iloc[0]
-        fecha_cierre = pd.to_datetime(valor_fecha)
-    except Exception as exc:
+
+    fecha_cierre = None
+    for col in ['Fecha Cierre Reclamo', 'Fecha Cierre Problema Reclamo']:
+        try:
+            valor_fecha = casos_limpio[col].dropna().iloc[0]
+            fecha_cierre = pd.to_datetime(valor_fecha)
+            break
+        except Exception:
+            continue
+    if fecha_cierre is None:
         logger.warning(
-            "'Fecha Cierre Reclamo' vacía o inválida, se usa la fecha actual: %s",
-            exc,
+            "No se pudieron leer las fechas de cierre, se usa la actual",
         )
         fecha_cierre = datetime.now()
 
@@ -253,21 +252,41 @@ Configurá la variable PLANTILLA_PATH."
         tipo_servicio = grupo['Tipo Servicio'].iloc[0]
         doc.add_paragraph(f'{tipo_servicio}: {numero_linea} - {nombre_cliente}', style='Heading 1')
 
-        tabla = doc.add_table(rows=1, cols=5, style='Table Grid')
+        tabla = doc.add_table(rows=1, cols=7, style='Table Grid')
         hdr_cells = tabla.rows[0].cells
         hdr_cells[0].text = 'Reclamo'
         hdr_cells[1].text = 'Tipo Solución Reclamo'
         hdr_cells[2].text = 'Fecha Inicio Reclamo'
         hdr_cells[3].text = 'Fecha Cierre Reclamo'
-        hdr_cells[4].text = 'Descripción Solución Reclamo'
+        hdr_cells[4].text = 'Fecha Cierre Problema Reclamo'
+        hdr_cells[5].text = 'Horas Netas Problema Reclamo'
+        hdr_cells[6].text = 'Descripción Solución Reclamo'
 
         for _, fila in grupo.iterrows():
             fila_cells = tabla.add_row().cells
             fila_cells[0].text = str(fila['Número Reclamo'])
             fila_cells[1].text = fila['Tipo Solución Reclamo']
-            fila_cells[2].text = fila['Fecha Inicio Reclamo'].strftime('%d/%m/%Y') if pd.notnull(fila['Fecha Inicio Reclamo']) else ''
-            fila_cells[3].text = fila['Fecha Cierre Reclamo'].strftime('%d/%m/%Y') if pd.notnull(fila['Fecha Cierre Reclamo']) else ''
-            fila_cells[4].text = fila['Descripción Solución Reclamo']
+            fila_cells[2].text = (
+                fila['Fecha Inicio Reclamo'].strftime('%d/%m/%Y %H:%M')
+                if pd.notnull(fila['Fecha Inicio Reclamo'])
+                else ''
+            )
+            fila_cells[3].text = (
+                fila['Fecha Cierre Reclamo'].strftime('%d/%m/%Y %H:%M')
+                if pd.notnull(fila['Fecha Cierre Reclamo'])
+                else ''
+            )
+            fila_cells[4].text = (
+                fila['Fecha Cierre Problema Reclamo'].strftime('%d/%m/%Y %H:%M')
+                if pd.notnull(fila['Fecha Cierre Problema Reclamo'])
+                else ''
+            )
+            fila_cells[5].text = (
+                str(fila['Horas Netas Problema Reclamo'])
+                if pd.notnull(fila['Horas Netas Problema Reclamo'])
+                else ''
+            )
+            fila_cells[6].text = fila['Descripción Solución Reclamo']
 
     nombre_archivo = f"InformeRepetitividad{fecha_cierre.strftime('%m%y')}.docx"
     ruta_docx_generado = os.path.join(tempfile.gettempdir(), nombre_archivo)
