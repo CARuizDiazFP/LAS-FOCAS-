@@ -10,6 +10,8 @@ import os
 import tempfile
 import pandas as pd
 from docx import Document
+from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+from docx.shared import Inches
 # Los siguientes módulos solo están disponibles en Windows. Se usan para
 # modificar el documento Word mediante COM.
 try:
@@ -28,6 +30,7 @@ from sandybot.config import config
 from ..utils import obtener_mensaje
 from .estado import UserState
 from ..registrador import responder_registrando, registrar_conversacion
+from ..geo_utils import extraer_coordenada, generar_mapa_puntos
 
 # Ruta a la plantilla Word definida en la configuración global
 # Permite modificar la ubicación mediante la variable de entorno "PLANTILLA_PATH"
@@ -261,6 +264,8 @@ Configurá la variable PLANTILLA_PATH."
         hdr_cells[5].text = 'Horas Netas Problema Reclamo'
         hdr_cells[6].text = 'Descripción Solución Reclamo'
 
+        coordenadas = []
+
         for _, fila in grupo.iterrows():
             fila_cells = tabla.add_row().cells
             fila_cells[0].text = str(fila['Número Reclamo'])
@@ -293,6 +298,23 @@ Configurá la variable PLANTILLA_PATH."
                 fila_cells[5].text = ''
 
             fila_cells[6].text = fila['Descripción Solución Reclamo']
+            coord = extraer_coordenada(fila['Descripción Solución Reclamo'])
+            if coord:
+                coordenadas.append(coord)
+
+        if coordenadas:
+            imagen = os.path.join(tempfile.gettempdir(), f"mapa_linea_{numero_linea}.png")
+            try:
+                generar_mapa_puntos(coordenadas, str(numero_linea), imagen)
+                parrafo_mapa = tabla._element.getparent().add_paragraph()
+                run = parrafo_mapa.add_run()
+                run.add_picture(imagen, width=Inches(5))
+                parrafo_mapa.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            except Exception as exc:
+                logger.error("Error generando mapa: %s", exc)
+            finally:
+                if os.path.exists(imagen):
+                    os.remove(imagen)
 
     nombre_archivo = f"InformeRepetitividad{fecha_cierre.strftime('%m%y')}.docx"
     ruta_docx_generado = os.path.join(tempfile.gettempdir(), nombre_archivo)

@@ -15,4 +15,5 @@ jsonschema>=4.0.0
 SQLAlchemy>=1.4
 textract==1.6.3  # opcional para archivos .doc
 beautifulsoup4>=4.8.0,<5
+matplotlib>=3.8
 
