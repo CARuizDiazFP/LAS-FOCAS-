@@ -95,14 +95,17 @@ def _guardar_reclamos(df: pd.DataFrame) -> None:
 
 
 def _mes_anio_desde_tabla(doc: Document) -> tuple[str, str]:
-    """Obtiene mes y año desde la tabla 3 del documento."""
-    try:
-        tabla = doc.tables[2]
-    except IndexError:
-        fecha = datetime.today()
-    else:
-        fechas = []
-        for row in tabla.rows[1:]:
+    """Obtiene el mes y año más recientes de todas las tablas 3."""
+    fechas: list[datetime] = []
+
+    for t in doc.tables[2:]:
+        if len(t.columns) < 5:
+            continue
+        cabecera = t.rows[0].cells[4].text.strip().lower()
+        if "fecha" not in cabecera:
+            continue
+        for row in t.rows[1:]:
+
             texto = row.cells[4].text.strip()
             if not texto:
                 continue
@@ -110,7 +113,8 @@ def _mes_anio_desde_tabla(doc: Document) -> tuple[str, str]:
                 fechas.append(datetime.strptime(texto, "%d-%b-%y"))
             except ValueError:
                 continue
-        fecha = max(fechas) if fechas else datetime.today()
+
+    fecha = max(fechas) if fechas else datetime.today()
 
     for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
         try:
