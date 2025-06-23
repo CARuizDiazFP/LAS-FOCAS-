@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 logs/
 .venv/
+.env
+Sandy bot/data/contador_diario.json
+Sandy bot/data/tracking_94971.txt
