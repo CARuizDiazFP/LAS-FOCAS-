@@ -105,6 +105,7 @@ def _mes_anio_desde_tabla(doc: Document) -> tuple[str, str]:
         if "fecha" not in cabecera:
             continue
         for row in t.rows[1:]:
+
             texto = row.cells[4].text.strip()
             if not texto:
                 continue
