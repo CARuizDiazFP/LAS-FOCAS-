@@ -291,6 +291,7 @@ Configurá la variable PLANTILLA_PATH."
                     fila_cells[5].text = str(horas_valor)
             else:
                 fila_cells[5].text = ''
+
             fila_cells[6].text = fila['Descripción Solución Reclamo']
 
     nombre_archivo = f"InformeRepetitividad{fecha_cierre.strftime('%m%y')}.docx"
