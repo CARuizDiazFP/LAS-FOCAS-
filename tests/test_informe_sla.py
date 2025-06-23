@@ -489,3 +489,34 @@ def test_titulo_unico_y_saltos(tmp_path):
     saltos = doc._element.xml.count('w:type="page"')
     filas = pd.read_excel(s)
     assert saltos == len(filas) - 1
+
+
+def test_mes_anio_desde_tablas(tmp_path):
+    """El mes para el título debe salir de la última fecha de todas las tablas."""
+    handler = _importar_handler(tmp_path)
+    r, s = tmp_path / "r.xlsx", tmp_path / "s.xlsx"
+    pd.DataFrame(
+        {
+            "Servicio": ["X", "Y"],
+            "Número Reclamo": [1, 2],
+            "Número Línea": [10, 20],
+            "Horas Netas Reclamo": ["0:00:00", "0:00:00"],
+            "Tipo Solución Reclamo": ["A", "B"],
+            "Fecha Inicio Reclamo": ["2025-04-10", "2025-06-01"],
+        }
+    ).to_excel(r, index=False)
+    pd.DataFrame(
+        {
+            "Tipo Servicio": ["X", "Y"],
+            "Número Línea": [10, 20],
+            "Nombre Cliente": ["C1", "C2"],
+            "Horas Reclamos Todos": [0, 0],
+            "SLA": [0.5, 0.4],
+        }
+    ).to_excel(s, index=False)
+
+    doc_path = handler._generar_documento_sla(str(r), str(s))
+    doc = Document(doc_path)
+    mes, anio = handler._mes_anio_desde_tabla(doc)
+    assert anio == "2025"
+    assert mes.lower().startswith("jun")
