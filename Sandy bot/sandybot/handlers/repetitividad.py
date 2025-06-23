@@ -12,6 +12,9 @@ import pandas as pd
 from docx import Document
 from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Inches
+from docx.oxml import OxmlElement
+from docx.text.paragraph import Paragraph
+
 # Los siguientes módulos solo están disponibles en Windows. Se usan para
 # modificar el documento Word mediante COM.
 try:
@@ -37,6 +40,13 @@ from ..geo_utils import extraer_coordenada, generar_mapa_puntos
 RUTA_PLANTILLA = config.PLANTILLA_PATH
 
 logger = logging.getLogger(__name__)
+
+
+def _insertar_parrafo_despues(tabla) -> Paragraph:
+    """Crea un nuevo párrafo justo después de ``tabla``."""
+    nuevo = OxmlElement("w:p")
+    tabla._element.addnext(nuevo)
+    return Paragraph(nuevo, tabla._parent)
 
 async def manejar_repetitividad(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     """
@@ -305,17 +315,12 @@ Configurá la variable PLANTILLA_PATH."
         if coordenadas:
             imagen = os.path.join(tempfile.gettempdir(), f"mapa_linea_{numero_linea}.png")
 
-            try:
-                generar_mapa_puntos(coordenadas, str(numero_linea), imagen)
-                parrafo_mapa = tabla._element.getparent().add_paragraph()
-                run = parrafo_mapa.add_run()
-                run.add_picture(imagen, width=Inches(5))
-                parrafo_mapa.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-            except Exception as exc:
-                logger.error("Error generando mapa: %s", exc)
-            finally:
-                if os.path.exists(imagen):
-                    os.remove(imagen)
+            generar_mapa_puntos(coordenadas, str(numero_linea), imagen)
+            parrafo_mapa = _insertar_parrafo_despues(tabla)
+            run = parrafo_mapa.add_run()
+            run.add_picture(imagen, width=Inches(5))
+            parrafo_mapa.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            os.remove(imagen)
 
 
     nombre_archivo = f"InformeRepetitividad{fecha_cierre.strftime('%m%y')}.docx"
