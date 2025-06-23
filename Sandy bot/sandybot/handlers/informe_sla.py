@@ -94,6 +94,36 @@ def _guardar_reclamos(df: pd.DataFrame) -> None:
         )
 
 
+def _mes_anio_desde_tabla(doc: Document) -> tuple[str, str]:
+    """Obtiene mes y año desde la tabla 3 del documento."""
+    try:
+        tabla = doc.tables[2]
+    except IndexError:
+        fecha = datetime.today()
+    else:
+        fechas = []
+        for row in tabla.rows[1:]:
+            texto = row.cells[4].text.strip()
+            if not texto:
+                continue
+            try:
+                fechas.append(datetime.strptime(texto, "%d-%b-%y"))
+            except ValueError:
+                continue
+        fecha = max(fechas) if fechas else datetime.today()
+
+    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
+        try:
+            locale.setlocale(locale.LC_TIME, loc)
+            break
+        except locale.Error:
+            continue
+
+    mes = fecha.strftime("%B").capitalize()
+    anio = fecha.strftime("%Y")
+    return mes, anio
+
+
 def identificar_excel(path: str) -> str:
     """Devuelve 'reclamos' o 'servicios' según las columnas del Excel."""
     columnas = set(pd.read_excel(path, nrows=0).columns.str.strip())
@@ -304,22 +334,6 @@ def _generar_documento_sla(
     if "SLA Entregado" in servicios_df.columns and "SLA" not in servicios_df.columns:
         servicios_df.rename(columns={"SLA Entregado": "SLA"}, inplace=True)
 
-    # ── Normalizar fecha para el título ─────────────────────────────
-    try:
-        fecha = pd.to_datetime(reclamos_df.iloc[0].get("Fecha"))
-        if pd.isna(fecha):
-            raise ValueError
-    except Exception:
-        fecha = pd.Timestamp.today()
-
-    for loc in ("es_ES.UTF-8", "es_ES", "es_AR.UTF-8", "es_AR"):
-        try:
-            locale.setlocale(locale.LC_TIME, loc)
-            break
-        except locale.Error:
-            continue
-
-    mes, anio = fecha.strftime("%B").upper(), fecha.strftime("%Y")
 
     # ── Cargar plantilla ────────────────────────────────────────────
     if not Path(RUTA_PLANTILLA).exists():
@@ -575,7 +589,8 @@ def _generar_documento_sla(
             cuerpo.remove(salto._p)
             cuerpo.insert(cuerpo.index(elem3) + 1, salto._p)
 
-    # ── Guardar DOCX con nombre determinístico ──────────────────────
+    # ── Obtener fecha para el título y guardar DOCX ─────────────────
+    mes, anio = _mes_anio_desde_tabla(doc)
     nombre_base = _nombre_base_sla()
     ruta_docx = os.path.join(tempfile.gettempdir(), nombre_base + ".docx")
     doc.save(ruta_docx)
