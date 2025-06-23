@@ -275,8 +275,9 @@ Configurá la variable PLANTILLA_PATH."
         hdr_cells[6].text = 'Descripción Solución Reclamo'
 
         coordenadas = []
+        indices_mapa = []
 
-        for _, fila in grupo.iterrows():
+        for idx, (_, fila) in enumerate(grupo.iterrows(), start=1):
             fila_cells = tabla.add_row().cells
             fila_cells[0].text = str(fila['Número Reclamo'])
             fila_cells[1].text = fila['Tipo Solución Reclamo']
@@ -311,11 +312,12 @@ Configurá la variable PLANTILLA_PATH."
             coord = extraer_coordenada(fila['Descripción Solución Reclamo'])
             if coord:
                 coordenadas.append(coord)
+                indices_mapa.append(idx)
 
         if coordenadas:
             imagen = os.path.join(tempfile.gettempdir(), f"mapa_linea_{numero_linea}.png")
 
-            generar_mapa_puntos(coordenadas, str(numero_linea), imagen)
+            generar_mapa_puntos(coordenadas, indices_mapa, imagen)
             parrafo_mapa = _insertar_parrafo_despues(tabla)
             run = parrafo_mapa.add_run()
             run.add_picture(imagen, width=Inches(5))
