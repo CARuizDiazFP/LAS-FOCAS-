@@ -14,6 +14,7 @@ except Exception as e:  # pragma: no cover - importa al ejecutar
     plt = None
 
 
+
 def extraer_coordenada(texto: str) -> tuple[float, float] | None:
     """Obtiene la primera coordenada válida dentro de ``texto``."""
     if not texto:
@@ -41,6 +42,7 @@ def extraer_coordenada(texto: str) -> tuple[float, float] | None:
 
 def generar_mapa_puntos(puntos: Iterable[tuple[float, float]], linea: str, ruta: str) -> None:
     """Genera un mapa PNG con ``puntos`` etiquetados por ``linea``."""
+
     if plt is None:
         raise RuntimeError("matplotlib no está disponible")
 
@@ -48,6 +50,7 @@ def generar_mapa_puntos(puntos: Iterable[tuple[float, float]], linea: str, ruta:
     fig, ax = plt.subplots(figsize=(5, 5))
     ax.scatter(lons, lats, color="red")
     for x, y in zip(lons, lats):
+
         ax.text(
             x,
             y,

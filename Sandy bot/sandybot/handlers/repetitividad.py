@@ -304,6 +304,7 @@ Configurá la variable PLANTILLA_PATH."
 
         if coordenadas:
             imagen = os.path.join(tempfile.gettempdir(), f"mapa_linea_{numero_linea}.png")
+
             try:
                 generar_mapa_puntos(coordenadas, str(numero_linea), imagen)
                 parrafo_mapa = tabla._element.getparent().add_paragraph()
@@ -315,6 +316,7 @@ Configurá la variable PLANTILLA_PATH."
             finally:
                 if os.path.exists(imagen):
                     os.remove(imagen)
+
 
     nombre_archivo = f"InformeRepetitividad{fecha_cierre.strftime('%m%y')}.docx"
     ruta_docx_generado = os.path.join(tempfile.gettempdir(), nombre_archivo)
