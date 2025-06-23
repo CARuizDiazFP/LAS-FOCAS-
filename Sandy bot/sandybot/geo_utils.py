@@ -7,11 +7,11 @@ from __future__ import annotations
 
 import re
 from typing import Iterable
-
 import geopandas as gpd
 import contextily as ctx
 from shapely.geometry import Point
 import matplotlib.pyplot as plt
+
 
 
 def extraer_coordenada(texto: str) -> tuple[float, float] | None:
@@ -41,6 +41,7 @@ def extraer_coordenada(texto: str) -> tuple[float, float] | None:
 
 def generar_mapa_puntos(puntos: Iterable[tuple[float, float]], linea: str, ruta: str) -> None:
     """Genera un mapa PNG con ``puntos`` etiquetados por ``linea``."""
+
     gdf = gpd.GeoDataFrame(
         index=range(len(list(puntos))),
         geometry=[Point(lon, lat) for lat, lon in puntos],
@@ -49,6 +50,7 @@ def generar_mapa_puntos(puntos: Iterable[tuple[float, float]], linea: str, ruta:
     gdf3857 = gdf.to_crs(epsg=3857)
     ax = gdf3857.plot(figsize=(6, 6), color="red")
     for x, y in zip(gdf3857.geometry.x, gdf3857.geometry.y):
+
         ax.text(
             x,
             y,
@@ -64,3 +66,6 @@ def generar_mapa_puntos(puntos: Iterable[tuple[float, float]], linea: str, ruta:
     plt.tight_layout()
     plt.savefig(ruta, dpi=150)
     plt.close()
+    ax.set_xlabel("Longitud")
+    ax.set_ylabel("Latitud")
+    ax.grid(True)

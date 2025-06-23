@@ -14,6 +14,7 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Inches
 from docx.oxml import OxmlElement
 from docx.text.paragraph import Paragraph
+
 # Los siguientes módulos solo están disponibles en Windows. Se usan para
 # modificar el documento Word mediante COM.
 try:
@@ -313,12 +314,14 @@ Configurá la variable PLANTILLA_PATH."
 
         if coordenadas:
             imagen = os.path.join(tempfile.gettempdir(), f"mapa_linea_{numero_linea}.png")
+
             generar_mapa_puntos(coordenadas, str(numero_linea), imagen)
             parrafo_mapa = _insertar_parrafo_despues(tabla)
             run = parrafo_mapa.add_run()
             run.add_picture(imagen, width=Inches(5))
             parrafo_mapa.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
             os.remove(imagen)
+
 
     nombre_archivo = f"InformeRepetitividad{fecha_cierre.strftime('%m%y')}.docx"
     ruta_docx_generado = os.path.join(tempfile.gettempdir(), nombre_archivo)
