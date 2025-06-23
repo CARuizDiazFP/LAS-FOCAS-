@@ -8,10 +8,11 @@ from __future__ import annotations
 import re
 from typing import Iterable
 
-import geopandas as gpd
-import contextily as ctx
-from shapely.geometry import Point
-import matplotlib.pyplot as plt
+try:
+    import matplotlib.pyplot as plt
+except Exception as e:  # pragma: no cover - importa al ejecutar
+    plt = None
+
 
 
 def extraer_coordenada(texto: str) -> tuple[float, float] | None:
@@ -41,14 +42,15 @@ def extraer_coordenada(texto: str) -> tuple[float, float] | None:
 
 def generar_mapa_puntos(puntos: Iterable[tuple[float, float]], linea: str, ruta: str) -> None:
     """Genera un mapa PNG con ``puntos`` etiquetados por ``linea``."""
-    gdf = gpd.GeoDataFrame(
-        index=range(len(list(puntos))),
-        geometry=[Point(lon, lat) for lat, lon in puntos],
-        crs="EPSG:4326",
-    )
-    gdf3857 = gdf.to_crs(epsg=3857)
-    ax = gdf3857.plot(figsize=(6, 6), color="red")
-    for x, y in zip(gdf3857.geometry.x, gdf3857.geometry.y):
+
+    if plt is None:
+        raise RuntimeError("matplotlib no está disponible")
+
+    lats, lons = zip(*puntos)
+    fig, ax = plt.subplots(figsize=(5, 5))
+    ax.scatter(lons, lats, color="red")
+    for x, y in zip(lons, lats):
+
         ax.text(
             x,
             y,
@@ -59,8 +61,9 @@ def generar_mapa_puntos(puntos: Iterable[tuple[float, float]], linea: str, ruta:
             fontsize=8,
             bbox=dict(boxstyle="circle", facecolor="blue"),
         )
-    ctx.add_basemap(ax, crs="EPSG:3857", source=ctx.providers.OpenStreetMap.Mapnik)
-    ax.set_axis_off()
+    ax.set_xlabel("Longitud")
+    ax.set_ylabel("Latitud")
+    ax.grid(True)
     plt.tight_layout()
     plt.savefig(ruta, dpi=150)
-    plt.close()
+    plt.close(fig)
