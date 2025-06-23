@@ -1,7 +1,6 @@
 # Nombre de archivo: repetitividad.py
 # Ubicación de archivo: Sandy bot/sandybot/handlers/repetitividad.py
 # User-provided custom instructions
-# Repetitividad.py
 """
 Handler para la generación de informes de repetitividad.
 """
@@ -281,11 +280,18 @@ Configurá la variable PLANTILLA_PATH."
                 if pd.notnull(fila['Fecha Cierre Problema Reclamo'])
                 else ''
             )
-            fila_cells[5].text = (
-                str(fila['Horas Netas Problema Reclamo'])
-                if pd.notnull(fila['Horas Netas Problema Reclamo'])
-                else ''
-            )
+            if pd.notnull(fila['Horas Netas Problema Reclamo']):
+                horas_valor = fila['Horas Netas Problema Reclamo']
+                if isinstance(horas_valor, pd.Timedelta):
+                    total_min = int(horas_valor.total_seconds() // 60)
+                    horas = total_min // 60
+                    minutos = total_min % 60
+                    fila_cells[5].text = f"{horas:02d}:{minutos:02d} Hrs"
+                else:
+                    fila_cells[5].text = str(horas_valor)
+            else:
+                fila_cells[5].text = ''
+
             fila_cells[6].text = fila['Descripción Solución Reclamo']
 
     nombre_archivo = f"InformeRepetitividad{fecha_cierre.strftime('%m%y')}.docx"
