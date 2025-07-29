@@ -1,6 +1,7 @@
 __pycache__/
 *.pyc
 logs/
+Sandy bot/logs/
 .venv/
 .env
 Sandy bot/data/contador_diario.json
