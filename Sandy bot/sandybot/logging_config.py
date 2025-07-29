@@ -2,8 +2,20 @@
 # Ubicación de archivo: Sandy bot/sandybot/logging_config.py
 # User-provided custom instructions
 import logging
+import re
 from logging.handlers import RotatingFileHandler
 from .config import config
+
+
+class SecretFilter(logging.Filter):
+    """Oculta tokens presentes en los mensajes."""
+
+    _token_pattern = re.compile(r"bot\d+:[A-Za-z0-9_-]+")
+
+    def filter(self, record: logging.LogRecord) -> bool:  # noqa: D401
+        if isinstance(record.msg, str):
+            record.msg = self._token_pattern.sub("bot*****:TOKEN", record.msg)
+        return True
 
 
 def setup_logging(level: int = logging.INFO) -> None:
@@ -15,6 +27,7 @@ def setup_logging(level: int = logging.INFO) -> None:
     root = logging.getLogger()
     root.setLevel(level)
     root.handlers.clear()
+    root.addFilter(SecretFilter())
 
     # Evitar que bibliotecas como httpx registren tokens o datos sensibles
     logging.getLogger("httpx").setLevel(logging.WARNING)
