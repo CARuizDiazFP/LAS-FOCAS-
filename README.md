@@ -1,4 +1,4 @@
-# NiceGrow
+# Focal Point
 
 Este repositorio contiene el proyecto SandyBot. Para ejecutarlo se requiere
 instalar las dependencias listadas en `Sandy bot/requirements.txt`.
